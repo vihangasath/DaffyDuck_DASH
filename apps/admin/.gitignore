@@ -1,0 +1,7 @@
+
+# Impeccable session scratch (review captures, question logs, hook cache); design.json and surfaces/ are kept
+.impeccable/review/
+.impeccable/questions/
+.impeccable/hook.cache.json
+.impeccable/brief-body.md
+.impeccable/direction-round.json

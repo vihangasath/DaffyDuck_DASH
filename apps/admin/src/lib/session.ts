@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from "react";
 import type { LoginResult, SessionUser } from "@waypoint/core/contract";
 
-// The admin console keeps its session in localStorage (shared by the admin's tabs).
+// Waypoint People keeps its session in localStorage (shared by the HR officer's tabs).
 // It is a different origin from the operations app, so the two sign-ins never collide.
 const KEY = "waypoint-admin-session";
 const EVT = "waypoint-admin-session";

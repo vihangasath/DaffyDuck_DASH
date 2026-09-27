@@ -1,0 +1,771 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-27T06:06:41+00:00",
+  "title": "Design System: Waypoint People",
+  "extensions": {
+    "colorMeta": {
+      "cabinet": {
+        "role": "primary",
+        "displayName": "Cabinet Green",
+        "canonical": "#2e4a3e",
+        "tonalRamp": [
+          "oklch(15% 0.040 166)",
+          "oklch(26% 0.040 166)",
+          "oklch(37% 0.040 166)",
+          "oklch(48% 0.040 166)",
+          "oklch(59% 0.040 166)",
+          "oklch(70% 0.040 166)",
+          "oklch(82% 0.040 166)",
+          "oklch(95% 0.040 166)"
+        ]
+      },
+      "cabinet-2": {
+        "role": "primary",
+        "displayName": "Open Drawer Green",
+        "canonical": "#3a5b4c",
+        "tonalRamp": [
+          "oklch(15% 0.042 164)",
+          "oklch(26% 0.046 164)",
+          "oklch(37% 0.046 164)",
+          "oklch(48% 0.046 164)",
+          "oklch(59% 0.046 164)",
+          "oklch(70% 0.046 164)",
+          "oklch(82% 0.046 164)",
+          "oklch(95% 0.046 164)"
+        ]
+      },
+      "cabinet-3": {
+        "role": "primary",
+        "displayName": "Drawer Shadow Green",
+        "canonical": "#22382e",
+        "tonalRamp": [
+          "oklch(15% 0.033 164)",
+          "oklch(26% 0.033 164)",
+          "oklch(37% 0.033 164)",
+          "oklch(48% 0.033 164)",
+          "oklch(59% 0.033 164)",
+          "oklch(70% 0.033 164)",
+          "oklch(82% 0.033 164)",
+          "oklch(95% 0.033 164)"
+        ]
+      },
+      "on-cabinet": {
+        "role": "primary",
+        "displayName": "Enamel Light",
+        "canonical": "#edf2ee",
+        "tonalRamp": [
+          "oklch(15% 0.007 152)",
+          "oklch(26% 0.007 152)",
+          "oklch(37% 0.007 152)",
+          "oklch(48% 0.007 152)",
+          "oklch(59% 0.007 152)",
+          "oklch(70% 0.007 152)",
+          "oklch(82% 0.007 152)",
+          "oklch(95% 0.007 152)"
+        ]
+      },
+      "on-cabinet-muted": {
+        "role": "primary",
+        "displayName": "Enamel Muted",
+        "canonical": "#a8bbaf",
+        "tonalRamp": [
+          "oklch(15% 0.027 158)",
+          "oklch(26% 0.027 158)",
+          "oklch(37% 0.027 158)",
+          "oklch(48% 0.027 158)",
+          "oklch(59% 0.027 158)",
+          "oklch(70% 0.027 158)",
+          "oklch(82% 0.027 158)",
+          "oklch(95% 0.027 158)"
+        ]
+      },
+      "brass": {
+        "role": "secondary",
+        "displayName": "Label Brass",
+        "canonical": "#a88542",
+        "tonalRamp": [
+          "oklch(15% 0.054 82)",
+          "oklch(26% 0.071 82)",
+          "oklch(37% 0.089 82)",
+          "oklch(48% 0.095 82)",
+          "oklch(59% 0.095 82)",
+          "oklch(70% 0.095 82)",
+          "oklch(82% 0.090 82)",
+          "oklch(95% 0.070 82)"
+        ]
+      },
+      "brass-2": {
+        "role": "secondary",
+        "displayName": "Polished Brass",
+        "canonical": "#dcc58f",
+        "tonalRamp": [
+          "oklch(15% 0.049 88)",
+          "oklch(26% 0.063 88)",
+          "oklch(37% 0.075 88)",
+          "oklch(48% 0.075 88)",
+          "oklch(59% 0.075 88)",
+          "oklch(70% 0.075 88)",
+          "oklch(82% 0.075 88)",
+          "oklch(95% 0.061 88)"
+        ]
+      },
+      "brass-ink": {
+        "role": "secondary",
+        "displayName": "Brass Shadow",
+        "canonical": "#5b4516",
+        "tonalRamp": [
+          "oklch(15% 0.047 83)",
+          "oklch(26% 0.060 83)",
+          "oklch(37% 0.070 83)",
+          "oklch(48% 0.070 83)",
+          "oklch(59% 0.070 83)",
+          "oklch(70% 0.070 83)",
+          "oklch(82% 0.070 83)",
+          "oklch(95% 0.059 83)"
+        ]
+      },
+      "manila": {
+        "role": "secondary",
+        "displayName": "Manila Tab",
+        "canonical": "#e6cc8f",
+        "tonalRamp": [
+          "oklch(15% 0.051 87)",
+          "oklch(26% 0.066 87)",
+          "oklch(37% 0.082 87)",
+          "oklch(48% 0.084 87)",
+          "oklch(59% 0.084 87)",
+          "oklch(70% 0.084 87)",
+          "oklch(82% 0.083 87)",
+          "oklch(95% 0.065 87)"
+        ]
+      },
+      "manila-2": {
+        "role": "secondary",
+        "displayName": "Manila Folder",
+        "canonical": "#f2e4bf",
+        "tonalRamp": [
+          "oklch(15% 0.043 90)",
+          "oklch(26% 0.051 90)",
+          "oklch(37% 0.051 90)",
+          "oklch(48% 0.051 90)",
+          "oklch(59% 0.051 90)",
+          "oklch(70% 0.051 90)",
+          "oklch(82% 0.051 90)",
+          "oklch(95% 0.051 90)"
+        ]
+      },
+      "manila-edge": {
+        "role": "secondary",
+        "displayName": "Manila Edge",
+        "canonical": "#c3a35b",
+        "tonalRamp": [
+          "oklch(15% 0.055 86)",
+          "oklch(26% 0.073 86)",
+          "oklch(37% 0.091 86)",
+          "oklch(48% 0.099 86)",
+          "oklch(59% 0.099 86)",
+          "oklch(70% 0.099 86)",
+          "oklch(82% 0.092 86)",
+          "oklch(95% 0.071 86)"
+        ]
+      },
+      "manila-ink": {
+        "role": "secondary",
+        "displayName": "Manila Ink",
+        "canonical": "#5d4714",
+        "tonalRamp": [
+          "oklch(15% 0.048 85)",
+          "oklch(26% 0.062 85)",
+          "oklch(37% 0.073 85)",
+          "oklch(48% 0.073 85)",
+          "oklch(59% 0.073 85)",
+          "oklch(70% 0.073 85)",
+          "oklch(82% 0.073 85)",
+          "oklch(95% 0.060 85)"
+        ]
+      },
+      "card-red": {
+        "role": "tertiary",
+        "displayName": "Header Red",
+        "canonical": "#cf4a3c",
+        "tonalRamp": [
+          "oklch(15% 0.073 29)",
+          "oklch(26% 0.104 29)",
+          "oklch(37% 0.135 29)",
+          "oklch(48% 0.167 29)",
+          "oklch(59% 0.171 29)",
+          "oklch(70% 0.171 29)",
+          "oklch(82% 0.138 29)",
+          "oklch(95% 0.101 29)"
+        ]
+      },
+      "feint": {
+        "role": "tertiary",
+        "displayName": "Feint Blue",
+        "canonical": "#b9cbe6",
+        "tonalRamp": [
+          "oklch(15% 0.041 258)",
+          "oklch(26% 0.043 258)",
+          "oklch(37% 0.043 258)",
+          "oklch(48% 0.043 258)",
+          "oklch(59% 0.043 258)",
+          "oklch(70% 0.043 258)",
+          "oklch(82% 0.043 258)",
+          "oklch(95% 0.043 258)"
+        ]
+      },
+      "stamp-leave": {
+        "role": "tertiary",
+        "displayName": "Ochre Stamp",
+        "canonical": "#9a5d0c",
+        "tonalRamp": [
+          "oklch(15% 0.059 65)",
+          "oklch(26% 0.080 65)",
+          "oklch(37% 0.101 65)",
+          "oklch(48% 0.116 65)",
+          "oklch(59% 0.116 65)",
+          "oklch(70% 0.116 65)",
+          "oklch(82% 0.103 65)",
+          "oklch(95% 0.078 65)"
+        ]
+      },
+      "stamp-left": {
+        "role": "tertiary",
+        "displayName": "Stamp Red",
+        "canonical": "#b3261e",
+        "tonalRamp": [
+          "oklch(15% 0.075 29)",
+          "oklch(26% 0.107 29)",
+          "oklch(37% 0.140 29)",
+          "oklch(48% 0.173 29)",
+          "oklch(59% 0.178 29)",
+          "oklch(70% 0.178 29)",
+          "oklch(82% 0.143 29)",
+          "oklch(95% 0.104 29)"
+        ]
+      },
+      "job-driver": {
+        "role": "tertiary",
+        "displayName": "Driver Blue",
+        "canonical": "#2f63a8",
+        "tonalRamp": [
+          "oklch(15% 0.061 256)",
+          "oklch(26% 0.084 256)",
+          "oklch(37% 0.106 256)",
+          "oklch(48% 0.124 256)",
+          "oklch(59% 0.124 256)",
+          "oklch(70% 0.124 256)",
+          "oklch(82% 0.108 256)",
+          "oklch(95% 0.082 256)"
+        ]
+      },
+      "job-loader": {
+        "role": "tertiary",
+        "displayName": "Loader Orange",
+        "canonical": "#b85a14",
+        "tonalRamp": [
+          "oklch(15% 0.066 50)",
+          "oklch(26% 0.092 50)",
+          "oklch(37% 0.118 50)",
+          "oklch(48% 0.142 50)",
+          "oklch(59% 0.142 50)",
+          "oklch(70% 0.142 50)",
+          "oklch(82% 0.120 50)",
+          "oklch(95% 0.089 50)"
+        ]
+      },
+      "job-dispatcher": {
+        "role": "tertiary",
+        "displayName": "Dispatcher Green",
+        "canonical": "#2f7a4a",
+        "tonalRamp": [
+          "oklch(15% 0.057 153)",
+          "oklch(26% 0.076 153)",
+          "oklch(37% 0.095 153)",
+          "oklch(48% 0.106 153)",
+          "oklch(59% 0.106 153)",
+          "oklch(70% 0.106 153)",
+          "oklch(82% 0.097 153)",
+          "oklch(95% 0.074 153)"
+        ]
+      },
+      "job-store": {
+        "role": "tertiary",
+        "displayName": "Store Violet",
+        "canonical": "#7b4aa0",
+        "tonalRamp": [
+          "oklch(15% 0.065 309)",
+          "oklch(26% 0.090 309)",
+          "oklch(37% 0.116 309)",
+          "oklch(48% 0.139 309)",
+          "oklch(59% 0.139 309)",
+          "oklch(70% 0.139 309)",
+          "oklch(82% 0.118 309)",
+          "oklch(95% 0.088 309)"
+        ]
+      },
+      "job-hr": {
+        "role": "tertiary",
+        "displayName": "HR Charcoal",
+        "canonical": "#3c423e",
+        "tonalRamp": [
+          "oklch(15% 0.010 157)",
+          "oklch(26% 0.010 157)",
+          "oklch(37% 0.010 157)",
+          "oklch(48% 0.010 157)",
+          "oklch(59% 0.010 157)",
+          "oklch(70% 0.010 157)",
+          "oklch(82% 0.010 157)",
+          "oklch(95% 0.010 157)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Cabinet Ink",
+        "canonical": "#1d2621",
+        "tonalRamp": [
+          "oklch(15% 0.016 161)",
+          "oklch(26% 0.016 161)",
+          "oklch(37% 0.016 161)",
+          "oklch(48% 0.016 161)",
+          "oklch(59% 0.016 161)",
+          "oklch(70% 0.016 161)",
+          "oklch(82% 0.016 161)",
+          "oklch(95% 0.016 161)"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "canonical": "#46544b",
+        "tonalRamp": [
+          "oklch(15% 0.023 157)",
+          "oklch(26% 0.023 157)",
+          "oklch(37% 0.023 157)",
+          "oklch(48% 0.023 157)",
+          "oklch(59% 0.023 157)",
+          "oklch(70% 0.023 157)",
+          "oklch(82% 0.023 157)",
+          "oklch(95% 0.023 157)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Pencil",
+        "canonical": "#5a665e",
+        "tonalRamp": [
+          "oklch(15% 0.019 156)",
+          "oklch(26% 0.019 156)",
+          "oklch(37% 0.019 156)",
+          "oklch(48% 0.019 156)",
+          "oklch(59% 0.019 156)",
+          "oklch(70% 0.019 156)",
+          "oklch(82% 0.019 156)",
+          "oklch(95% 0.019 156)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Steel Enamel",
+        "canonical": "#e6eae3",
+        "tonalRamp": [
+          "oklch(15% 0.010 131)",
+          "oklch(26% 0.010 131)",
+          "oklch(37% 0.010 131)",
+          "oklch(48% 0.010 131)",
+          "oklch(59% 0.010 131)",
+          "oklch(70% 0.010 131)",
+          "oklch(82% 0.010 131)",
+          "oklch(95% 0.010 131)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Card Stock",
+        "canonical": "#fffefa",
+        "tonalRamp": [
+          "oklch(15% 0.005 95)",
+          "oklch(26% 0.005 95)",
+          "oklch(37% 0.005 95)",
+          "oklch(48% 0.005 95)",
+          "oklch(59% 0.005 95)",
+          "oklch(70% 0.005 95)",
+          "oklch(82% 0.005 95)",
+          "oklch(95% 0.005 95)"
+        ]
+      },
+      "subtle": {
+        "role": "neutral",
+        "displayName": "Pale Enamel",
+        "canonical": "#eef1ec",
+        "tonalRamp": [
+          "oklch(15% 0.007 132)",
+          "oklch(26% 0.007 132)",
+          "oklch(37% 0.007 132)",
+          "oklch(48% 0.007 132)",
+          "oklch(59% 0.007 132)",
+          "oklch(70% 0.007 132)",
+          "oklch(82% 0.007 132)",
+          "oklch(95% 0.007 132)"
+        ]
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Drawer Well",
+        "canonical": "#dde2da",
+        "tonalRamp": [
+          "oklch(15% 0.012 133)",
+          "oklch(26% 0.012 133)",
+          "oklch(37% 0.012 133)",
+          "oklch(48% 0.012 133)",
+          "oklch(59% 0.012 133)",
+          "oklch(70% 0.012 133)",
+          "oklch(82% 0.012 133)",
+          "oklch(95% 0.012 133)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#cfd6cc",
+        "tonalRamp": [
+          "oklch(15% 0.016 136)",
+          "oklch(26% 0.016 136)",
+          "oklch(37% 0.016 136)",
+          "oklch(48% 0.016 136)",
+          "oklch(59% 0.016 136)",
+          "oklch(70% 0.016 136)",
+          "oklch(82% 0.016 136)",
+          "oklch(95% 0.016 136)"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Steel Rule",
+        "canonical": "#a9b4a7",
+        "tonalRamp": [
+          "oklch(15% 0.022 141)",
+          "oklch(26% 0.022 141)",
+          "oklch(37% 0.022 141)",
+          "oklch(48% 0.022 141)",
+          "oklch(59% 0.022 141)",
+          "oklch(70% 0.022 141)",
+          "oklch(82% 0.022 141)",
+          "oklch(95% 0.022 141)"
+        ]
+      },
+      "focus": {
+        "role": "tertiary",
+        "displayName": "Focus Blue",
+        "canonical": "#1f5fbf",
+        "tonalRamp": [
+          "oklch(15% 0.071 259)",
+          "oklch(26% 0.101 259)",
+          "oklch(37% 0.131 259)",
+          "oklch(48% 0.161 259)",
+          "oklch(59% 0.164 259)",
+          "oklch(70% 0.164 259)",
+          "oklch(82% 0.134 259)",
+          "oklch(95% 0.098 259)"
+        ]
+      },
+      "success": {
+        "role": "neutral",
+        "displayName": "Filed Green",
+        "canonical": "#2f6b45",
+        "tonalRamp": [
+          "oklch(15% 0.052 154)",
+          "oklch(26% 0.068 154)",
+          "oklch(37% 0.084 154)",
+          "oklch(48% 0.088 154)",
+          "oklch(59% 0.088 154)",
+          "oklch(70% 0.088 154)",
+          "oklch(82% 0.086 154)",
+          "oklch(95% 0.067 154)"
+        ]
+      },
+      "danger-soft": {
+        "role": "neutral",
+        "displayName": "Error Wash",
+        "canonical": "#f8e3df",
+        "tonalRamp": [
+          "oklch(15% 0.024 30)",
+          "oklch(26% 0.024 30)",
+          "oklch(37% 0.024 30)",
+          "oklch(48% 0.024 30)",
+          "oklch(59% 0.024 30)",
+          "oklch(70% 0.024 30)",
+          "oklch(82% 0.024 30)",
+          "oklch(95% 0.024 30)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles, one per screen."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section heads within a page."
+      },
+      "title": {
+        "displayName": "Card Title",
+        "purpose": "Printed index card headers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Everything read: rows, values, descriptions."
+      },
+      "label": {
+        "displayName": "Label Caps",
+        "purpose": "Field labels, column heads, drawer labels, folder tabs, job names."
+      },
+      "stamp": {
+        "displayName": "Stamp",
+        "purpose": "Rubber stamps only."
+      },
+      "typed": {
+        "displayName": "Typed",
+        "purpose": "IDs, dates, licence numbers, usernames, times."
+      },
+      "typed-count": {
+        "displayName": "Typed Count",
+        "purpose": "Front desk register counts."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card",
+        "value": "0 1px 1px rgb(34 56 46 / 0.08), 0 2px 6px -2px rgb(34 56 46 / 0.12)",
+        "purpose": "Index cards, sheets, folder lists, search box, secondary buttons."
+      },
+      {
+        "name": "raised",
+        "value": "0 2px 3px rgb(34 56 46 / 0.1), 0 10px 22px -10px rgb(34 56 46 / 0.3)",
+        "purpose": "The pulled folder and the selected folder in the drawer."
+      },
+      {
+        "name": "float",
+        "value": "0 10px 18px -6px rgb(34 56 46 / 0.22), 0 28px 56px -16px rgb(34 56 46 / 0.36)",
+        "purpose": "Sticky unfiled-changes bar and the sign-in folder."
+      },
+      {
+        "name": "drawer",
+        "value": "inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -2px 0 rgb(0 0 0 / 0.22)",
+        "purpose": "Every drawer front on the cabinet rail."
+      },
+      {
+        "name": "well",
+        "value": "inset 0 2px 6px rgb(34 56 46 / 0.12)",
+        "purpose": "The recessed drawer holding the directory's folders."
+      },
+      {
+        "name": "button-bevel",
+        "value": "inset 0 1px 0 rgb(255 255 255 / 0.1), inset 0 -2px 0 rgb(0 0 0 / 0.25)",
+        "purpose": "Primary button's pressed-steel bevel."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The only ease: drawers, folder pull, rising bars."
+      },
+      {
+        "name": "pull",
+        "value": "pull 0.34s ease-out-expo both (translateY 14px, opacity 0.4 to 1)",
+        "purpose": "Pulling a folder; starts visible."
+      },
+      {
+        "name": "rise",
+        "value": "rise 0.32s ease-out-expo both (translateY 8px, fade in)",
+        "purpose": "The unfiled-changes bar."
+      },
+      {
+        "name": "drawer-slide",
+        "value": "transform 300ms ease-out-expo",
+        "purpose": "Open drawer slides 8px, hover 4px."
+      },
+      {
+        "name": "shimmer",
+        "value": "shimmer 1.4s linear infinite",
+        "purpose": "Skeleton loaders in the well colour."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "all durations 0.01ms",
+        "purpose": "Everything collapses under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The main action on a page: Add a person, Issue login, Open the cabinet.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>Add a person</button>",
+      "css": ".ds-btn-primary { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border: 0; border-radius: 3px; background: var(--color-cabinet, #2e4a3e); color: var(--color-on-cabinet, #edf2ee); font-size: 14px; font-weight: 600; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), inset 0 -2px 0 rgb(0 0 0 / 0.25); cursor: pointer; transition: background-color 0.15s; } .ds-btn-primary:hover { background: var(--color-cabinet-3, #22382e); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-focus, #1f5fbf); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Supporting actions on card stock.",
+      "html": "<button class=\"ds-btn-secondary\">Reset password</button>",
+      "css": ".ds-btn-secondary { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); height: 40px; padding: 0 16px; border: 1px solid var(--color-line-strong, #a9b4a7); border-radius: 3px; background: var(--color-surface, #fffefa); color: var(--color-ink, #1d2621); font-size: 14px; font-weight: 600; box-shadow: 0 1px 1px rgb(34 56 46 / 0.08), 0 2px 6px -2px rgb(34 56 46 / 0.12); cursor: pointer; transition: background-color 0.15s, border-color 0.15s; } .ds-btn-secondary:hover { background: var(--color-subtle, #eef1ec); border-color: rgb(70 84 75 / 0.5); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-focus, #1f5fbf); outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Withdrawing access and other destructive acts.",
+      "html": "<button class=\"ds-btn-danger\">Turn off login</button>",
+      "css": ".ds-btn-danger { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); height: 40px; padding: 0 16px; border: 0; border-radius: 3px; background: var(--color-stamp-left, #b3261e); color: #fff; font-size: 14px; font-weight: 600; box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.22); cursor: pointer; } .ds-btn-danger:focus-visible { outline: 2px solid var(--color-focus, #1f5fbf); outline-offset: 2px; }"
+    },
+    {
+      "name": "Field with Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A caps label, a card-stock input, a feint rule under the row. Typed data switches to Courier Prime.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Licence number</span><input class=\"ds-input ds-input-typed\" value=\"B7613748\"></label>",
+      "css": ".ds-field { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); display: grid; gap: 4px; padding-bottom: 12px; border-bottom: 1px solid rgb(185 203 230 / 0.8); max-width: 320px; } .ds-field-label { font-size: 11px; font-weight: 600; font-stretch: 87.5%; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-2, #46544b); } .ds-input { height: 40px; padding: 0 12px; border: 1px solid var(--color-line-strong, #a9b4a7); border-radius: 3px; background: var(--color-surface, #fffefa); color: var(--color-ink, #1d2621); font-size: 14px; } .ds-input-typed { font-family: var(--font-type, 'Courier Prime', 'Courier New', monospace); } .ds-input:focus { border-color: var(--color-cabinet, #2e4a3e); outline: 2px solid var(--color-focus, #1f5fbf); outline-offset: 1px; }"
+    },
+    {
+      "name": "Index Card",
+      "kind": "card",
+      "refersTo": "index-card",
+      "description": "Record content: a printed caps header over a red rule, fields on feint lines.",
+      "html": "<section class=\"ds-card\"><header class=\"ds-card-head\"><h3>Driving licence</h3><span class=\"ds-stamp\">Expired</span></header><div class=\"ds-card-body\">Class C1 &middot; <span class=\"ds-typed\">20 Oct 2026</span></div></section>",
+      "css": ".ds-card { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); background: var(--color-surface, #fffefa); border-radius: 3px; box-shadow: 0 1px 1px rgb(34 56 46 / 0.08), 0 2px 6px -2px rgb(34 56 46 / 0.12); max-width: 420px; } .ds-card-head { display: flex; align-items: center; height: 44px; padding: 0 16px; border-bottom: 1px solid rgb(207 74 60 / 0.8); } .ds-card-head h3 { margin: 0; font-size: 12px; font-weight: 600; font-stretch: 87.5%; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-2, #46544b); } .ds-card-head .ds-stamp { margin-left: auto; } .ds-card-body { padding: 12px 16px 16px; font-size: 14px; color: var(--color-ink, #1d2621); } .ds-typed { font-family: var(--font-type, 'Courier Prime', monospace); font-size: 13px; } .ds-stamp { display: inline-flex; border: 2px solid currentColor; outline: 1px solid currentColor; outline-offset: 2px; border-radius: 2px; padding: 0.05em 0.45em; font-size: 11px; font-stretch: 75%; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.3; transform: rotate(-3deg); mix-blend-mode: multiply; opacity: 0.92; color: var(--color-stamp-left, #b3261e); }"
+    },
+    {
+      "name": "Rubber Stamp",
+      "kind": "chip",
+      "refersTo": "stamp-on-leave",
+      "description": "Exceptions only: ON LEAVE in ochre, LEFT and EXPIRED in red. Active people carry none.",
+      "html": "<span class=\"ds-stamp ds-stamp-leave\">On leave</span> <span class=\"ds-stamp ds-stamp-left\">Left</span>",
+      "css": ".ds-stamp { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); display: inline-flex; align-items: center; margin: 6px; border: 2px solid currentColor; outline: 1px solid currentColor; outline-offset: 2px; border-radius: 2px; padding: 0.05em 0.45em; font-size: 11px; font-stretch: 75%; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.3; transform: rotate(-3deg); mix-blend-mode: multiply; opacity: 0.92; white-space: nowrap; } .ds-stamp-leave { color: var(--color-stamp-leave, #9a5d0c); } .ds-stamp-left { color: var(--color-stamp-left, #b3261e); }"
+    },
+    {
+      "name": "Job Signal Tab",
+      "kind": "chip",
+      "refersTo": "job-tab",
+      "description": "The coloured hanging-file tab and job name; one fixed colour per job.",
+      "html": "<span class=\"ds-job\"><i style=\"background:var(--color-job-driver,#2f63a8)\"></i><b style=\"color:var(--color-job-driver,#2f63a8)\">Driver</b></span> <span class=\"ds-job\"><i style=\"background:var(--color-job-loader,#b85a14)\"></i><b style=\"color:var(--color-job-loader,#b85a14)\">Loader</b></span> <span class=\"ds-job\"><i style=\"background:var(--color-job-store,#7b4aa0)\"></i><b style=\"color:var(--color-job-store,#7b4aa0)\">Store manager</b></span>",
+      "css": ".ds-job { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; } .ds-job i { width: 10px; height: 14px; border-radius: 2px 2px 0 0; box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.25); } .ds-job b { font-size: 11px; font-weight: 600; font-stretch: 87.5%; letter-spacing: 0.06em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Index Dividers",
+      "kind": "nav",
+      "refersTo": "divider-tab",
+      "description": "Filter tabs you file behind; the chosen one steps forward in manila.",
+      "html": "<div class=\"ds-dividers\" role=\"radiogroup\" aria-label=\"Job\"><button role=\"radio\" aria-checked=\"true\">All <span>193</span></button><button role=\"radio\" aria-checked=\"false\">Drivers <span>60</span></button><button role=\"radio\" aria-checked=\"false\">Loaders <span>9</span></button></div>",
+      "css": ".ds-dividers { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); display: flex; gap: 2px; border-bottom: 1px solid var(--color-line-strong, #a9b4a7); } .ds-dividers button { display: flex; gap: 6px; padding: 8px 12px 6px; border: 1px solid transparent; border-bottom: 0; border-radius: 4px 4px 0 0; background: var(--color-well, #dde2da); color: var(--color-ink-2, #46544b); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color 0.15s, color 0.15s; } .ds-dividers button span { font-size: 12px; color: var(--color-muted, #5a665e); } .ds-dividers button:hover { background: var(--color-subtle, #eef1ec); color: var(--color-ink, #1d2621); } .ds-dividers button[aria-checked=true] { position: relative; z-index: 1; transform: translateY(1px); border-color: var(--color-manila-edge, #c3a35b); background: var(--color-manila, #e6cc8f); color: var(--color-manila-ink, #5d4714); } .ds-dividers button:focus-visible { outline: 2px solid var(--color-focus, #1f5fbf); outline-offset: 2px; }"
+    },
+    {
+      "name": "Cabinet Drawer Front",
+      "kind": "nav",
+      "refersTo": "drawer-front",
+      "description": "Rail navigation: drawer fronts with brass label holders and pulls; the open drawer slides out with a manila tab.",
+      "html": "<nav class=\"ds-rail\"><a href=\"#\" class=\"ds-drawer ds-open\" aria-current=\"page\"><span class=\"ds-tab\"></span><span class=\"ds-holder\"><span class=\"ds-label\">Front desk</span></span><span class=\"ds-pull\"></span></a><a href=\"#\" class=\"ds-drawer\"><span class=\"ds-holder\"><span class=\"ds-label\">Renewals<em>5</em></span></span><span class=\"ds-pull\"></span></a></nav>",
+      "css": ".ds-rail { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); display: grid; gap: 8px; width: 248px; padding: 16px 12px 16px 0; background: var(--color-cabinet, #2e4a3e); } .ds-drawer { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 20px; border-radius: 0 3px 3px 0; background: rgb(34 56 46 / 0.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -2px 0 rgb(0 0 0 / 0.22); text-decoration: none; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s; } .ds-drawer:hover { transform: translateX(4px); background: rgb(58 91 76 / 0.7); } .ds-drawer.ds-open { transform: translateX(8px); background: var(--color-cabinet-2, #3a5b4c); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -2px 0 rgb(0 0 0 / 0.22), 0 6px 14px -6px rgb(0 0 0 / 0.45); } .ds-drawer:focus-visible { outline: 2px solid var(--color-focus, #1f5fbf); outline-offset: 2px; } .ds-tab { position: absolute; top: -4px; left: 20px; width: 56px; height: 6px; border-radius: 3px 3px 0 0; background: var(--color-manila, #e6cc8f); } .ds-holder { flex: 1; display: flex; padding: 3px; border-radius: 2px; background: var(--color-brass, #a88542); border-bottom: 2px solid rgb(91 69 22 / 0.6); box-shadow: 0 1px 2px rgb(0 0 0 / 0.35); } .ds-open .ds-holder { background: var(--color-brass-2, #dcc58f); border-bottom-color: var(--color-brass, #a88542); } .ds-label { flex: 1; display: flex; padding: 2px 8px; border-radius: 1px; background: #ece5d2; color: rgb(29 38 33 / 0.85); font-size: 11.5px; font-weight: 600; font-stretch: 87.5%; letter-spacing: 0.06em; text-transform: uppercase; } .ds-open .ds-label { background: var(--color-manila-2, #f2e4bf); color: var(--color-manila-ink, #5d4714); } .ds-label em { margin-left: auto; font-style: normal; font-weight: 700; color: var(--color-ink-2, #46544b); } .ds-pull { width: 28px; height: 8px; border-radius: 3px; border: 1px solid rgb(91 69 22 / 0.5); background: var(--color-brass, #a88542); box-shadow: 0 3px 3px -1px rgb(0 0 0 / 0.45); } .ds-open .ds-pull { background: var(--color-brass-2, #dcc58f); }"
+    },
+    {
+      "name": "Pulled Folder",
+      "kind": "custom",
+      "refersTo": "folder",
+      "description": "The signature: a person's manila folder, file number on its tab, index cards rising out of it.",
+      "html": "<div class=\"ds-folder-wrap\"><div class=\"ds-folder-tab\">EMP0020</div><div class=\"ds-folder\"><h2>Lasantha Gunawardena</h2><div class=\"ds-folder-card\">Personal record</div></div></div>",
+      "css": ".ds-folder-wrap { font-family: var(--font-sans, Archivo, ui-sans-serif, system-ui, sans-serif); position: relative; padding-top: 32px; max-width: 460px; } .ds-folder-tab { position: absolute; top: 0; left: 24px; height: 40px; padding: 8px 16px 0; border: 1px solid var(--color-manila-edge, #c3a35b); border-bottom: 0; border-radius: 5px 5px 0 0; background: var(--color-manila, #e6cc8f); color: var(--color-manila-ink, #5d4714); font-family: var(--font-type, 'Courier Prime', monospace); font-size: 13px; } .ds-folder { position: relative; padding: 24px; border: 1px solid var(--color-manila-edge, #c3a35b); border-radius: 4px; background: var(--color-manila-2, #f2e4bf); box-shadow: 0 2px 3px rgb(34 56 46 / 0.1), 0 10px 22px -10px rgb(34 56 46 / 0.3); animation: ds-pull 0.34s cubic-bezier(0.16, 1, 0.3, 1) both; } .ds-folder h2 { margin: 0 0 16px; font-size: 24px; font-weight: 700; font-stretch: 92%; color: var(--color-ink, #1d2621); } .ds-folder-card { height: 44px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid rgb(207 74 60 / 0.8); border-radius: 3px; background: var(--color-surface, #fffefa); font-size: 12px; font-weight: 600; font-stretch: 87.5%; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-ink-2, #46544b); } @keyframes ds-pull { from { transform: translateY(14px); opacity: 0.4; } } @media (prefers-reduced-motion: reduce) { .ds-folder { animation: none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Personnel File Cabinet",
+    "overview": "Waypoint People is HR's filing cabinet. Every employee is one folder; every question about a person is answered by pulling that folder and reading the cards inside. The ground is steel-cabinet enamel: a pale, cool green-grey page and deep office-green drawer fronts, never paper and never cream. Record content is written on white index cards with a red header rule and blue feint lines. Manila appears where something is open, chosen or filed. Exceptions are rubber-stamped; normal is unmarked.\n\nThe panel is dense and desk-bound, built for an officer scanning a register at 1280 to 1600 wide, and it folds cleanly to phone width. Every surface is a physical office object with a job: drawer fronts are navigation, brass label holders name the drawers, hanging-file signal tabs colour-code the job, index dividers filter, a ledger lists, a folder holds one person. Depth is short and low, like card stock on steel. Motion is limited to the drawer sliding out and the folder's cards coming up.\n\nThe world explicitly rejects the white SaaS dashboard (avatar grids, KPI tiles, purple accents) and the navy-and-teal logistics console of the sibling operations app. Shared components from the workspace UI package (toast, spinner) are pulled into this world by re-valuing the shared token names, never by restyling them per screen.",
+    "keyCharacteristics": [
+      "Steel enamel ground, office-green cabinet rail, white index cards, manila for the open record.",
+      "Archivo on its width axis: semi-condensed caps for labels, normal width for reading.",
+      "Courier Prime only for typed record data (IDs, dates, licence numbers, usernames, counts in the register).",
+      "Rubber stamps for exceptions only; active people carry no mark.",
+      "Job signal tabs in five fixed colours.",
+      "Corners of 1 to 5px; nothing pill-shaped, nothing soft."
+    ],
+    "rules": [
+      {
+        "name": "The Manila Means Open Rule",
+        "body": "Manila marks the thing in hand: the open folder, the chosen divider, the current drawer, the hovered row, a filed list. A closed, unselected surface is never manila.",
+        "section": "colors"
+      },
+      {
+        "name": "The Shared Names, Local Values Rule",
+        "body": "Token names shared with the operations app (primary, danger, warning, info, success, navy, mint, on-ink-muted) are re-valued to cabinet colours in this app's stylesheet so shared components land in this world. New work in this app uses the cabinet names above, not the shared aliases.",
+        "section": "colors"
+      },
+      {
+        "name": "The Five Tabs Rule",
+        "body": "The five job colours are reserved for job identity. Do not reuse them for status, event kinds, charts or decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Width Axis Rule",
+        "body": "Caps are made with Archivo's width axis plus a light 0.06em track, never with a second typeface. Reading text is always normal width.",
+        "section": "typography"
+      },
+      {
+        "name": "The Typewriter Rule",
+        "body": "Courier Prime is only for data a clerk would have typed onto the card. Names, sentences, buttons and headings are never in Courier.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Tables and counts use tabular figures; numeric columns align right.",
+        "section": "typography"
+      },
+      {
+        "name": "The Green Shadow Rule",
+        "body": "Shadows are tinted with cabinet green and stay short and blurred. No neutral grey glows, no hard offset shadows.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Pulled Forward Rule",
+        "body": "Lift means \"in hand\": only the open folder, the selected folder and floating action bars rise above card level.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** put record content on white index cards with the red header rule and feint field lines.",
+      "**Do** use manila for whatever is open, selected or filed, and only that.",
+      "**Do** stamp exceptions (on leave, left, expired) and leave the normal state unmarked.",
+      "**Do** mark every person with their job signal tab in the fixed five colours.",
+      "**Do** set IDs, dates, licence numbers, usernames and register counts in Courier Prime; everything else in Archivo.",
+      "**Do** make caps with Archivo's width axis (87.5%) and the 0.06em track.",
+      "**Do** keep corners between 1 and 5px and tint shadows with cabinet green.",
+      "**Do** theme shared components by re-valuing shared token names in this app's stylesheet."
+    ],
+    "donts": [
+      "**Don't** build a white SaaS dashboard: no avatar grids, KPI tiles or purple accents.",
+      "**Don't** borrow the operations app's navy and teal.",
+      "**Don't** put an active person or a valid licence under a stamp, or use a stamp as decoration.",
+      "**Don't** use the job colours for anything but job identity.",
+      "**Don't** set names, sentences or buttons in Courier Prime.",
+      "**Don't** use pill shapes, large radii or hard offset shadows.",
+      "**Don't** make content depend on motion; the pulled folder starts visible."
+    ]
+  }
+}

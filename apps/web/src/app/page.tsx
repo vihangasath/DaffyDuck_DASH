@@ -87,7 +87,7 @@ export default function SignIn() {
   }, [ready, session, router]);
 
   const submit = async () => {
-    if (!username.trim() || !password) return setError({ text: "Enter the username and password your administrator gave you." });
+    if (!username.trim() || !password) return setError({ text: "Enter the username and password HR gave you." });
     setBusy(true);
     const r = await signIn(username.trim(), password);
     setBusy(false);
@@ -134,7 +134,7 @@ export default function SignIn() {
               <KeyRound className="size-6" />
             </span>
             <h2 className="text-[28px] font-bold tracking-tight">Sign in</h2>
-            <p className="text-[15px] leading-relaxed text-ink-2">Use the username and password your administrator gave you. You’ll go straight to your own workspace: dispatch, the dock, your run or your store.</p>
+            <p className="text-[15px] leading-relaxed text-ink-2">Use the username and password HR gave you. You’ll go straight to your own workspace: dispatch, the dock, your run or your store.</p>
           </div>
 
           <form
@@ -192,7 +192,7 @@ export default function SignIn() {
                 {error.text}
                 {error.adminUrl && (
                   <a href={error.adminUrl} className="mt-1 flex items-center gap-1 font-semibold underline">
-                    Open the admin console <ArrowRight className="size-4" />
+                    Open Waypoint People <ArrowRight className="size-4" />
                   </a>
                 )}
               </p>
@@ -204,7 +204,7 @@ export default function SignIn() {
 
           <p className="flex items-start gap-2 text-sm text-ink-2">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-            Forgot your password or locked out? Your Waypoint administrator can reset it from the admin console.
+            Forgot your password or locked out? HR can reset it in Waypoint People.
           </p>
         </div>
       </section>

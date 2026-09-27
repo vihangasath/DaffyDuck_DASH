@@ -4,16 +4,16 @@ Tech-Triathlon 2026. One system that connects **ordering → planning → loadin
 
 **Repository:** [https://github.com/vihangasath/IntelligentEnterprise-RootCode](https://github.com/vihangasath/IntelligentEnterprise-RootCode)
 
-> **Status (27 Sep 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app** for dispatchers, loaders, drivers and stores, and the **admin console**. Everyone signs in with the credentials their administrator issued and lands on their own workspace.
+> **Status (27 Sep 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app** for dispatchers, loaders, drivers and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace.
 
 ## Repository layout
 
 ```
-apps/api/        Waypoint API (Hono + Drizzle): database, migrations, auth, business rules, admin endpoints, live events
-  src/db/          schema.ts (30 tables), seed.ts (first-run data), client.ts (embedded Postgres or a Postgres server)
+apps/api/        Waypoint API (Hono + Drizzle): database, migrations, auth, business rules, people (HR) and network endpoints, live events
+  src/db/          schema.ts (31 tables), seed.ts (first-run data), client.ts (embedded Postgres or a Postgres server)
   drizzle/         SQL migrations (applied on start-up)
-apps/web/        Operations app (Next.js 16): dispatcher, loader, driver (offline-first) and store screens
-apps/admin/      Admin console (Next.js 16): drivers, vehicles, branches, depots, products, accounts, operations, activity
+apps/web/        Operations app (Next.js 16): dispatcher (incl. network records: vehicles, branches, depots, products), loader, driver (offline-first) and store screens
+apps/admin/      Waypoint People, the HR panel (Next.js 16): staff directory for every role, licence renewals, sign-in access, activity log
 packages/core/   Shared by the API and the apps: domain model, planner (+ tests), business rules, API contract, dataset seed
 packages/ui/     Shared design system: tokens (theme.css) and UI kit
 data/            Shared competition datasets (local only, not committed)
@@ -36,7 +36,7 @@ This starts three services:
 | Service | URL | What it is |
 |---|---|---|
 | Operations app | http://localhost:3000 | Dispatchers, loaders, drivers, store managers |
-| Admin console | http://localhost:3001 | Administrators |
+| Waypoint People | http://localhost:3001 | HR officers |
 | API | http://localhost:4000 | Used by both apps (they proxy `/api`), health check at `/` and `/api/health` |
 
 In development the API runs an **embedded Postgres** (PGlite), stored in `./.data/pglite`. On first start it creates the tables and seeds them from the dataset. `npm run db:reset` deletes that folder, so the next start builds a fresh database. To use a Postgres server instead, set `DATABASE_URL`. `npm run seed:data` rebuilds `packages/core/src/seed.json` from the CSVs in `/data` (the folder layout from the organisers' Drive).
@@ -53,16 +53,16 @@ cp .env.example .env && docker compose up --build
 
 ## Accounts
 
-Credentials are issued by an administrator in the admin console (**User accounts**). A login is attached to what that person works on: a driver record (which gives the vehicle), a branch, or a depot. After signing in, each person lands straight on their own screens. Administrators use the admin console; the operations app sends them there.
+Credentials are issued by HR in Waypoint People, from the person's folder in the **Staff directory**. Every login belongs to one staff record, and its role and workplace come from that record: a driver (dispatch assigns the vehicle), a branch, or a depot. After signing in, each person lands straight on their own screens. HR officers use Waypoint People; the operations app sends them there.
 
-Seeded accounts (password **`waypoint`** for all; change them under **Settings** and **User accounts** before any real use):
+Seeded accounts (password **`waypoint`** for all; change them in Waypoint People, under **Settings** and each person's folder, before any real use):
 
 | Where | Username | Who | Lands on |
 |---|---|---|---|
-| Admin console | `admin` | Anjali Wickramasinghe | Overview |
+| Waypoint People | `admin` | Anjali Wickramasinghe (HR officer) | Front desk |
 | Operations app | `dispatcher` | Nimali Perera | Dispatch console, Peliyagoda DC (Kandy hub is one click away) |
 | Operations app | `loader` | Kasun Jayasinghe | Peliyagoda dock queue |
-| Operations app | `driver` | Ruwan Silva | Driver app on VEH011, his assigned vehicle (reassign it under **Drivers**) |
+| Operations app | `driver` | Ruwan Silva | Driver app on VEH011, his assigned vehicle (dispatch reassigns it under **Network records → Vehicles**) |
 | Operations app | `store` | Dilani Fernando | OUT007 Rajagiriya. An area-manager login, so she can switch to any Peliyagoda branch |
 
 Sign-ins are per browser tab in the operations app, so you can run each role in its own tab and watch changes appear live in the others.
@@ -73,7 +73,7 @@ Sign-ins are per browser tab in the operations app, so you can run each role in 
 - Service history, fuel already used this week and weekly volumes come from the training data.
 - Drivers, plate numbers, phone numbers and licences are **synthetic demo records**, one driver per vehicle, because the datasets don't identify drivers.
 
-To restore the start of the day, use **Admin console → Settings → Reset the demo day**. It keeps accounts, master data and the activity log.
+To restore the start of the day, sign in as `dispatcher` and use **Network records → Demo day → Reset the demo day**. It keeps staff, accounts, master data and the activity log.
 
 ## Judge walkthrough (≈ 10 minutes, four tabs)
 
@@ -90,10 +90,12 @@ To restore the start of the day, use **Admin console → Settings → Reset the 
 11. **Driver: reconnect.** Turn **No signal** off. The queued records sync with their original times, and the driver sees *"Your run was changed by dispatch — Removed: …"*.
 12. **Store: confirm receipt.** Switch the store header to the delivered outlet (e.g. `OUT010 Mount Lavinia`). The order shows **Delivered** and the shortfall notice. Click **Confirm receipt**, mark *Damaged* with a note and confirm. The dispatcher gets a *receipt issue* exception.
 13. **Plan ahead.** **Capacity outlook** shows the 10-week volume by brand against practical capacity, the refrigerated vehicles needed, and the ×2 peak-day factor. **Deferrals** shows each outlet's 14-day service strip and the audit log (CSV export).
-14. **Admin: run the business.** Open http://localhost:3001 and sign in as `admin`.
-    - **Overview** shows today's progress per depot and what needs attention: licence renewals, vehicles in the workshop, drivers without a login.
-    - Under **Drivers**, open a driver and choose **Create login**. The username and a generated password are ready to share. Sign in with them in the operations app: you land on that driver's vehicle.
-    - **Activity log** shows every step of this walkthrough: who did it, in which role, and when.
+14. **HR: look after the people.** Open http://localhost:3001 (Waypoint People) and sign in as `admin`, the HR officer.
+    - **Front desk** shows what needs HR today: driving licences due in the next 90 days, who is on leave and when they're back, and staff who can't sign in yet.
+    - **Staff directory** holds one folder per employee in every job (drivers, loaders, dispatchers, store managers, HR). Pull a driver's folder and use **Issue login** on the Sign-in access card. The username and a generated password are ready to share. Sign in with them in the operations app: you land on the vehicle dispatch assigned.
+    - **Renewals** files every driving licence under the month it runs out. **Activity log** is HR's logbook of record changes, logins and sign-ins.
+    - Staff beyond the five demo accounts (loaders, dispatchers, store managers, a second HR officer) are **synthetic demo records**.
+15. **Dispatch: keep the network true.** In the dispatcher tab, **Network records** holds vehicles (and which driver runs each), branches, depots, products and the demo-day reset.
 
 ## How the planner decides (short version)
 
@@ -109,7 +111,7 @@ To restore the start of the day, use **Admin console → Settings → Reset the 
 - **Delivery windows are a hard rule** in the app (the Figma showed late arrivals as warnings). Second Fresh trips must still reach stores before their windows close.
 - The live map is a **schematic district network**, not a street map. No map API key is needed and it works offline.
 - Demo convenience not in the design: the per-tab *No signal* switch. The branch switcher is only offered to area-manager store logins.
-- Added after the Designathon: the admin console, real sign-in with administrator-issued credentials, and the Postgres-backed API.
+- Added after the Designathon: Waypoint People (the HR panel, with a staff directory for every role), real sign-in with HR-issued credentials, dispatch-owned network records, and the Postgres-backed API.
 
 ## Datasets and confidentiality
 

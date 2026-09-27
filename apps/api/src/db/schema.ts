@@ -1,5 +1,6 @@
-// Waypoint relational schema. Three groups:
+// Waypoint relational schema. Four groups:
 //   master data    depots, outlets (branches), vehicles, drivers, products, travel/calendar/history
+//   people         staff: one HR record per employee, every role (Waypoint People)
 //   access         users, sessions
 //   operations     orders → plans/trips → loads → stop records → receipts, plus notices, exceptions,
 //                  driver events (idempotent sync log), deferral log and the audit log
@@ -13,6 +14,8 @@ const created = () => ts().notNull().defaultNow();
 export const roleEnum = pgEnum("role", ["admin", "dispatcher", "loader", "driver", "store"]);
 export const vehicleStatusEnum = pgEnum("vehicle_status", ["available", "in_workshop"]);
 export const driverStatusEnum = pgEnum("driver_status", ["active", "on_leave", "inactive"]);
+export const staffRoleEnum = pgEnum("staff_role", ["driver", "loader", "dispatcher", "store_manager", "hr_officer"]);
+export const staffStatusEnum = pgEnum("staff_status", ["active", "on_leave", "left"]);
 
 // ── Master data ────────────────────────────────────────────────────────────────────────────────
 
@@ -162,6 +165,35 @@ export const weeklyVolume = pgTable(
 /** Small key/value facts about the dataset (demo date, history window, forecast weeks). */
 export const appMeta = pgTable("app_meta", { key: text().primaryKey(), value: jsonb().notNull() });
 
+// ── People ─────────────────────────────────────────────────────────────────────────────────────
+
+/** One record per employee, kept by HR. A driver's record points at the operational driver row (licence, vehicle). */
+export const staff = pgTable(
+  "staff",
+  {
+    id: text().primaryKey(), // EMP0001
+    name: text().notNull(),
+    jobRole: staffRoleEnum().notNull(),
+    depotId: text().notNull().references(() => depots.id),
+    outletId: text().references(() => outlets.id), // store managers
+    driverId: text()
+      .unique()
+      .references(() => drivers.id, { onDelete: "set null" }),
+    phone: text(),
+    email: text(),
+    emergencyContact: text(),
+    status: staffStatusEnum().notNull().default("active"),
+    leaveUntil: text(), // YYYY-MM-DD, while on leave
+    startedOn: text(),
+    leftOn: text(),
+    /** Seeded demo person (the datasets don't identify people); records HR adds are real. */
+    synthetic: boolean().notNull().default(false),
+    createdAt: created(),
+    updatedAt: created(),
+  },
+  (t) => [index().on(t.jobRole), index().on(t.depotId)],
+);
+
 // ── Access ─────────────────────────────────────────────────────────────────────────────────────
 
 export const users = pgTable(
@@ -178,6 +210,9 @@ export const users = pgTable(
     driverId: text()
       .unique()
       .references(() => drivers.id, { onDelete: "set null" }),
+    staffId: text()
+      .unique()
+      .references(() => staff.id, { onDelete: "set null" }),
     active: boolean().notNull().default(true),
     mustChangePassword: boolean().notNull().default(false),
     lastLoginAt: ts(),

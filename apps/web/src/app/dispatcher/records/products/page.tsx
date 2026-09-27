@@ -1,16 +1,16 @@
 "use client";
 import { useState } from "react";
 import { Package, Plus, Snowflake } from "lucide-react";
-import type { ProductRow } from "@waypoint/core/admin";
+import type { ProductRow } from "@waypoint/core/records";
 import { BrandPill, Button, Pill } from "@waypoint/ui/ui";
-import { PageHeader } from "@/components/shell";
-import { Chips, DataTable, Drawer, Field, NumberInput, SaveBar, Select, TextInput, Toggle, Toolbar, matches, type Column } from "@/components/kit";
-import { api, useAdminMutation, useAdminQuery } from "@/lib/api";
+import { PageHeader } from "@/components/dispatcher-shell";
+import { Chips, DataTable, Drawer, Field, NumberInput, SaveBar, Select, TextInput, Toggle, Toolbar, matches, type Column } from "@waypoint/ui/kit";
+import { records, useRecords, useRecordsMutation } from "@/lib/records";
 
 const BLANK: ProductRow = { id: "", name: "", unit: "", brand: "Fresh", temp: "ambient", weightKg: 1, volumeM3: 0.01, active: true };
 
 export default function ProductsPage() {
-  const { data, error, isLoading } = useAdminQuery<ProductRow[]>("/products");
+  const { data, error, isLoading } = useRecords<ProductRow[]>("/products");
   const [q, setQ] = useState("");
   const [brand, setBrand] = useState("all");
   const [editing, setEditing] = useState<ProductRow | "new" | null>(null);
@@ -41,7 +41,7 @@ export default function ProductsPage() {
 function ProductDrawer({ product, onClose }: { product: ProductRow | null; onClose: () => void }) {
   const [p, setP] = useState<ProductRow>(product ?? BLANK);
   const set = <K extends keyof ProductRow>(k: K, v: ProductRow[K]) => setP((x) => ({ ...x, [k]: v }));
-  const save = useAdminMutation((x: ProductRow) => (product ? api(`/admin/products/${product.id}`, { method: "PATCH", body: x }) : api("/admin/products", { body: x })), product ? `${p.name} updated` : `${p.name} added`);
+  const save = useRecordsMutation((x: ProductRow) => (product ? records(`/products/${product.id}`, { method: "PATCH", body: x }) : records("/products", { body: x })), product ? `${p.name} updated` : `${p.name} added`);
   return (
     <Drawer open onClose={onClose} title={product ? product.name : "Add a product"} sub={product ? `${product.id} · orders already placed keep their lines` : "Stores of the same brand can order it straight away."} footer={<SaveBar onCancel={onClose} busy={save.isPending} label={product ? "Save changes" : "Add product"} />}>
       <form id="drawer-form" className="grid gap-5" onSubmit={(e) => (e.preventDefault(), save.mutate(p, { onSuccess: onClose }))}>

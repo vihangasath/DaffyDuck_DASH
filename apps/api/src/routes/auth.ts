@@ -16,19 +16,19 @@ export const authRoutes = new Hono<Env>()
   .post("/login", async (c) => {
     const { username, password, app } = await body(c, Login);
     const name = username.toLowerCase();
-    if (tooManyAttempts(name)) return c.json({ error: "Too many attempts. Wait 10 minutes, or ask your administrator to reset your password." }, 429);
+    if (tooManyAttempts(name)) return c.json({ error: "Too many attempts. Wait 10 minutes, or ask HR to reset your password." }, 429);
     const db = c.var.svc.db;
     const [u] = await db.select().from(t.users).where(eq(t.users.username, name));
     if (!u || !(await verifyPassword(password, u.passwordHash))) {
       noteFailure(name);
       return c.json({ error: "That username and password don’t match a Waypoint account." }, 401);
     }
-    if (!u.active) return c.json({ error: "This account is disabled. Ask your administrator to re-enable it." }, 403);
-    if (app === "web" && u.role === "admin") return c.json({ error: "Administrator accounts sign in to the admin console.", adminUrl: env.adminUrl }, 403);
-    if (app === "admin" && u.role !== "admin") return c.json({ error: "This account isn’t an administrator. Sign in to the Waypoint operations app instead." }, 403);
+    if (!u.active) return c.json({ error: "This account is disabled. Ask HR to re-enable it." }, 403);
+    if (app === "web" && u.role === "admin") return c.json({ error: "HR accounts sign in to Waypoint People.", adminUrl: env.adminUrl }, 403);
+    if (app === "admin" && u.role !== "admin") return c.json({ error: "Waypoint People is for the HR team. Sign in to the Waypoint operations app instead." }, 403);
     clearFailures(name);
     const token = await createSession(db, u.id, app, c.req.header("user-agent"));
-    await db.insert(t.auditLog).values({ userId: u.id, actor: u.displayName, role: u.role, action: "auth.login", entity: "user", entityId: u.id, summary: `Signed in to the ${app === "admin" ? "admin console" : "operations app"}` });
+    await db.insert(t.auditLog).values({ userId: u.id, actor: u.displayName, role: u.role, action: "auth.login", entity: "user", entityId: u.id, summary: `Signed in to ${app === "admin" ? "Waypoint People" : "the operations app"}` });
     return c.json({ token, user: await sessionUserOf(db, u), mustChangePassword: u.mustChangePassword } satisfies LoginResult & { mustChangePassword: boolean });
   })
   .get("/me", requireAuth(), (c) => c.json(c.var.auth.user))

@@ -9,11 +9,13 @@ We used **Claude (Anthropic) through Claude Code** as a pair-programmer and desi
 - **Frontend build.** Scaffolding and most first-draft code for the Next.js app, the planning engine, the mock API, the offline driver outbox, the seed script and the tests.
 - **Visual refresh (26 Sep).** Evolving the UI within the existing navy + teal identity (shared UI kit, sign-in, all four roles) and the driver's run map.
 - **Backend and admin console (26 Sep).** Most first-draft code for the API service (`apps/api`: schema, migrations, seeding, auth and sessions, role checks, audit log, live events), the move of the business rules from the browser mock into `packages/core`, the admin console (`apps/admin`), and the API tests.
+- **Waypoint People, the HR panel (27 Sep).** Turning the admin console into a separate HR product: the `staff` table and its seed, the `/api/people` and `/api/network` routes (split from the old admin routes), moving vehicles, branches, depots, products and the demo reset into the dispatch console, and the new "personnel file cabinet" interface for `apps/admin`.
 - **Documentation.** First drafts of the README, the integration contract and the architecture notes.
 
 ## Decisions made by the team
 
 - Scope and priorities: frontend first, then (26 Sep) a relational database for everything, a separate admin console, credentials issued by administrators, and embedded Postgres for local development; the stack; auto-plan + dispatcher override as the allocation approach.
+- (27 Sep) The admin panel belongs to the HR department, not logistics: people only, a staff directory for every role, HR officers as its users, and the name "Waypoint People". The team chose the personnel-file-cabinet visual direction from the options offered.
 - Review and acceptance of the design direction, planning rules, fairness policy and demo scenario.
 - *(Team: list here what you wrote or changed by hand, and how you verified the AI's output.)*
 

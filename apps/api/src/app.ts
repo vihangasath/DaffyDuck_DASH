@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { onError, type Env } from "./http.ts";
-import { adminRoutes } from "./routes/admin.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { eventRoutes } from "./routes/events.ts";
+import { networkRoutes } from "./routes/network.ts";
 import { opsRoutes } from "./routes/ops.ts";
+import { peopleRoutes } from "./routes/people.ts";
 import type { Service } from "./service.ts";
 
 export function createApp(svc: Service) {
@@ -17,7 +18,8 @@ export function createApp(svc: Service) {
   app.get("/api/health", (c) => c.json({ ok: true }));
   app.route("/api/auth", authRoutes);
   app.route("/api/ops", opsRoutes);
-  app.route("/api/admin", adminRoutes);
+  app.route("/api/people", peopleRoutes);
+  app.route("/api/network", networkRoutes);
   app.route("/api/events", eventRoutes);
   app.notFound((c) => c.json({ error: "Not found." }, 404));
   app.onError(onError);

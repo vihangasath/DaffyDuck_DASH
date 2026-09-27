@@ -48,7 +48,7 @@ export default function More() {
             </p>
           </div>
         </Card>
-        <p className="px-1 text-xs text-ink-2">Your vehicle is assigned by your administrator. If it’s wrong, call dispatch.</p>
+        <p className="px-1 text-xs text-ink-2">Dispatch assigns your vehicle. If it’s wrong, call them.</p>
 
         <Button
           big
