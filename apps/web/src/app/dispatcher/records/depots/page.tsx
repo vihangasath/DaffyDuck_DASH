@@ -1,14 +1,14 @@
 "use client";
 import { useState } from "react";
 import { Building2, MapPin, Pencil, Phone } from "lucide-react";
-import type { DepotRow } from "@waypoint/core/admin";
+import type { DepotRow } from "@waypoint/core/records";
 import { Button, Card, Spinner } from "@waypoint/ui/ui";
-import { PageHeader } from "@/components/shell";
-import { Drawer, Field, NumberInput, SaveBar, TextInput } from "@/components/kit";
-import { api, useAdminMutation, useAdminQuery } from "@/lib/api";
+import { PageHeader } from "@/components/dispatcher-shell";
+import { Drawer, Field, NumberInput, SaveBar, TextInput } from "@waypoint/ui/kit";
+import { records, useRecords, useRecordsMutation } from "@/lib/records";
 
 export default function DepotsPage() {
-  const { data, error } = useAdminQuery<DepotRow[]>("/depots");
+  const { data, error } = useRecords<DepotRow[]>("/depots");
   const [editing, setEditing] = useState<DepotRow | null>(null);
   return (
     <>
@@ -49,7 +49,7 @@ export default function DepotsPage() {
 
 function DepotDrawer({ depot, onClose }: { depot: DepotRow; onClose: () => void }) {
   const [d, setD] = useState({ name: depot.name, address: depot.address ?? "", phone: depot.phone ?? "", lat: depot.lat, lng: depot.lng });
-  const save = useAdminMutation((x: typeof d) => api(`/admin/depots/${depot.id}`, { method: "PATCH", body: { ...x, address: x.address || null, phone: x.phone || null } }), `${d.name} updated`);
+  const save = useRecordsMutation((x: typeof d) => records(`/depots/${depot.id}`, { method: "PATCH", body: { ...x, address: x.address || null, phone: x.phone || null } }), `${d.name} updated`);
   return (
     <Drawer open onClose={onClose} title={depot.name} sub="Trips are timed from the depot’s position." footer={<SaveBar onCancel={onClose} busy={save.isPending} />}>
       <form id="drawer-form" className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => (e.preventDefault(), save.mutate(d, { onSuccess: onClose }))}>

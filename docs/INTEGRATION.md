@@ -1,6 +1,6 @@
 # Integration contract: web apps ↔ API ↔ Datathon models
 
-The operations app (`apps/web`) and the admin console (`apps/admin`) talk only to the API (`apps/api`), through a same-origin `/api/*` proxy. The API owns the Postgres database. The web app's screens use one interface, `WaypointApi` (`packages/core/src/contract.ts`), implemented by `apps/web/src/lib/api/http.ts`. The admin console's types are in `packages/core/src/admin.ts`.
+The operations app (`apps/web`) and Waypoint People, the HR panel (`apps/admin`), talk only to the API (`apps/api`), through a same-origin `/api/*` proxy. The API owns the Postgres database. The web app's screens use one interface, `WaypointApi` (`packages/core/src/contract.ts`), implemented by `apps/web/src/lib/api/http.ts`. Waypoint People's types are in `packages/core/src/people.ts`, and the dispatcher's network records types are in `packages/core/src/records.ts`.
 
 Every request except sign-in carries `Authorization: Bearer <token>`. Errors come back as `{ "error": "<message for the user>" }` with a 4xx/5xx status: 401 means the session ended, 403 means the role or scope isn't allowed, 409 means a business rule refused.
 
@@ -8,7 +8,7 @@ Every request except sign-in carries `Authorization: Bearer <token>`. Errors com
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/api/auth/login` | `{ username, password, app: "web" \| "admin" }` → `{ token, user }`. Admins are refused by `web` (with `adminUrl`); non-admins are refused by `admin`. 8 failures per username per 10 min are throttled |
+| POST | `/api/auth/login` | `{ username, password, app: "web" \| "admin" }` → `{ token, user }`. HR accounts (internal role `admin`) are refused by `web` (with `adminUrl`, the Waypoint People address); everyone else is refused by `admin`. 8 failures per username per 10 min are throttled |
 | GET | `/api/auth/me` | The session user, rebuilt from the database (role, depot, driver's current vehicle, store scope) |
 | POST | `/api/auth/logout` | Revokes this session |
 | POST | `/api/auth/password` | `{ current, next }` |
@@ -33,22 +33,32 @@ Each operation is `POST /api/ops/<name>` with a JSON body. It is validated, chec
 
 **Live updates:** `GET /api/events?token=…` is a Server-Sent Events stream. It sends `change` with data `ops` (operational state changed) or `reference` (master data changed), and the apps refetch.
 
-## Admin (administrators only)
+## People (HR officers only)
+
+Waypoint People, the HR panel. Every write is audited with role `hr`.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/api/admin/overview` | Counts, today per depot, alerts (licence renewals, workshop, drivers without vehicle or login), recent activity |
-| GET | `/api/admin/lookups` | Options for forms (depots, districts each depot serves, vehicles, branches, drivers) |
-| GET · PATCH | `/api/admin/depots` · `/:id` | Depots are edited, not created (the planner is configured per depot) |
-| GET · POST · PATCH | `/api/admin/outlets` · `/:id` | Branches. The district must be one the depot serves. Closing a branch stops new orders |
-| GET · POST · PATCH | `/api/admin/vehicles` · `/:id` | Refuses to retire or re-type a vehicle with trips in today's plan |
-| GET · POST · PATCH | `/api/admin/drivers` · `/:id` | The assigned vehicle must be from the driver's depot. "Left" disables their login |
-| GET · POST · PATCH | `/api/admin/products` · `/:id` | Existing orders keep their stored lines |
-| GET · POST · PATCH | `/api/admin/users` · `/:id` | Logins: role plus what they're attached to (driver record, branch and scope, or depot). Access changes sign the user out everywhere. The last active admin can't be disabled |
-| POST | `/api/admin/users/:id/password` | Sets a new password and revokes all of that user's sessions |
-| GET | `/api/admin/orders` | Today's orders with their live status |
-| GET | `/api/admin/activity` | Audit log. `?limit&before&q&area=ops\|admin\|auth` |
-| POST | `/api/admin/reset` | Restores the start of the demo day. Keeps master data, accounts and the audit log |
+| GET | `/api/people/overview` | Headcount, who's in post by depot and job, licences due within 90 days (real calendar), who's on leave, active staff with no login, new starters, sign-in counts, recent people and access activity |
+| GET | `/api/people/lookups` | Depots, and branches for store managers |
+| GET · POST · PATCH | `/api/people/staff` · `/:id` | The staff directory: one record per employee in every job. A driver's record also creates and updates the operational `drivers` row (licence, status). A record can't change to or from driver. "Left" turns off the login and ends its sessions; a driver who leaves or changes depot gives their vehicle back to dispatch. HR can't remove their own access or the last HR login |
+| POST | `/api/people/staff/:id/login` | Issues a login for a staff record. The role and workplace come from the record (driver → driver, store manager → store with branch scope, HR officer → `admin`) |
+| PATCH | `/api/people/logins/:userId` | `{ active?, outletScope? }`. Turning access off, or changing scope, signs them out everywhere |
+| POST | `/api/people/logins/:userId/password` | Sets a new password and revokes all of that user's sessions |
+| GET | `/api/people/activity` | The HR log: staff, driver, login and sign-in entries. `?limit&before&q&area=people\|access\|signin` |
+
+## Network records (dispatchers)
+
+Used by the dispatch console's **Network records** screens in the operations app.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/network/lookups` | Depots, districts each depot serves, drivers who can be put on a vehicle |
+| GET · PATCH | `/api/network/depots` · `/:id` | Depots are edited, not created (the planner is configured per depot) |
+| GET · POST · PATCH | `/api/network/outlets` · `/:id` | Branches. The district must be one the depot serves. Closing a branch stops new orders |
+| GET · POST · PATCH | `/api/network/vehicles` · `/:id` | `driverId` assigns the vehicle's driver (same depot, not left). Refuses to retire or re-type a vehicle with trips in today's plan |
+| GET · POST · PATCH | `/api/network/products` · `/:id` | Existing orders keep their stored lines |
+| POST | `/api/network/reset` | Restores the start of the demo day. Keeps master data, staff, accounts and the audit log |
 
 ## Offline sync rules (driver)
 
@@ -74,13 +84,14 @@ Built in `apps/api/src/db/schema.ts`, and migrations are in `apps/api/drizzle/`:
 ```
 master       depots · outlets (branches) · vehicles (status, fuel this week) · drivers (licence, assigned vehicle) · products
              district_travel · service_allowance · calendar_days · road_conditions · service_history · weekly_volume · app_meta
-access       users (role, depot | branch + scope | driver) · sessions (hashed token, expiry)
+people       staff (one HR record per employee: job, depot or branch, status, leave, start and leaving dates; drivers link to their drivers row)
+access       users (role, depot | branch + scope | driver, linked staff record) · sessions (hashed token, expiry)
 operations   orders · order_lines · ops_days (cutoff) · plans (current per depot) · trips · trip_stops · plan_deferrals
              loads · load_lines · shortfalls · stop_records (POD, problems) · driver_events (idempotency + raw device record)
              receipts · notices · exceptions · driver_sync · deferral_log
-audit        audit_log (who, role, action, entity, summary, detail) for every write, sign-in and admin change
+audit        audit_log (who, role, action, entity, summary, detail) for every write, sign-in and HR or network change
 ```
 
 Foreign keys tie operations to master data (for example, an order to its branch, a trip to its vehicle, a stop record to its order), so a record can't point at something that doesn't exist.
 
-**Outlet coordinates.** The shared datasets have no outlet locations. The seed places each branch at the centre of its display neighbourhood (`packages/core/src/domain/geo.ts`, approximate) and stores it in `outlets.lat` / `outlets.lng`. Administrators can correct a pin in the branch editor, and the driver map uses the stored position. The map uses OpenStreetMap's public tiles, which suit a demo; production traffic needs a hosted tile service.
+**Outlet coordinates.** The shared datasets have no outlet locations. The seed places each branch at the centre of its display neighbourhood (`packages/core/src/domain/geo.ts`, approximate) and stores it in `outlets.lat` / `outlets.lng`. Dispatchers can correct a pin in the branch editor, and the driver map uses the stored position. The map uses OpenStreetMap's public tiles, which suit a demo; production traffic needs a hosted tile service.

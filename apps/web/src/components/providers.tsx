@@ -8,7 +8,14 @@ export function Providers({ children }: { children: ReactNode }) {
   const [qc] = useState(() => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false } } }));
 
   // Any change on the server — by anyone, in any role — refreshes every open screen.
-  useEffect(() => subscribeServer(() => qc.invalidateQueries({ queryKey: ["db"] })), [qc]);
+  useEffect(
+    () =>
+      subscribeServer(() => {
+        void qc.invalidateQueries({ queryKey: ["db"] });
+        void qc.invalidateQueries({ queryKey: ["records"] });
+      }),
+    [qc],
+  );
 
   // Cache the app shell so the driver and loader apps open with no signal.
   useEffect(() => {

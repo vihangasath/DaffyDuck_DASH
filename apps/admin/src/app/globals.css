@@ -1,17 +1,207 @@
 @import "tailwindcss";
-@import "@waypoint/ui/theme.css";
-/* Tailwind skips node_modules; the shared UI kit lives in a workspace package. */
+/* Shared components (toast, spinner) come from the workspace UI package: scan it, but theme it here. */
 @source "../../../../packages/ui/src";
 
-/* Drawer entrance: the scrim fades, the panel slides in from the edge it lives on. */
-@keyframes fade {
-  from {
-    opacity: 0;
+/* Waypoint People: HR's filing cabinet.
+   Steel-cabinet enamel ground, office-green drawer fronts, manila only where a record is open,
+   white index cards for record content, rubber-stamp statuses for exceptions, and job signal tabs.
+   The token names shared with the operations app (ink, canvas, primary, danger…) are re-valued here,
+   so shared components fall into this world instead of the logistics one. */
+@theme {
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  /* Typed record data only: ids, dates, licence numbers. */
+  --font-type: var(--font-courier), "Courier New", ui-monospace, monospace;
+
+  --color-ink: #1d2621;
+  --color-ink-2: #46544b;
+  --color-muted: #5a665e;
+
+  --color-canvas: #e6eae3; /* cabinet enamel */
+  --color-surface: #fffefa; /* index card stock */
+  --color-subtle: #eef1ec;
+  --color-well: #dde2da; /* drawer interior, recessed */
+  --color-line: #cfd6cc;
+  --color-line-strong: #a9b4a7;
+
+  --color-cabinet: #2e4a3e;
+  --color-cabinet-2: #3a5b4c;
+  --color-cabinet-3: #22382e;
+  --color-on-cabinet: #edf2ee;
+  --color-on-cabinet-muted: #a8bbaf;
+  --color-brass: #a88542;
+  --color-brass-2: #dcc58f;
+  --color-brass-ink: #5b4516;
+
+  --color-manila: #e6cc8f;
+  --color-manila-2: #f2e4bf;
+  --color-manila-edge: #c3a35b;
+  --color-manila-ink: #5d4714;
+
+  --color-card-red: #cf4a3c;
+  --color-feint: #b9cbe6;
+  --color-focus: #1f5fbf;
+
+  --color-stamp-leave: #9a5d0c;
+  --color-stamp-left: #b3261e;
+
+  --color-job-driver: #2f63a8;
+  --color-job-loader: #b85a14;
+  --color-job-dispatcher: #2f7a4a;
+  --color-job-store: #7b4aa0;
+  --color-job-hr: #3c423e;
+
+  /* Shared semantic names, re-valued for the cabinet. */
+  --color-primary: #2e4a3e;
+  --color-primary-strong: #22382e;
+  --color-primary-soft: #e2ebe4;
+  --color-success: #2f6b45;
+  --color-success-soft: #e3efe5;
+  --color-warning: #9a5d0c;
+  --color-warning-soft: #f6ead6;
+  --color-danger: #b3261e;
+  --color-danger-soft: #f8e3df;
+  --color-info: #2f63a8;
+  --color-info-soft: #e4ecf7;
+  --color-neutral: #46544b;
+  --color-neutral-soft: #e9ede7;
+  --color-navy: #2e4a3e; /* toast ground */
+  --color-mint: #dcc58f; /* toast tick */
+  --color-on-ink-muted: #a8bbaf;
+
+  /* Depth: steel and card stock. Shadows are tinted with cabinet green, short and low. */
+  --shadow-card: 0 1px 1px rgb(34 56 46 / 0.08), 0 2px 6px -2px rgb(34 56 46 / 0.12);
+  --shadow-raised: 0 2px 3px rgb(34 56 46 / 0.1), 0 10px 22px -10px rgb(34 56 46 / 0.3);
+  --shadow-float: 0 10px 18px -6px rgb(34 56 46 / 0.22), 0 28px 56px -16px rgb(34 56 46 / 0.36);
+  --shadow-drawer: inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -2px 0 rgb(0 0 0 / 0.22);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-rise: rise 0.32s var(--ease-out-expo) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-pull: pull 0.34s var(--ease-out-expo) both;
+  --animate-slide-in: slide-in 0.3s var(--ease-out-expo) both;
+  --animate-fade: fade 0.2s ease-out both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  /* Pulling a folder: the cards come up out of it. Starts visible, so nothing depends on the motion. */
+  @keyframes pull {
+    from {
+      transform: translateY(14px);
+      opacity: 0.4;
+    }
+  }
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(32px);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
   }
 }
-@keyframes slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(32px);
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+body {
+  font-feature-settings: "tnum" 0;
+  caret-color: var(--color-cabinet);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+
+table,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--color-manila);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+/* Label caps: drawer labels, column heads, card headers. Archivo's width axis, not letter-spacing tricks. */
+.caps {
+  font-stretch: 87.5%;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* Index card: white card stock with a red rule under the printed header. The blue feint lines are drawn
+   per field row (see Field), so a line never runs through a label or a sentence. */
+.index-card {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  border-radius: 3px;
+  position: relative;
+}
+
+/* Rubber stamp: double rule, slight turn, ink that doesn't fill the letters perfectly. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  border: 2px solid currentColor;
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 2px;
+  padding: 0.05em 0.45em;
+  font-stretch: 75%;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  transform: rotate(-3deg);
+  mix-blend-mode: multiply;
+  opacity: 0.92;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

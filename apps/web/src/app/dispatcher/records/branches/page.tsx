@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
 import { MapPin, Plus, Store } from "lucide-react";
-import type { Lookups, OutletRow } from "@waypoint/core/admin";
+import type { NetworkLookups, OutletRow } from "@waypoint/core/records";
 import { BrandPill, Button, Pill } from "@waypoint/ui/ui";
-import { PageHeader } from "@/components/shell";
-import { Chips, DataTable, Drawer, Field, NumberInput, SaveBar, Select, TextInput, Toggle, Toolbar, matches, type Column } from "@/components/kit";
-import { api, useAdminMutation, useAdminQuery } from "@/lib/api";
+import { PageHeader } from "@/components/dispatcher-shell";
+import { Chips, DataTable, Drawer, Field, NumberInput, SaveBar, Select, TextInput, Toggle, Toolbar, matches, type Column } from "@waypoint/ui/kit";
+import { records, useRecords, useRecordsMutation } from "@/lib/records";
 
 type Draft = Omit<OutletRow, "id" | "managers" | "ordersToday">;
 const BLANK: Draft = { name: "", brand: "Fresh", district: "", depotId: "Peliyagoda", dockType: "rear_dock", parking: "normal", mallWindow: null, windowOpen: "05:00", windowClose: "08:00", lat: null, lng: null, phone: "", active: true };
@@ -13,7 +13,7 @@ const DOCK = { rear_dock: "Rear dock", street: "Street", mall_bay: "Mall bay" };
 const PARKING = { normal: "Any vehicle", van_only: "Van only", mall_dock: "Mall dock" };
 
 export default function BranchesPage() {
-  const { data, error, isLoading } = useAdminQuery<OutletRow[]>("/outlets");
+  const { data, error, isLoading } = useRecords<OutletRow[]>("/outlets");
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
   const [editing, setEditing] = useState<OutletRow | "new" | null>(null);
@@ -57,13 +57,13 @@ export default function BranchesPage() {
 }
 
 function BranchDrawer({ outlet, onClose }: { outlet: OutletRow | null; onClose: () => void }) {
-  const { data: look } = useAdminQuery<Lookups>("/lookups");
+  const { data: look } = useRecords<NetworkLookups>("/lookups");
   const [o, setO] = useState<Draft>(outlet ? { ...outlet } : BLANK);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setO((x) => ({ ...x, [k]: v }));
-  const save = useAdminMutation(
+  const save = useRecordsMutation(
     (x: Draft) => {
       const body = { ...x, phone: x.phone || null, mallWindow: x.parking === "mall_dock" ? x.mallWindow || null : null };
-      return outlet ? api(`/admin/outlets/${outlet.id}`, { method: "PATCH", body }) : api<{ id: string }>("/admin/outlets", { body });
+      return outlet ? records(`/outlets/${outlet.id}`, { method: "PATCH", body }) : records<{ id: string }>("/outlets", { body });
     },
     (r) => (outlet ? `${o.name} updated` : `${o.name} added as ${(r as { id: string }).id}`),
   );

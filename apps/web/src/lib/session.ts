@@ -74,7 +74,7 @@ export async function signOut() {
 }
 
 /**
- * Re-reads the user from the API (an admin may have reassigned the vehicle or disabled the account).
+ * Re-reads the user from the API (dispatch may have reassigned the vehicle, or HR disabled the account).
  * Keeps the outlet a regional store manager chose to look at.
  */
 export async function refreshSession(): Promise<void> {

@@ -15,6 +15,7 @@ import type { Db } from "./client.ts";
 import * as t from "./schema.ts";
 import { hashPassword } from "../auth.ts";
 import { emptyOps, persist } from "../store.ts";
+import { seedStaff } from "./staff-seed.ts";
 
 export const dataset = seedJson as unknown as SeedData;
 
@@ -33,7 +34,7 @@ export interface DemoAccount {
   vehicleId?: string;
 }
 
-/** Listed in the README. Change these passwords in the admin console before any real use. */
+/** Listed in the README. Change these passwords in Waypoint People before any real use. */
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   { username: "admin", password: "waypoint", name: "Anjali Wickramasinghe", role: "admin", depotId: "Peliyagoda" },
   { username: "dispatcher", password: "waypoint", name: "Nimali Perera", role: "dispatcher", depotId: "Peliyagoda" },
@@ -80,10 +81,10 @@ export async function seedDatabase(db: Db) {
           id: driverIdFor(v.id),
           // Unique first/last pairs for up to FIRST × LAST vehicles.
           name: account?.name ?? `${FIRST[i % FIRST.length]} ${LAST[(i + Math.floor(i / FIRST.length) * 3) % LAST.length]}`,
-          phone: `+94 7${h % 8} ${String(h % 1000).padStart(3, "0")} ${String((h >> 10) % 10000).padStart(4, "0")}`,
+          phone: `+94 7${h % 8} ${String(h % 1000).padStart(3, "0")} ${String((h >>> 10) % 10000).padStart(4, "0")}`,
           licenseNo: `B${String(1000000 + (h % 8999999))}`,
           licenseClass: v.type === "van" ? "B" : "C1",
-          // A few licences fall due soon so the admin console's renewal alert has something to show.
+          // A few licences fall due soon so Waypoint People's renewals have something to show.
           licenseExpiry: i % 13 === 4 ? "2026-10-20" : `${year}-${String((h % 12) + 1).padStart(2, "0")}-${String((h % 27) + 1).padStart(2, "0")}`,
           depotId: v.depot,
           vehicleId: v.id,
@@ -106,6 +107,7 @@ export async function seedDatabase(db: Db) {
         outletId: a.outletId ?? null, outletScope: a.outletScope ?? null, driverId: a.vehicleId ? driverIdFor(a.vehicleId) : null,
       })),
     );
+    await seedStaff(tx);
     const start = initialDb(data);
     await persist(tx, emptyOps(start.fleetStatus), start);
     await tx.insert(t.auditLog).values({ actor: "System", role: "system", action: "seed", summary: "Database created from the Tech-Triathlon 2026 dataset" });

@@ -3,7 +3,7 @@ import { rmSync } from "node:fs";
 import { env } from "../env.ts";
 
 if (env.databaseUrl) {
-  console.error("DATABASE_URL points at a Postgres server; reset it with your own tooling (or use the admin console's reset).");
+  console.error("DATABASE_URL points at a Postgres server; reset it with your own tooling (or use Reset the demo day in the dispatch console).");
   process.exit(1);
 }
 rmSync(env.pgliteDir, { recursive: true, force: true });

@@ -2,14 +2,14 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Plus, Snowflake, Truck, Wrench } from "lucide-react";
-import type { VehicleRow } from "@waypoint/core/admin";
+import type { NetworkLookups, VehicleRow } from "@waypoint/core/records";
 import { Button, Meter, Pill } from "@waypoint/ui/ui";
-import { PageHeader } from "@/components/shell";
-import { Chips, DataTable, Drawer, Field, NumberInput, SaveBar, Select, TextInput, Toggle, Toolbar, matches, type Column } from "@/components/kit";
-import { api, useAdminMutation, useAdminQuery } from "@/lib/api";
+import { PageHeader } from "@/components/dispatcher-shell";
+import { Chips, DataTable, Drawer, Field, NumberInput, SaveBar, Select, TextInput, Toggle, Toolbar, matches, type Column } from "@waypoint/ui/kit";
+import { records, useRecords, useRecordsMutation } from "@/lib/records";
 
-type Draft = Omit<VehicleRow, "id" | "drivers" | "tripsToday" | "fuelUsedWeekL">;
-const BLANK: Draft = { plateNo: "", type: "truck", temp: "ambient", weightCapKg: 3000, volumeCapM3: 18, fuelType: "diesel", kmPerL: 7, weeklyFuelQuotaL: 350, depotId: "Peliyagoda", status: "available", active: true };
+type Draft = Omit<VehicleRow, "id" | "drivers" | "tripsToday" | "fuelUsedWeekL"> & { driverId: string | null };
+const BLANK: Draft = { plateNo: "", type: "truck", temp: "ambient", weightCapKg: 3000, volumeCapM3: 18, fuelType: "diesel", kmPerL: 7, weeklyFuelQuotaL: 350, depotId: "Peliyagoda", status: "available", active: true, driverId: null };
 
 export default function VehiclesPage() {
   return (
@@ -21,7 +21,7 @@ export default function VehiclesPage() {
 
 function Vehicles() {
   const params = useSearchParams();
-  const { data, error, isLoading } = useAdminQuery<VehicleRow[]>("/vehicles");
+  const { data, error, isLoading } = useRecords<VehicleRow[]>("/vehicles");
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState(params.get("filter") ?? "all");
   const [editing, setEditing] = useState<VehicleRow | "new" | null>(null);
@@ -64,7 +64,7 @@ function Vehicles() {
 
   return (
     <>
-      <PageHeader title="Vehicles" sub="The fleet the planner allocates: capacities, refrigeration, fuel quotas and who drives what." actions={<Button icon={Plus} onClick={() => setEditing("new")}>Add vehicle</Button>} />
+      <PageHeader title="Vehicles" sub="The fleet the planner allocates: capacities, refrigeration, fuel quotas and which driver runs each vehicle." actions={<Button icon={Plus} onClick={() => setEditing("new")}>Add vehicle</Button>} />
       <div className="grid gap-4 p-5 lg:p-7">
         <Toolbar q={q} onQ={setQ} placeholder="Search id, plate or driver" count={rows ? `${rows.length} shown` : undefined}>
           <Chips
@@ -89,10 +89,12 @@ function Vehicles() {
 }
 
 function VehicleDrawer({ vehicle, onClose }: { vehicle: VehicleRow | null; onClose: () => void }) {
-  const [v, setV] = useState<Draft>(vehicle ? { ...vehicle } : BLANK);
+  const [v, setV] = useState<Draft>(vehicle ? { ...vehicle, driverId: vehicle.drivers[0]?.id ?? null } : BLANK);
+  const { data: look } = useRecords<NetworkLookups>("/lookups");
+  const drivers = (look?.drivers ?? []).filter((d) => d.depot === v.depotId);
   const set = <K extends keyof Draft>(k: K, val: Draft[K]) => setV((x) => ({ ...x, [k]: val }));
-  const save = useAdminMutation(
-    (x: Draft) => (vehicle ? api(`/admin/vehicles/${vehicle.id}`, { method: "PATCH", body: { ...x, plateNo: x.plateNo || null } }) : api<{ id: string }>("/admin/vehicles", { body: { ...x, plateNo: x.plateNo || null } })),
+  const save = useRecordsMutation(
+    (x: Draft) => (vehicle ? records(`/vehicles/${vehicle.id}`, { method: "PATCH", body: { ...x, plateNo: x.plateNo || null } }) : records<{ id: string }>("/vehicles", { body: { ...x, plateNo: x.plateNo || null } })),
     (r) => (vehicle ? `${vehicle.id} updated` : `${(r as { id: string }).id} added to the fleet`),
   );
   const locked = !!vehicle?.tripsToday;
@@ -116,6 +118,14 @@ function VehicleDrawer({ vehicle, onClose }: { vehicle: VehicleRow | null; onClo
           <Field label="km per litre"><NumberInput required min={0.1} value={v.kmPerL} onChange={(x) => set("kmPerL", x ?? 0)} /></Field>
           <Field label="Weekly fuel quota (L)" hint="The planner refuses trips that would exceed it."><NumberInput required min={1} value={v.weeklyFuelQuotaL} onChange={(x) => set("weeklyFuelQuotaL", x ?? 0)} /></Field>
           <Field label="Status"><Select disabled={locked && v.status === "available"} value={v.status} onChange={(x) => set("status", x)} options={[{ value: "available", label: "Available" }, { value: "in_workshop", label: "In the workshop" }]} /></Field>
+          <Field label="Driver" className="sm:col-span-2" hint="The driver app opens on this vehicle for them. New drivers and licences are added by HR in Waypoint People.">
+            <Select
+              value={v.driverId ?? ""}
+              onChange={(x) => set("driverId", x || null)}
+              placeholder="No driver"
+              options={drivers.map((d) => ({ value: d.id, label: `${d.name}${d.onLeave ? " (on leave)" : ""}${d.vehicleId && d.vehicleId !== vehicle?.id ? ` · now on ${d.vehicleId}` : ""}` }))}
+            />
+          </Field>
         </div>
         <Toggle checked={v.active ?? true} onChange={(x) => set("active", x)} label="In the fleet" sub="Turn off to retire the vehicle. It stays in the records and history." />
       </form>

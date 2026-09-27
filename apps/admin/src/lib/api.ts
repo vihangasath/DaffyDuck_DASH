@@ -12,7 +12,7 @@ export class ApiError extends Error {
   }
 }
 
-/** Calls the API as the signed-in admin. A 401 ends the session (the shell sends you to sign in). */
+/** Calls the API as the signed-in HR officer. A 401 ends the session (the shell sends you to sign in). */
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const token = readToken();
   let res: Response;
@@ -31,25 +31,25 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   return json;
 }
 
-/** GET /api/admin/<path>, cached under ["admin", path] and refreshed by server events. */
-export function useAdminQuery<T>(path: string) {
-  return useQuery<T>({ queryKey: ["admin", path], queryFn: () => api<T>(`/admin${path}`) });
+/** GET /api/people/<path>, cached under ["people", path] and refreshed by server events. */
+export function usePeople<T>(path: string) {
+  return useQuery<T>({ queryKey: ["people", path], queryFn: () => api<T>(`/people${path}`) });
 }
 
-/** A write to /api/admin: toasts the outcome and refreshes every admin query. */
-export function useAdminMutation<V, R = unknown>(fn: (v: V) => Promise<R>, ok?: string | ((r: R, v: V) => string)) {
+/** A write to /api/people: toasts the outcome and refreshes every people query. */
+export function usePeopleMutation<V, R = unknown>(fn: (v: V) => Promise<R>, ok?: string | ((r: R, v: V) => string)) {
   const qc = useQueryClient();
   return useMutation<R, ApiError, V>({
     mutationFn: fn,
     onSuccess: (r, v) => {
       if (ok) toast.success(typeof ok === "function" ? ok(r, v) : ok);
-      void qc.invalidateQueries({ queryKey: ["admin"] });
+      void qc.invalidateQueries({ queryKey: ["people"] });
     },
     onError: (e) => toast.error(e.message),
   });
 }
 
-/** Live refresh: any change by anyone (admin or operations) re-fetches what's on screen. */
+/** Live refresh: any change by anyone (HR or operations) re-fetches what's on screen. */
 export function subscribeServer(onChange: () => void): () => void {
   const token = readToken();
   if (!token) return () => undefined;

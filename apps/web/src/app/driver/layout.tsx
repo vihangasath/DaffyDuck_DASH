@@ -26,13 +26,13 @@ export default function DriverLayout({ children }: LayoutProps<"/driver">) {
   );
 }
 
-/** A driver account with no vehicle assigned in the admin console yet. */
+/** A driver account with no vehicle assigned by dispatch yet. */
 function NoVehicle() {
   const router = useRouter();
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center bg-canvas">
       <Empty icon={Truck} title="No vehicle assigned yet">
-        <p>Your account isn’t linked to a vehicle today. Ask your administrator or dispatch to assign one, then sign in again.</p>
+        <p>Your account isn’t linked to a vehicle today. Ask dispatch to assign one, then sign in again.</p>
         <button
           className="mt-4 font-semibold text-primary"
           onClick={async () => {

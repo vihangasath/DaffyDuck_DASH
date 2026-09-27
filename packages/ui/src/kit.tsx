@@ -1,9 +1,9 @@
 "use client";
-// Admin building blocks in the Waypoint system: a searchable data table, a side drawer for editing,
-// and form fields. Every resource page (drivers, vehicles, branches…) is assembled from these.
+// Record-keeping building blocks in the Waypoint operations system: a searchable data table, a side drawer
+// for editing, and form fields. The dispatcher's network records (vehicles, branches…) are assembled from these.
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Search, X } from "lucide-react";
-import { Button, Card, Empty, Spinner, cx } from "@waypoint/ui/ui";
+import { Button, Card, Empty, Spinner, cx } from "./ui";
 import type { LucideIcon } from "lucide-react";
 
 // ── Table ──────────────────────────────────────────────────────────────────────────────────────

@@ -35,7 +35,7 @@ beforeAll(async () => {
 afterAll(() => database.close());
 
 describe("auth", () => {
-  it("rejects a wrong password and routes admins to the console", async () => {
+  it("rejects a wrong password and sends HR to Waypoint People", async () => {
     expect((await call("POST", "/api/auth/login", { username: "dispatcher", password: "nope", app: "web" })).status).toBe(401);
     const r = await call<{ error: string; adminUrl: string }>("POST", "/api/auth/login", { username: "admin", password: "waypoint", app: "web" });
     expect(r.status).toBe(403);
@@ -48,7 +48,8 @@ describe("auth", () => {
   });
   it("keeps roles in their lane", async () => {
     expect((await op("publishPlan", { depot: "Peliyagoda" }, "store")).status).toBe(403);
-    expect((await call("GET", "/api/admin/overview", undefined, "dispatcher")).status).toBe(403);
+    expect((await call("GET", "/api/people/overview", undefined, "dispatcher")).status).toBe(403);
+    expect((await call("GET", "/api/network/vehicles", undefined, "admin")).status).toBe(403);
     expect((await call("GET", "/api/ops/snapshot")).status).toBe(401);
   });
 });
@@ -97,26 +98,54 @@ describe("walkthrough", () => {
   });
 });
 
-describe("admin", () => {
-  it("adds a driver, gives them a login, and they can sign in to their vehicle", async () => {
-    const d = await call<{ id: string }>("POST", "/api/admin/drivers", { name: "Test Driver", depotId: "Peliyagoda", vehicleId: "VEH012", status: "active" }, "admin");
-    expect(d.status).toBe(201);
-    const weak = await call("POST", "/api/admin/users", { username: "tdriver", displayName: "Test Driver", role: "driver", driverId: d.json.id, password: "short" }, "admin");
+describe("people (HR)", () => {
+  it("keeps a staff record for every role, linked to the demo logins", async () => {
+    const staff = (await call<{ id: string; jobRole: string; login: { username: string } | null; driver: { vehicleId: string | null } | null }[]>("GET", "/api/people/staff", undefined, "admin")).json;
+    for (const role of ["driver", "loader", "dispatcher", "store_manager", "hr_officer"]) expect(staff.some((s) => s.jobRole === role), role).toBe(true);
+    for (const u of ["admin", "dispatcher", "loader", "driver", "store"]) expect(staff.some((s) => s.login?.username === u), u).toBe(true);
+    expect(staff.find((s) => s.login?.username === "driver")?.driver?.vehicleId).toBe("VEH011");
+  });
+  it("adds a driver, issues a login, and dispatch puts them on a vehicle", async () => {
+    const s = await call<{ id: string }>("POST", "/api/people/staff", { name: "Test Driver", jobRole: "driver", depotId: "Peliyagoda", status: "active", licenseNo: "B1234567", licenseClass: "C1", licenseExpiry: "2029-01-01" }, "admin");
+    expect(s.status).toBe(201);
+    const weak = await call("POST", `/api/people/staff/${s.json.id}/login`, { username: "tdriver", password: "short" }, "admin");
     expect(weak.status).toBe(400);
-    const u = await call("POST", "/api/admin/users", { username: "tdriver", displayName: "Test Driver", role: "driver", driverId: d.json.id, password: "roadtrip42" }, "admin");
+    const u = await call<{ id: string }>("POST", `/api/people/staff/${s.json.id}/login`, { username: "tdriver", password: "roadtrip42" }, "admin");
     expect(u.status).toBe(201);
+    const staff = (await call<{ id: string; driver: { id: string } }[]>("GET", "/api/people/staff", undefined, "admin")).json;
+    const driverId = staff.find((x) => x.id === s.json.id)!.driver.id;
+    const v = (await call<{ id: string; type: string; temp: string; weightCapKg: number; volumeCapM3: number; fuelType: string; kmPerL: number; weeklyFuelQuotaL: number; depotId: string; status: string }[]>("GET", "/api/network/vehicles", undefined, "dispatcher")).json.find((x) => x.id === "VEH012")!;
+    const { id: _id, ...rest } = v;
+    void _id;
+    const pick = { type: rest.type, temp: rest.temp, weightCapKg: rest.weightCapKg, volumeCapM3: rest.volumeCapM3, fuelType: rest.fuelType, kmPerL: rest.kmPerL, weeklyFuelQuotaL: rest.weeklyFuelQuotaL, depotId: rest.depotId, status: rest.status };
+    expect((await call("PATCH", "/api/network/vehicles/VEH012", { ...pick, driverId }, "dispatcher")).status).toBe(200);
     const login = await call<LoginResult>("POST", "/api/auth/login", { username: "tdriver", password: "roadtrip42", app: "web" });
     expect(login.json.user).toMatchObject({ role: "driver", vehicleId: "VEH012" });
   });
+  it("turns off sign-in when someone leaves", async () => {
+    const staff = (await call<{ id: string; name: string; jobRole: string; depotId: string; status: string; login: { username: string } | null }[]>("GET", "/api/people/staff", undefined, "admin")).json;
+    const t = staff.find((x) => x.login?.username === "tdriver")!;
+    expect((await call("PATCH", `/api/people/staff/${t.id}`, { name: t.name, jobRole: t.jobRole, depotId: t.depotId, status: "left" }, "admin")).status).toBe(200);
+    expect((await call("POST", "/api/auth/login", { username: "tdriver", password: "roadtrip42", app: "web" })).status).toBe(403);
+  });
+  it("won't let HR remove their own access", async () => {
+    const staff = (await call<{ id: string; name: string; jobRole: string; depotId: string; login: { username: string } | null }[]>("GET", "/api/people/staff", undefined, "admin")).json;
+    const me = staff.find((x) => x.login?.username === "admin")!;
+    expect((await call("PATCH", `/api/people/staff/${me.id}`, { name: me.name, jobRole: me.jobRole, depotId: me.depotId, status: "left" }, "admin")).status).toBe(409);
+  });
+});
+
+describe("network (dispatch)", () => {
   it("won't retire a vehicle that is in today's plan", async () => {
-    const v = (await call<{ id: string; tripsToday: number }[]>("GET", "/api/admin/vehicles", undefined, "admin")).json.find((x) => x.id === "VEH011")!;
+    const v = (await call<{ id: string; tripsToday: number }[]>("GET", "/api/network/vehicles", undefined, "dispatcher")).json.find((x) => x.id === "VEH011")!;
     expect(v.tripsToday).toBeGreaterThan(0);
-    const r = await call("PATCH", "/api/admin/vehicles/VEH011", { type: "truck", temp: "ambient", weightCapKg: 1, volumeCapM3: 1, fuelType: "diesel", kmPerL: 5, weeklyFuelQuotaL: 100, depotId: "Peliyagoda", status: "available", active: false }, "admin");
+    const r = await call("PATCH", "/api/network/vehicles/VEH011", { type: "truck", temp: "ambient", weightCapKg: 1, volumeCapM3: 1, fuelType: "diesel", kmPerL: 5, weeklyFuelQuotaL: 100, depotId: "Peliyagoda", status: "available", active: false }, "dispatcher");
     expect(r.status).toBe(409);
   });
   it("records every action in the activity log", async () => {
-    const rows = (await call<{ action: string }[]>("GET", "/api/admin/activity?limit=200", undefined, "admin")).json.map((r) => r.action);
-    for (const a of ["ops.placeOrder", "ops.closeOrdersAndPlan", "ops.publishPlan", "ops.releaseTrip", "ops.syncDriverEvents", "driver.create", "user.create", "auth.login"]) expect(rows).toContain(a);
+    const people = (await call<{ action: string }[]>("GET", "/api/people/activity?limit=200", undefined, "admin")).json.map((r) => r.action);
+    for (const a of ["staff.create", "staff.update", "user.create", "auth.login"]) expect(people).toContain(a);
+    expect(people.some((a) => a.startsWith("ops."))).toBe(false);
   });
   it("state survives a restart (reloaded from the tables)", async () => {
     const before = (await snapshot()).db;
@@ -127,7 +156,7 @@ describe("admin", () => {
     expect(strip(fresh.ops)).toEqual(strip(before));
   });
   it("resets operations to the start of the demo day", async () => {
-    expect((await call("POST", "/api/admin/reset", {}, "admin")).status).toBe(200);
+    expect((await call("POST", "/api/network/reset", {}, "dispatcher")).status).toBe(200);
     const s = await snapshot();
     expect(s.db.plans.Peliyagoda).toBeNull();
     expect(Object.keys(s.db.stops)).toHaveLength(0);

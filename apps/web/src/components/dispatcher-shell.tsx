@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Activity, BarChart3, CalendarDays, History, LayoutGrid, LogOut, Route, Truck } from "lucide-react";
+import { Activity, BarChart3, Building2, CalendarDays, History, LayoutGrid, LogOut, Package, RotateCcw, Route, Store, Truck, Warehouse } from "lucide-react";
 import type { Depot } from "@waypoint/core/domain/types";
 import { DEMO_DATE } from "@waypoint/core/reference";
 import { fmtDate } from "@waypoint/core/domain/time";
@@ -17,12 +17,27 @@ export const useDepot = create<{ depot: Depot; set: (d: Depot) => void }>()(
 );
 
 const NAV = [
-  { href: "/dispatcher", label: "Today", icon: LayoutGrid },
-  { href: "/dispatcher/plan", label: "Plan & allocate", icon: Route },
-  { href: "/dispatcher/live", label: "Live tracking", icon: Activity },
-  { href: "/dispatcher/deferrals", label: "Deferrals", icon: History },
-  { href: "/dispatcher/capacity", label: "Capacity outlook", icon: BarChart3 },
-  { href: "/dispatcher/fleet", label: "Fleet & fuel", icon: Truck },
+  {
+    group: "Today’s run",
+    items: [
+      { href: "/dispatcher", label: "Today", icon: LayoutGrid },
+      { href: "/dispatcher/plan", label: "Plan & allocate", icon: Route },
+      { href: "/dispatcher/live", label: "Live tracking", icon: Activity },
+      { href: "/dispatcher/deferrals", label: "Deferrals", icon: History },
+      { href: "/dispatcher/capacity", label: "Capacity outlook", icon: BarChart3 },
+      { href: "/dispatcher/fleet", label: "Fleet & fuel", icon: Truck },
+    ],
+  },
+  {
+    group: "Network records",
+    items: [
+      { href: "/dispatcher/records/vehicles", label: "Vehicles", icon: Warehouse },
+      { href: "/dispatcher/records/branches", label: "Branches", icon: Store },
+      { href: "/dispatcher/records/depots", label: "Depots", icon: Building2 },
+      { href: "/dispatcher/records/products", label: "Products", icon: Package },
+      { href: "/dispatcher/records/demo", label: "Demo day", icon: RotateCcw },
+    ],
+  },
 ];
 
 export function DispatcherShell({ session, children }: { session: Session; children: ReactNode }) {
@@ -57,7 +72,7 @@ export function DispatcherShell({ session, children }: { session: Session; child
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
-      <aside className="on-ink flex shrink-0 flex-col gap-1 bg-navy px-3 py-3 text-white lg:sticky lg:top-0 lg:h-dvh lg:w-60 lg:py-5">
+      <aside className="on-ink flex shrink-0 flex-col gap-1 bg-navy px-3 py-3 text-white lg:sticky lg:top-0 lg:h-dvh lg:w-60 lg:overflow-y-auto lg:py-5">
         <div className="flex items-center gap-3 px-2 pb-2 lg:pb-6">
           <Logo size={34} label="Waypoint" sub="Dispatch console" dark />
           {/* Compact controls for tablet/phone: the desktop footer below is hidden there. */}
@@ -68,27 +83,32 @@ export function DispatcherShell({ session, children }: { session: Session; child
             </button>
           </div>
         </div>
-        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:flex-col lg:overflow-visible lg:pb-0" aria-label="Dispatcher">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const on = href === "/dispatcher" ? path === href : path.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={on ? "page" : undefined}
-                className={cx(
-                  "group flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                  on ? "bg-navy-2 font-semibold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]" : "font-medium text-on-ink-muted hover:bg-white/5 hover:text-white",
-                )}
-              >
-                <Icon className={cx("size-[18px] transition-colors", on ? "text-mint" : "text-on-ink-muted group-hover:text-white")} />
-                {label}
-                {!!badge[href] && (
-                  <span className={cx("ml-auto min-w-5 rounded-full px-1.5 text-center text-[11px] font-bold leading-5 text-white", href.endsWith("live") ? "bg-danger" : "bg-warning")}>{badge[href]}</span>
-                )}
-              </Link>
-            );
-          })}
+        <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:flex-col lg:gap-4 lg:overflow-visible lg:pb-0" aria-label="Dispatcher">
+          {NAV.map((g) => (
+            <div key={g.group} className="flex shrink-0 gap-1 lg:grid lg:gap-0.5">
+              <div className="hidden px-3 pb-1 text-[11px] font-semibold text-on-ink-muted lg:block">{g.group}</div>
+              {g.items.map(({ href, label, icon: Icon }) => {
+                const on = href === "/dispatcher" ? path === href : path.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={on ? "page" : undefined}
+                    className={cx(
+                      "group flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                      on ? "bg-navy-2 font-semibold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)]" : "font-medium text-on-ink-muted hover:bg-white/5 hover:text-white",
+                    )}
+                  >
+                    <Icon className={cx("size-[18px] transition-colors", on ? "text-mint" : "text-on-ink-muted group-hover:text-white")} />
+                    {label}
+                    {!!badge[href] && (
+                      <span className={cx("ml-auto min-w-5 rounded-full px-1.5 text-center text-[11px] font-bold leading-5 text-white", href.endsWith("live") ? "bg-danger" : "bg-warning")}>{badge[href]}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="mt-auto hidden flex-col gap-3 lg:flex">
           <div className="grid gap-2 rounded-xl bg-navy-2 p-3">

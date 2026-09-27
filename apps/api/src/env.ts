@@ -10,7 +10,7 @@ export const env = {
   /** Where embedded Postgres keeps its files. `memory://` keeps nothing (tests). */
   pgliteDir: process.env.PGLITE_DIR ?? join(repoRoot, ".data", "pglite"),
   sessionHours: Number(process.env.SESSION_HOURS ?? 12),
-  /** Shown to admin accounts that try to sign in to the operations app. */
+  /** Waypoint People (the HR panel): shown to HR accounts that try to sign in to the operations app. */
   adminUrl: process.env.ADMIN_URL ?? "http://localhost:3001",
   migrationsDir: join(repoRoot, "apps/api/drizzle"),
 };
