@@ -1,0 +1,16 @@
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+
+export const env = {
+  port: Number(process.env.PORT ?? process.env.API_PORT ?? 4000),
+  /** A real Postgres server (Docker, production). When unset, an embedded Postgres (PGlite) is used. */
+  databaseUrl: process.env.DATABASE_URL || undefined,
+  /** Where embedded Postgres keeps its files. `memory://` keeps nothing (tests). */
+  pgliteDir: process.env.PGLITE_DIR ?? join(repoRoot, ".data", "pglite"),
+  sessionHours: Number(process.env.SESSION_HOURS ?? 12),
+  /** Shown to admin accounts that try to sign in to the operations app. */
+  adminUrl: process.env.ADMIN_URL ?? "http://localhost:3001",
+  migrationsDir: join(repoRoot, "apps/api/drizzle"),
+};

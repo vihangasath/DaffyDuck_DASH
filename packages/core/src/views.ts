@@ -1,0 +1,78 @@
+// Derived, role-specific views over the server state. With a real backend these become endpoints
+// (see docs/INTEGRATION.md); here they are pure functions over the mock Db.
+import type { Db } from "./contract";
+import { contextFor, DEMO_DATE, net, outletName, seed } from "./reference";
+import type { Depot, Order, Plan } from "./domain/types";
+import { evaluateVehicle, type TripEval } from "./planner/evaluate";
+
+export type OrderStatus =
+  | "confirmed" | "planned" | "deferred" | "loading" | "on_the_way" | "arrived" | "delivered" | "failed" | "received" | "next_run";
+
+export interface OrderState {
+  order: Order;
+  status: OrderStatus;
+  plan: Plan | null;
+  tripEval?: TripEval;
+  stopIndex?: number;
+  eta?: number; // minutes after midnight
+  deferral?: Plan["deferred"][number];
+}
+
+export const STATUS_LABEL: Record<OrderStatus, string> = {
+  confirmed: "Confirmed",
+  planned: "Planned",
+  deferred: "Moved to next run",
+  loading: "Loading",
+  on_the_way: "On the way",
+  arrived: "Driver arrived",
+  delivered: "Delivered",
+  failed: "Not delivered",
+  received: "Received",
+  next_run: "Next run",
+};
+
+export const depotOfVehicle = (vehicleId: string): Depot => seed.vehicles.find((v) => v.id === vehicleId)!.depot;
+
+/** Evaluated trips (with ETAs) for one vehicle in the published plan. */
+export function vehicleTrips(db: Db, vehicleId: string): TripEval[] {
+  const plan = db.plans[depotOfVehicle(vehicleId)];
+  if (!plan || plan.status !== "published") return [];
+  return evaluateVehicle(vehicleId, plan.trips, contextFor(db.orders, db.fleetStatus)).trips;
+}
+
+export function orderState(db: Db, orderId: string): OrderState {
+  const order = db.orders.find((o) => o.id === orderId)!;
+  if (order.forDate === "next-run") return { order, status: "next_run", plan: null };
+  const plan = db.plans[order.depot];
+  if (!plan || plan.status !== "published") return { order, status: "confirmed", plan };
+  const deferral = plan.deferred.find((d) => d.orderId === orderId);
+  if (deferral) return { order, status: "deferred", plan, deferral };
+  const trip = plan.trips.find((t) => t.orderIds.includes(orderId));
+  if (!trip) return { order, status: "planned", plan };
+  const te = vehicleTrips(db, trip.vehicleId).find((t) => t.trip.id === trip.id);
+  const idx = te?.stops.findIndex((s) => s.orderId === orderId) ?? -1;
+  const base = { order, plan, tripEval: te, stopIndex: idx, eta: te?.stops[idx]?.arrive };
+  const stop = db.stops[orderId];
+  if (db.receipts[orderId]) return { ...base, status: "received" };
+  if (stop?.deliveredAt) return { ...base, status: "delivered" };
+  if (stop?.problem) return { ...base, status: "failed" };
+  if (stop?.arrivedAt) return { ...base, status: "arrived" };
+  const load = db.loads[trip.id];
+  if (load?.status === "released") return { ...base, status: "on_the_way" };
+  if (load && load.status !== "not_started") return { ...base, status: "loading" };
+  return { ...base, status: "planned" };
+}
+
+/** Deterministic "demo clock": events are stamped near the planned time so the story stays coherent. */
+export function demoStamp(plannedMin: number, orderId: string, extra = 0): string {
+  const jitter = [...orderId].reduce((s, c) => s + c.charCodeAt(0), 0) % 7;
+  const m = Math.round(plannedMin + jitter + extra);
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+export const isDemoDate = (d?: string) => d === DEMO_DATE;
+
+export const mapsUrl = (outletId: string) => {
+  const o = net.outlets.get(outletId)!;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${outletName(outletId)}, ${o.district}, Sri Lanka`)}`;
+};

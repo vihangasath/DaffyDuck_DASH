@@ -1,0 +1,21 @@
+{
+  "name": "@waypoint/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Domain model, planner, business rules and reference data shared by the API and the web app.",
+  "exports": {
+    "./seed.json": "./src/seed.json",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "seed": "node scripts/build-seed.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.6",
+    "typescript": "^5",
+    "vitest": "^5.0.1"
+  }
+}
