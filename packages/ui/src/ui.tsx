@@ -51,18 +51,36 @@ const TEXT: Record<Tone, string> = {
   primary: "text-primary-strong", fresh: "text-fresh", style: "text-style", tech: "text-tech",
 };
 
-/** The Waypoint mark: an S-route between two waypoints (same drawing as the app icon). */
+/** The Waypoint emblem: geometric W with directional arrows and central waypoint needle. */
+export function WaypointMark({ size = 32, dark }: { size?: number; dark?: boolean }) {
+  return (
+    <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden className="shrink-0">
+      <rect width="64" height="64" rx="14" fill={dark ? "var(--color-navy-2)" : "var(--color-navy)"} />
+      <g transform="translate(10, 10) scale(0.44)">
+        {/* Left arrow half (Teal) */}
+        <polygon points="50,0 50,22.8 38.7,44.6 29.4,56.6 39.1,27.8 24.8,30.6" fill="var(--color-primary)" />
+        {/* Right arrow half (Slate) */}
+        <polygon points="50,0 50,22.8 61.2,44.6 70.5,56.6 60.8,27.8 75,30.6" fill={dark ? "#8ca0b8" : "var(--color-neutral)"} />
+        {/* Left wing (Teal) */}
+        <polygon points="0,37.2 20,45.9 34.2,73.1 32.2,99.4" fill="var(--color-primary)" />
+        {/* Right wing outer facet (Slate) */}
+        <polygon points="100,37.1 79.9,45.9 65.8,73.1 67.6,100" fill={dark ? "#8ca0b8" : "var(--color-neutral)"} />
+        {/* Right wing inner facet (Mid-Teal) */}
+        <polygon points="61.2,44.6 65.8,73.1 67.6,100 51.9,73.1" fill="var(--color-chilled)" />
+        {/* Center Needle (White) */}
+        <polygon points="50,31.4 58.8,53.6 32.2,99.4" fill="#ffffff" />
+        {/* Needle Waypoint Dot */}
+        <circle cx="50" cy="53.6" r="3.8" fill="var(--color-navy)" />
+      </g>
+    </svg>
+  );
+}
+
+/** The official Waypoint Group mark with optional label and subtitle. */
 export function Logo({ size = 32, label, sub, dark }: { size?: number; label?: string; sub?: string; dark?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
-      <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden className="shrink-0">
-        <rect width="64" height="64" rx="15" fill="var(--color-primary)" />
-        <g fill="none" stroke="#fff" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M24 46h17a7 7 0 0 0 0-14H23a7 7 0 0 1 0-14h17" />
-          <circle cx="18" cy="46" r="6" />
-        </g>
-        <circle cx="46" cy="18" r="6" fill="var(--color-mint)" stroke="#fff" strokeWidth="4.5" />
-      </svg>
+      <WaypointMark size={size} dark={dark} />
       {label && (
         <span className="min-w-0 leading-tight">
           <span className="block font-bold tracking-tight">{label}</span>

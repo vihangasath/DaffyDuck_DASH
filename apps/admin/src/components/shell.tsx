@@ -74,7 +74,7 @@ export function CabinetShell({ children }: { children: ReactNode }) {
                 {on && <span aria-hidden className="absolute -top-1 left-5 hidden h-1.5 w-14 rounded-t-[3px] bg-manila lg:block" />}
                 {/* Brass label holder: a brass frame, its lip darker below, with the typed card slid in. */}
                 <span className={cx("flex min-w-0 flex-1 rounded-[2px] border-b-2 border-b-brass-ink/60 bg-brass p-[3px] shadow-[0_1px_2px_rgb(0_0_0/0.35)]", on && "bg-brass-2 border-b-brass")}>
-                  <span className={cx("flex min-w-0 flex-1 items-center rounded-[1px] px-2 py-0.5", on ? "bg-manila-2 text-manila-ink" : "bg-[#ece5d2] text-ink/85 group-hover:text-ink")}>
+                  <span className={cx("flex min-w-0 flex-1 items-center rounded-[1px] px-2 py-0.5", on ? "bg-manila-2 text-manila-ink" : "bg-subtle text-ink/85 group-hover:text-ink")}>
                     <span className="caps truncate text-[11.5px]">{label}</span>
                     {c && <span className={cx("ml-auto pl-2 text-[12px] font-bold tabular-nums", c.alert ? "text-stamp-left" : "text-ink-2")}>{c.n}</span>}
                   </span>
