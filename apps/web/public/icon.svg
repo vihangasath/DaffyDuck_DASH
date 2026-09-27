@@ -1,1 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f766e"/><g fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="46" r="6"/><path d="M24 46h17a7 7 0 0 0 0-14H23a7 7 0 0 1 0-14h17"/><circle cx="46" cy="18" r="6"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#102447" />
+  <g transform="translate(10, 10) scale(0.44)">
+    <!-- Left arrow half (Teal) -->
+    <polygon points="50,0 50,22.8 38.7,44.6 29.4,56.6 39.1,27.8 24.8,30.6" fill="#008289" />
+    <!-- Right arrow half (Slate) -->
+    <polygon points="50,0 50,22.8 61.2,44.6 70.5,56.6 60.8,27.8 75,30.6" fill="#68798e" />
+    <!-- Left wing (Teal) -->
+    <polygon points="0,37.2 20,45.9 34.2,73.1 32.2,99.4" fill="#008289" />
+    <!-- Right wing outer facet (Slate) -->
+    <polygon points="100,37.1 79.9,45.9 65.8,73.1 67.6,100" fill="#68798e" />
+    <!-- Right wing inner facet (Mid-Teal) -->
+    <polygon points="61.2,44.6 65.8,73.1 67.6,100 51.9,73.1" fill="#3c7e8d" />
+    <!-- Center Needle (White) -->
+    <polygon points="50,31.4 58.8,53.6 32.2,99.4" fill="#ffffff" />
+    <!-- Needle Waypoint Dot -->
+    <circle cx="50" cy="53.6" r="3.8" fill="#102447" />
+  </g>
+</svg>

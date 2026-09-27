@@ -1,0 +1,28 @@
+Waypoint HR update (27 Sep 2026): Figma plugin
+===============================================
+
+What it adds (it runs once, and running it again is safe):
+  * Page "02 · Screens by role". The page is created if the file doesn't have one.
+  * Dispatcher sidebars D1–D6 get the "Today's run" and "Network records" groups:
+    Vehicles, Branches, Depots, Products, Demo day.
+  * A new section "Dispatch · Network records (added 27 Sep)" with D7 · Vehicles and its driver drawer.
+  * A new section "HR · Waypoint People (added 27 Sep)" with:
+      - the foundations board;
+      - P0 Sign in, P1 Front desk, P2 Staff directory + open folder;
+      - P3 Renewals, P4 Sign-in access, P5 Folder on a phone.
+  * Colour variables:
+      - "Waypoint / Color" (34 logistics tokens), but only the ones the file is missing;
+      - "Waypoint People / Color" (33 people/* tokens).
+  * It also removes the leftover hidden "__build-helpers (temporary, delete)" text node, if there is one.
+
+How to run it (Figma desktop app; the browser can't import plugins):
+  1. Unzip this folder anywhere.
+  2. Open the Figma file you want to update.
+  3. Go to Menu → Plugins → Development → Import plugin from manifest…
+     and choose manifest.json from this folder.
+  4. Go to Menu → Plugins → Development → Waypoint HR update (27 Sep).
+     When it finishes, it names the steps it applied (or where it stopped and why), and zooms to the new sections.
+
+Fonts: Archivo, Archivo Narrow and Courier Prime (all Google fonts that Figma has built in). If one
+can't be loaded, that text falls back to Inter.
+People data in the frames is synthetic demo data.

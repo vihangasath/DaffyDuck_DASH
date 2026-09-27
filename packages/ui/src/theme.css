@@ -5,26 +5,26 @@
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  --color-ink: #0f1b2a;
-  --color-ink-2: #4a5868;
-  --color-muted: #64717f; /* was #7b8898: darkened to reach 4.5:1 on white and canvas */
-  --color-on-ink-muted: #93a4b6;
+  --color-ink: #0f1d30;
+  --color-ink-2: #45566d;
+  --color-muted: #60738c; /* darkened to ensure 4.5:1 on white and canvas */
+  --color-on-ink-muted: #8fa4bf;
 
   --color-canvas: #f5f7f9;
   --color-surface: #ffffff;
-  --color-subtle: #edf1f4;
-  --color-navy: #0c1e2b;
-  --color-navy-2: #1a3345;
-  --color-navy-3: #24445a;
+  --color-subtle: #edf1f5;
+  --color-navy: #102447;
+  --color-navy-2: #19386c;
+  --color-navy-3: #224b8f;
 
-  --color-line: #e1e6eb;
-  --color-line-strong: #c6cfd8;
+  --color-line: #e1e7ee;
+  --color-line-strong: #c4d0df;
 
-  --color-primary: #0f766e;
-  --color-primary-strong: #0b5a54;
-  --color-primary-soft: #e3f3f1;
-  --color-primary-bright: #14b8a6;
-  --color-mint: #5eead4;
+  --color-primary: #008289;
+  --color-primary-strong: #006066;
+  --color-primary-soft: #e2f4f5;
+  --color-primary-bright: #00a4ae;
+  --color-mint: #22d3ee;
   --color-amber: #f59e0b;
 
   --color-success: #15803d;
@@ -37,8 +37,8 @@
   --color-info-soft: #e3f0f8;
   --color-chilled: #0e7490;
   --color-chilled-soft: #dff3f7;
-  --color-neutral: #4a5868;
-  --color-neutral-soft: #edf1f4;
+  --color-neutral: #516075;
+  --color-neutral-soft: #edf1f6;
 
   --color-fresh: #4d7c0f;
   --color-fresh-soft: #eef5e1;
@@ -48,10 +48,10 @@
   --color-tech-soft: #ecebfb;
 
   /* Depth: tinted with navy so shadows sit in the palette instead of going grey. */
-  --shadow-card: 0 1px 2px rgb(12 30 43 / 0.04), 0 2px 8px -2px rgb(12 30 43 / 0.06);
-  --shadow-raised: 0 2px 4px rgb(12 30 43 / 0.05), 0 10px 24px -8px rgb(12 30 43 / 0.16);
-  --shadow-float: 0 8px 16px -4px rgb(12 30 43 / 0.16), 0 24px 48px -12px rgb(12 30 43 / 0.28);
-  --shadow-button: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(12 30 43 / 0.24);
+  --shadow-card: 0 1px 2px rgb(16 36 71 / 0.04), 0 2px 8px -2px rgb(16 36 71 / 0.06);
+  --shadow-raised: 0 2px 4px rgb(16 36 71 / 0.05), 0 10px 24px -8px rgb(16 36 71 / 0.16);
+  --shadow-float: 0 8px 16px -4px rgb(16 36 71 / 0.16), 0 24px 48px -12px rgb(16 36 71 / 0.28);
+  --shadow-button: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(16 36 71 / 0.24);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
@@ -68,11 +68,11 @@
   /* The "you are here" ring on the current stop: it signals live state and nothing else. */
   @keyframes waypoint {
     0% {
-      box-shadow: 0 0 0 0 rgb(15 118 110 / 0.45);
+      box-shadow: 0 0 0 0 rgb(0 130 137 / 0.45);
     }
     70%,
     100% {
-      box-shadow: 0 0 0 10px rgb(15 118 110 / 0);
+      box-shadow: 0 0 0 10px rgb(0 130 137 / 0);
     }
   }
   /* Drawer entrance: the scrim fades, the panel slides in from the edge it lives on. */

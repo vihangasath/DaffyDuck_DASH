@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   applicationName: "Waypoint",
 };
 
-export const viewport: Viewport = { themeColor: "#0c1e2b", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#102447", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

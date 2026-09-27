@@ -7,7 +7,7 @@ import { DEMO_DATE } from "@waypoint/core/reference";
 import { fmtDate } from "@waypoint/core/domain/time";
 import { HOME, signIn, useSession } from "@/lib/session";
 
-// The loop, drawn as the logo's S-route at poster scale. Coordinates are in the SVG viewBox.
+// The loop, drawn as the delivery route connecting operations at poster scale. Coordinates are in the SVG viewBox.
 const ROUTE = "M 40 40 H 470 A 50 50 0 0 1 470 140 H 90 A 50 50 0 0 0 90 240 H 520";
 const W = 560;
 const H = 280;
@@ -99,9 +99,9 @@ export default function SignIn() {
     <main className="grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
       <section className="on-ink relative hidden flex-col justify-between gap-10 overflow-hidden bg-navy p-12 text-white lg:flex xl:p-14">
         {/* A faint topographic wash so the navy field has depth without decoration competing with the loop. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_85%_0%,rgb(20_184_166/0.18),transparent_60%),radial-gradient(60%_50%_at_0%_100%,rgb(26_51_69/0.9),transparent_70%)]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_85%_0%,rgb(0_130_137/0.22),transparent_60%),radial-gradient(60%_50%_at_0%_100%,rgb(16_36_71/0.95),transparent_70%)]" />
         <div className="relative">
-          <Logo size={40} label="Waypoint" sub="Fresh · Style · Tech" dark />
+          <Logo size={42} label="Waypoint Group" sub="Fresh · Tech · Style" dark />
         </div>
         <div className="relative grid gap-10">
           <div className="max-w-xl">
@@ -109,7 +109,7 @@ export default function SignIn() {
               Delivery planning that <span className="text-mint">explains itself</span>
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-on-ink-muted">
-              One system for ordering, planning, loading, delivery and receipt — so Fresh, Style and Tech share one fleet, every deferral has a reason, and drivers keep working when the signal drops.
+              One system for ordering, planning, loading, delivery and receipt — so Fresh, Tech and Style share one fleet, every deferral has a reason, and drivers keep working when the signal drops.
             </p>
           </div>
           <div className="pb-14">
@@ -123,7 +123,7 @@ export default function SignIn() {
         <div className="mx-auto grid w-full max-w-md gap-8">
           {/* Phone/tablet: the brand panel is hidden, so carry the mark and the promise here. */}
           <div className="grid gap-4 lg:hidden">
-            <Logo size={36} label="Waypoint" sub="Fresh · Style · Tech" />
+            <Logo size={38} label="Waypoint Group" sub="Fresh · Tech · Style" />
             <h1 className="text-3xl font-bold leading-tight tracking-tight">
               Delivery planning that <span className="text-primary">explains itself</span>
             </h1>

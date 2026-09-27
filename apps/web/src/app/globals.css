@@ -18,7 +18,7 @@
 .wp-pin {
   position: relative;
   transform-origin: 50% 100%;
-  filter: drop-shadow(0 3px 3px rgb(12 30 43 / 0.28));
+  filter: drop-shadow(0 3px 3px rgb(16 36 71 / 0.28));
   animation: wp-drop 0.45s var(--ease-out-expo) both;
 }
 .wp-pin svg {
@@ -37,7 +37,7 @@
   height: 7px;
   margin-left: -9px;
   border-radius: 50%;
-  background: rgb(15 118 110 / 0.5);
+  background: rgb(0 130 137 / 0.5);
   animation: wp-pulse 1.8s ease-out infinite;
 }
 .wp-truck {

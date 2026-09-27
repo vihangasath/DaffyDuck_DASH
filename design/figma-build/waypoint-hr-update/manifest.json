@@ -1,0 +1,10 @@
+{
+  "name": "Waypoint HR update (27 Sep)",
+  "id": "waypoint-hr-update-local",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": [
+    "figma"
+  ],
+  "documentAccess": "dynamic-page"
+}

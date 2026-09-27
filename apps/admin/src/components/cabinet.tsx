@@ -8,13 +8,21 @@ import { cx } from "@waypoint/ui/ui";
 
 // ── Brand ──────────────────────────────────────────────────────────────────────────────────────
 
-/** The People mark: a manila folder carrying Waypoint's route S. */
+/** The People mark: a manila folder carrying the Waypoint navigation emblem. */
 export function PeopleMark({ size = 32 }: { size?: number }) {
   return (
     <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden className="shrink-0">
       <path d="M6 18a4 4 0 0 1 4-4h14l5 6h25a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z" fill="var(--color-manila)" />
       <path d="M6 27h52" stroke="var(--color-manila-edge)" strokeWidth="2" />
-      <path d="M26 46h10a5 5 0 0 0 0-10h-6a5 5 0 0 1 0-10h9" fill="none" stroke="var(--color-cabinet)" strokeWidth="4" strokeLinecap="round" />
+      <g transform="translate(19, 25) scale(0.26)">
+        <polygon points="50,0 50,22.8 38.7,44.6 29.4,56.6 39.1,27.8 24.8,30.6" fill="#008289" />
+        <polygon points="50,0 50,22.8 61.2,44.6 70.5,56.6 60.8,27.8 75,30.6" fill="#516075" />
+        <polygon points="0,37.2 20,45.9 34.2,73.1 32.2,99.4" fill="#008289" />
+        <polygon points="100,37.1 79.9,45.9 65.8,73.1 67.6,100" fill="#516075" />
+        <polygon points="61.2,44.6 65.8,73.1 67.6,100 51.9,73.1" fill="#3c7e8d" />
+        <polygon points="50,31.4 58.8,53.6 32.2,99.4" fill="#102447" />
+        <circle cx="50" cy="53.6" r="3.8" fill="#ffffff" />
+      </g>
     </svg>
   );
 }
