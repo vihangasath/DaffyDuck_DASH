@@ -4,6 +4,7 @@ import {
   sequence,
   vehicleViolations,
   FRESH_BUDGET_MIN,
+  legMinutes,
   tripMinutes,
   type EvalContext,
   type RuleCode,
@@ -131,7 +132,7 @@ export function autoPlan({ date, depot, orders, ctx, festivalRamp, version = 1 }
       }
       for (const [key, bucket] of buckets) {
         const [brand, district] = key.split("|") as [Trip["brand"], string];
-        const travel = net.travel.get(district)!;
+        const outbound = legMinutes(district, ctx).outbound;
         const seen = new Set<string>();
         const slots: { trip: Trip; isNew: boolean }[] = [
           ...trips.filter((t) => t.brand === brand && t.district === district && allowed(net.vehicles.get(t.vehicleId)!)).map((trip) => ({ trip, isNew: false })),
@@ -162,7 +163,7 @@ export function autoPlan({ date, depot, orders, ctx, festivalRamp, version = 1 }
             }
           }
           if (!added.length) continue;
-          const minutes = tripMinutes(cur, ctx) - (isNew ? 0 : tripMinutes(trip, ctx)) + (isNew ? travel.depotToDistrictMin : 0);
+          const minutes = tripMinutes(cur, ctx) - (isNew ? 0 : tripMinutes(trip, ctx)) + (isNew ? outbound : 0);
           const density = (added.reduce((s, o) => s + score.get(o.id)!, 0) / Math.max(minutes, 1)) * penalty(v, added);
           if (!best || density > best.density) best = { density, trips: curTrips, added: added.map((o) => o.id) };
         }

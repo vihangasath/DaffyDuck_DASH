@@ -348,6 +348,7 @@ function TripBox({ te, ctx, selected, onSelect, hover }: { te: TripEval; ctx: Ev
           <span className={cx("w-9 text-right tabular-nums", (p as number) > 99 ? "text-danger" : "text-ink-2")}>{(p as number).toFixed(0)}%</span>
         </div>
       ))}
+      {te.disruptionIndex < 95 && <p className="text-[11px] font-medium text-ink-2">Road disruption {te.disruptionIndex}/100 · travel ×{(100 / te.disruptionIndex).toFixed(2)}</p>}
       {te.warnings.length > 0 && <p className="text-[11px] font-medium text-warning">{te.warnings.length} stop{te.warnings.length > 1 ? "s" : ""} after window close</p>}
     </div>
   );

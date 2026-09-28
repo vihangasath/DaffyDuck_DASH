@@ -194,8 +194,39 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(input, props.className)} />;
 }
 
-export function NumberInput({ value, onChange, step = "any", ...rest }: { value: number | null | undefined; onChange: (v: number | null) => void; step?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
-  return <input {...rest} type="number" inputMode="decimal" step={step} value={value ?? ""} onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))} className={cx(input, "tabular-nums", rest.className)} />;
+/**
+ * While focused, the field shows what the user typed; the parent only ever receives a finite number or null.
+ * Half-typed entries ("1.", "-", "1e") read back as "" from a number input, and must not reset the field.
+ */
+export function NumberInput({ value, onChange, onFocus, onBlur, step = "any", ...rest }: { value: number | null | undefined; onChange: (v: number | null) => void; step?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
+  const text = value != null && Number.isFinite(value) ? String(value) : "";
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      {...rest}
+      type="number"
+      inputMode="decimal"
+      step={step}
+      value={draft ?? text}
+      onFocus={(e) => {
+        setDraft(text);
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setDraft(null);
+        onBlur?.(e);
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setDraft(raw);
+        if (e.target.validity.badInput) return; // mid-entry: wait for a complete number
+        if (raw.trim() === "") return onChange(null);
+        const n = Number(raw);
+        if (Number.isFinite(n)) onChange(n);
+      }}
+      className={cx(input, "tabular-nums", rest.className)}
+    />
+  );
 }
 
 export function Select<T extends string>({ value, onChange, options, placeholder, ...rest }: { value: T | "" | null | undefined; onChange: (v: T) => void; options: { value: T; label: string }[]; placeholder?: string } & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "value" | "onChange">) {

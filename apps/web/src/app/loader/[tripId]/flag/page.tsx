@@ -32,7 +32,7 @@ export default function FlagShortfall() {
   const [key, setKey] = useState<string | null>(null);
   const [kind, setKind] = useState<Shortfall["kind"]>("missing");
   const [loaded, setLoaded] = useState<number | null>(null);
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photo, setPhoto] = useState(false);
   const [decision, setDecision] = useState<Shortfall["decision"]>("release");
 
   if (!db) return <Spinner />;
@@ -44,7 +44,7 @@ export default function FlagShortfall() {
     const ok = await run(() =>
       api.flagShortfall({
         tripId, vehicleId: t.te.vehicle.id, orderId: sel.order.id, outletId: sel.order.outletId, skuId: sel.line.skuId, name: sel.line.name,
-        planned: sel.line.qty, loaded: qty, kind, decision, photo: !!photo, by: session?.name ?? "Loader",
+        planned: sel.line.qty, loaded: qty, kind, decision, photo, by: session?.name ?? "Loader",
       }),
       decision === "hold" ? "Dispatcher alerted — vehicle held" : "Shortfall recorded — store informed",
     );
@@ -90,7 +90,7 @@ export default function FlagShortfall() {
         </Card>
         <label className={cx("flex w-fit cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 text-sm font-semibold transition-colors", photo ? "border-success/50 bg-success-soft text-success" : "border-line-strong text-primary hover:border-primary hover:bg-primary-soft")}>
           {photo ? <Check className="size-5" /> : <Camera className="size-5" />} {photo ? "Photo attached" : "Add photo (optional)"}
-          <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => e.target.files?.[0] && setPhoto(URL.createObjectURL(e.target.files[0]))} />
+          <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => setPhoto((p) => p || !!e.target.files?.length)} />
         </label>
         <div role="radiogroup" className="grid gap-2">
           <span className="text-sm font-semibold text-ink-2">Then</span>

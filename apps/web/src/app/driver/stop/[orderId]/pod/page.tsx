@@ -1,6 +1,6 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, Check, CheckCircle2, Circle, Package, Plus, Snowflake, MapPinOff } from "lucide-react";
 import { useDriver } from "@/components/driver/driver-context";
 import { DriverSync, OfflineBanner } from "@/components/driver/bits";
@@ -23,6 +23,12 @@ export default function Pod() {
     Object.fromEntries((order ? linesFor(order) : []).map((l) => [l.skuId, Math.min(l.qty, d.loaded[`${order!.id}|${l.skuId}`] || l.qty)])),
   );
   const [photos, setPhotos] = useState<string[]>([]);
+  // Camera photos are full-size blobs held in memory; release them when the driver leaves this screen.
+  const photoUrls = useRef<string[]>([]);
+  useEffect(() => {
+    const urls = photoUrls.current;
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, []);
   const [signed, setSigned] = useState(false);
   const [receiver, setReceiver] = useState("");
   const [busy, setBusy] = useState(false);
@@ -89,7 +95,11 @@ export default function Pod() {
                 className="sr-only"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) setPhotos((p) => [...p, URL.createObjectURL(f)]);
+                  if (!f) return;
+                  const url = URL.createObjectURL(f);
+                  photoUrls.current.push(url);
+                  setPhotos((p) => [...p, url]);
+                  e.target.value = "";
                 }}
               />
             </label>
