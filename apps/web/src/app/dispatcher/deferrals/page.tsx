@@ -58,6 +58,7 @@ function Deferrals() {
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     a.download = `deferral-log-${depot}.csv`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 0);
   };
 
   return (

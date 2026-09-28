@@ -25,13 +25,15 @@ export interface SeedData {
   weeklyVolume: { depot: string; brand: Brand; week: string; totalM3: number; chilledM3: number; kind: "actual" | "forecast" }[];
 }
 
-export function buildNetwork(seed: Pick<SeedData, "outlets" | "vehicles" | "districtTravel" | "serviceAllowance">): Network {
+export function buildNetwork(seed: Pick<SeedData, "outlets" | "vehicles" | "districtTravel" | "serviceAllowance" | "roadConditions">): Network {
   const allowance = new Map(seed.serviceAllowance.map((a) => [`${a.brand}|${a.dockType}`, a.minutes]));
+  const roads = new Map(seed.roadConditions.map((r) => [r.district, r.disruptionIndex]));
   return {
     outlets: new Map(seed.outlets.map((o) => [o.id, o])),
     vehicles: new Map(seed.vehicles.map((v) => [v.id, v])),
     travel: new Map(seed.districtTravel.map((d) => [d.district, d])),
     allowance: (brand: Brand, dock: DockType) => allowance.get(`${brand}|${dock}`) ?? 20,
+    disruption: (district: string) => roads.get(district) ?? 100,
   };
 }
 

@@ -102,7 +102,8 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 - **Hard rules** (never broken): one brand and one district per trip; refrigerated for chilled; vans for van-only; home depot only; weight and volume; at most 2 trips; Fresh ≤ 270 min and Style/Tech ≤ 480 min (Task 2B trip-time formula); the outlet's delivery window (mall windows included); weekly fuel quota.
 - **Order of allocation:** scarce vehicles first (chilled van-only → reefer vans, chilled → reefers, ambient van-only → vans, then the rest). Within each group, **outlets skipped yesterday go first**. Then the engine repeatedly fills the trip that serves the most priority per vehicle-minute.
 - **Priority score (shown in the UI):** skipped yesterday +30 · chilled +20 · days since served · Fresh daily +10 · festival ramp · tight or mall window.
-- **Deferral reasons** come from the rule that actually blocked every candidate vehicle. On the demo day the auto-plan defers 12 chilled orders (refrigerated capacity and Fresh windows run out), and one Style order (40.7 m³) is larger than any available vehicle, so it can never be served whole.
+- **Road conditions:** each district's disruption index for the plan date (`road_conditions.csv`, 100 = normal) stretches its travel legs by 100 ÷ index. Dock handling time is not affected. Trips with an index below 95 show the stretch on the plan board. In the route-leg history, actual vs planned leg times follow this ratio closely.
+- **Deferral reasons** come from the rule that actually blocked every candidate vehicle. On the demo day the auto-plan defers 13 chilled orders (refrigerated capacity and Fresh windows run out), and one Style order (40.7 m³) is larger than any available vehicle, so it can never be served whole.
 
 ## Departures from the Designathon design
 

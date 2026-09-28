@@ -48,6 +48,8 @@ export interface TripEval {
   minutes: number;
   km: number;
   fuelL: number;
+  /** The district's road disruption index for the plan date (100 = normal); legs take 100/index as long. */
+  disruptionIndex: number;
   depart: number;
   finish: number;
   returnAt: number;
@@ -86,19 +88,32 @@ export function sequence(orderIds: string[], ctx: EvalContext): string[] {
   return [...orderIds].sort((a, b) => key(a) - key(b));
 }
 
+/**
+ * Leg minutes to and within a district on the plan date. The free-flow times are stretched by the day's
+ * road disruption index (100 = normal, 80 = legs take 100/80 = 1.25× as long); in the route-leg history,
+ * actual vs planned travel time tracks this ratio closely. Dock handling time is not affected.
+ */
+export function legMinutes(district: string, ctx: EvalContext) {
+  const travel = ctx.net.travel.get(district)!;
+  const index = Math.min(100, Math.max(10, ctx.net.disruption(district)));
+  const factor = 100 / index;
+  return { index, outbound: Math.round(travel.depotToDistrictMin * factor), interStop: Math.round(travel.interStopMin * factor) };
+}
+
 export function tripMinutes(trip: Trip, ctx: EvalContext): number {
-  const travel = ctx.net.travel.get(trip.district)!;
+  const legs = legMinutes(trip.district, ctx);
   const handling = trip.orderIds.reduce((s, id) => {
     const o = ctx.net.outlets.get(ctx.orders.get(id)!.outletId)!;
     return s + ctx.net.allowance(trip.brand, o.dockType);
   }, 0);
-  return travel.depotToDistrictMin + travel.interStopMin * Math.max(0, trip.orderIds.length - 1) + handling;
+  return legs.outbound + legs.interStop * Math.max(0, trip.orderIds.length - 1) + handling;
 }
 
 /** Checks everything that can be judged from a single trip. */
 export function evaluateTrip(trip: Trip, ctx: EvalContext, depart: number): TripEval {
   const vehicle = ctx.net.vehicles.get(trip.vehicleId)!;
   const travel = ctx.net.travel.get(trip.district)!;
+  const legs = legMinutes(trip.district, ctx);
   const orders = trip.orderIds.map((id) => ctx.orders.get(id)!);
   const v: Violation[] = [];
   const warnings: string[] = [];
@@ -125,11 +140,11 @@ export function evaluateTrip(trip: Trip, ctx: EvalContext, depart: number): Trip
 
   // ETAs along the sequence
   const stops: StopEta[] = [];
-  let t = depart + travel.depotToDistrictMin;
+  let t = depart + legs.outbound;
   trip.orderIds.forEach((id, i) => {
     const o = ctx.orders.get(id)!;
     const outlet = ctx.net.outlets.get(o.outletId)!;
-    if (i > 0) t += travel.interStopMin;
+    if (i > 0) t += legs.interStop;
     const [open, close] = outlet.mallWindow ? parseWindow(outlet.mallWindow) : [toMin(outlet.windowOpen), toMin(outlet.windowClose)];
     const arrive = t;
     const start = Math.max(arrive, open);
@@ -152,9 +167,10 @@ export function evaluateTrip(trip: Trip, ctx: EvalContext, depart: number): Trip
     minutes: tripMinutes(trip, ctx),
     km,
     fuelL: km / vehicle.kmPerL,
+    disruptionIndex: legs.index,
     depart,
     finish: t,
-    returnAt: t + travel.depotToDistrictMin,
+    returnAt: t + legs.outbound,
     stops,
     violations: v,
     warnings,
@@ -173,7 +189,7 @@ export function evaluateVehicle(vehicleId: string, trips: Trip[], ctx: EvalConte
       // Leave no earlier than needed to reach the first stop as its window opens (waiting at the kerb helps no one).
       const first = trip.orderIds[0] && ctx.net.outlets.get(ctx.orders.get(trip.orderIds[0])!.outletId)!;
       const open = first ? (first.mallWindow ? parseWindow(first.mallWindow)[0] : toMin(first.windowOpen)) : 0;
-      const ideal = open - ctx.net.travel.get(trip.district)!.depotToDistrictMin;
+      const ideal = open - legMinutes(trip.district, ctx).outbound;
       const e = evaluateTrip({ ...trip, tripNo: (i + 1) as 1 | 2 }, ctx, Math.max(earliest, freeAt, ideal));
       out.push(e);
       freeAt = e.returnAt;

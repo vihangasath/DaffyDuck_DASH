@@ -105,6 +105,8 @@ export interface Network {
   vehicles: Map<string, Vehicle>;
   travel: Map<string, DistrictTravel>;
   allowance: (brand: Brand, dock: DockType) => number;
+  /** Road disruption index for the plan date, 100 = normal (road_conditions). */
+  disruption: (district: string) => number;
 }
 
 export interface Trip {
