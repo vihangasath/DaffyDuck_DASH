@@ -94,8 +94,19 @@ export default function SignIn() {
     router.push(HOME[r.user.role]);
   };
 
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content");
+    if (meta && window.innerWidth < 1024) {
+      meta.setAttribute("content", "#090e17");
+    }
+    return () => {
+      if (meta && prev) meta.setAttribute("content", prev);
+    };
+  }, []);
+
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[1.15fr_1fr]">
+    <main className="phone-dark-signin grid min-h-dvh bg-canvas text-ink transition-colors duration-200 lg:grid-cols-[1.15fr_1fr]">
       <section className="on-ink relative hidden flex-col justify-center gap-10 overflow-hidden bg-navy p-12 text-white lg:flex xl:p-14">
         {/* A faint topographic wash so the navy field has depth without decoration competing with the loop. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_85%_0%,rgb(0_130_137/0.22),transparent_60%),radial-gradient(60%_50%_at_0%_100%,rgb(16_36_71/0.95),transparent_70%)]" />
@@ -114,11 +125,22 @@ export default function SignIn() {
         </div>
       </section>
 
-      <section className="flex flex-col justify-center px-5 py-10 sm:px-12 xl:px-20">
-        <div className="mx-auto grid w-full max-w-md gap-8">
+      <section className="relative flex flex-col justify-center px-5 py-10 sm:px-12 xl:px-20">
+        {/* Subtle dark ambient glow on mobile */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_50%_0%,rgb(0_130_137/0.18),transparent_65%),radial-gradient(60%_50%_at_0%_100%,rgb(16_36_71/0.85),transparent_70%)] lg:hidden"
+        />
+        <div className="relative mx-auto grid w-full max-w-md gap-8">
           {/* Phone/tablet: the brand panel is hidden, so carry the mark here without redundant slogan. */}
-          <div className="mb-4 flex justify-center lg:hidden">
-            <Logo width={220} height={120} src="/DASH.png" />
+          <div className="flex justify-center lg:hidden">
+            <Logo
+              width={340}
+              height={185}
+              dark
+              className="justify-center"
+              imageClassName="w-[280px] sm:w-[340px] max-w-full h-auto transition-transform duration-300 hover:scale-[1.02]"
+            />
           </div>
 
           <div className="grid gap-2">

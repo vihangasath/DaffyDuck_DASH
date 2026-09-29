@@ -92,9 +92,11 @@
   }
 }
 
-/* Driver Dark Theme */
+/* Driver and Dark Theme */
 .driver-dark,
-[data-driver-theme="dark"] {
+[data-driver-theme="dark"],
+.dark,
+[data-theme="dark"] {
   --color-canvas: #090e17;
   --color-surface: #111a28;
   --color-subtle: #182335;
@@ -176,4 +178,53 @@
   background: #090e17;
 }
 
+/* Phone sign-in dark theme */
+@media (max-width: 1023px) {
+  .phone-dark-signin {
+    --color-canvas: #090e17;
+    --color-surface: #111a28;
+    --color-subtle: #182335;
+    --color-navy: #0d1726;
+    --color-navy-2: #16243b;
+    --color-navy-3: #1f3252;
 
+    --color-ink: #f0f4f8;
+    --color-ink-2: #94a5bb;
+    --color-muted: #64748b;
+    --color-on-ink-muted: #94a5bb;
+
+    --color-line: rgba(255, 255, 255, 0.09);
+    --color-line-strong: rgba(255, 255, 255, 0.18);
+
+    --color-primary: #00c2cb;
+    --color-primary-strong: #22d3ee;
+    --color-primary-soft: rgba(0, 194, 203, 0.18);
+    --color-primary-bright: #38bdf8;
+    --color-mint: #22d3ee;
+    --color-amber: #f59e0b;
+
+    --color-success: #22c55e;
+    --color-success-soft: rgba(34, 197, 94, 0.18);
+    --color-warning: #f59e0b;
+    --color-warning-soft: rgba(245, 158, 11, 0.18);
+    --color-danger: #ef4444;
+    --color-danger-soft: rgba(239, 68, 68, 0.18);
+    --color-info: #0ea5e9;
+    --color-info-soft: rgba(14, 165, 233, 0.18);
+    --color-chilled: #06b6d4;
+    --color-chilled-soft: rgba(6, 182, 212, 0.18);
+    --color-neutral: #94a3b8;
+    --color-neutral-soft: rgba(148, 163, 184, 0.14);
+
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.45), 0 2px 8px -2px rgba(0, 0, 0, 0.55);
+    --shadow-raised: 0 2px 4px rgba(0, 0, 0, 0.55), 0 10px 24px -8px rgba(0, 0, 0, 0.75);
+    --shadow-float: 0 8px 16px -4px rgba(0, 0, 0, 0.75), 0 24px 48px -12px rgba(0, 0, 0, 0.9);
+    --shadow-button: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.6);
+
+    color-scheme: dark;
+  }
+
+  body:has(.phone-dark-signin) {
+    background-color: #090e17;
+  }
+}
