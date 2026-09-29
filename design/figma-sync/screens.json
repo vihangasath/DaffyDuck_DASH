@@ -1,0 +1,168 @@
+{
+  "d1-today": {
+    "target": "24:6",
+    "page": "6:2",
+    "url": "/dispatcher",
+    "size": [
+      1440,
+      900
+    ]
+  },
+  "d2-plan": {
+    "target": "24:1569",
+    "page": "6:2",
+    "url": "/dispatcher/plan",
+    "size": [
+      1440,
+      900
+    ]
+  },
+  "d3-deferrals": {
+    "target": "24:777",
+    "page": "6:2",
+    "url": "/dispatcher/deferrals",
+    "size": [
+      1440,
+      900
+    ]
+  },
+  "d4-live": {
+    "target": "24:1231",
+    "page": "6:2",
+    "url": "/dispatcher/live",
+    "size": [
+      1440,
+      900
+    ]
+  },
+  "d5-capacity": {
+    "target": "24:2291",
+    "page": "6:2",
+    "url": "/dispatcher/capacity",
+    "size": [
+      1440,
+      900
+    ]
+  },
+  "d6-fleet": {
+    "target": "24:361",
+    "page": "6:2",
+    "url": "/dispatcher/fleet",
+    "size": [
+      1440,
+      900
+    ]
+  },
+  "d7-vehicles": {
+    "target": "40:2",
+    "page": "6:2",
+    "url": "/dispatcher/records/vehicles",
+    "size": [
+      1440,
+      900
+    ],
+    "note": "VEH003 drawer open"
+  },
+  "l1-dock": {
+    "target": "24:2617",
+    "page": "6:2"
+  },
+  "l2-loadlist": {
+    "target": "24:2798",
+    "page": "6:2"
+  },
+  "l3-flag": {
+    "target": "24:2959",
+    "page": "6:2"
+  },
+  "l2m-loadlist": {
+    "target": "24:3042",
+    "page": "6:2"
+  },
+  "r1-run": {
+    "target": "24:3135",
+    "page": "6:2"
+  },
+  "r2-stop": {
+    "target": "24:3249",
+    "page": "6:2"
+  },
+  "r3-pod": {
+    "target": "24:3354",
+    "page": "6:2"
+  },
+  "r4-problem": {
+    "target": "24:3463",
+    "page": "6:2"
+  },
+  "r5-outbox": {
+    "target": "24:3524",
+    "page": "6:2"
+  },
+  "s1-order": {
+    "target": "24:3669",
+    "page": "6:2"
+  },
+  "s2-deliveries": {
+    "target": "24:3899",
+    "page": "6:2"
+  },
+  "s3-deferral-notice": {
+    "target": "24:4065",
+    "page": "6:2"
+  },
+  "s4-receipt": {
+    "target": "24:4127",
+    "page": "6:2"
+  },
+  "p0-signin": {
+    "target": "31:110",
+    "page": "6:2",
+    "theme": "people"
+  },
+  "p1-frontdesk": {
+    "target": "31:150",
+    "page": "6:2",
+    "theme": "people"
+  },
+  "p2-staff": {
+    "target": "32:2",
+    "page": "6:2",
+    "theme": "people"
+  },
+  "p3-renewals": {
+    "target": "32:301",
+    "page": "6:2",
+    "theme": "people"
+  },
+  "p4-access": {
+    "target": "32:493",
+    "page": "6:2",
+    "theme": "people"
+  },
+  "p5-folder-phone": {
+    "target": "32:686",
+    "page": "6:2",
+    "theme": "people"
+  },
+  "dg1-offline-run": {
+    "target": "2:96",
+    "page": "1:2"
+  },
+  "dg2-pod-offline": {
+    "target": "2:215",
+    "page": "1:2"
+  },
+  "dg3-back-online": {
+    "target": "2:294",
+    "page": "1:2"
+  },
+  "dg4-live-offline": {
+    "target": "2:391",
+    "page": "1:2"
+  },
+  "dg6-shortfall": {
+    "target": "2:690",
+    "page": "1:2"
+  }
+}

@@ -13,7 +13,7 @@ export default function DemoDayPage() {
   const reset = useRecordsMutation(() => records("/reset", { body: {} }), "Operations reset to the start of the demo day.");
   return (
     <>
-      <PageHeader title="Demo day" sub={`Waypoint runs on ${fmtDate(DEMO_DATE)} for the Tech-Triathlon walkthrough.`} />
+      <PageHeader title="Demo day" sub={`DASH runs on ${fmtDate(DEMO_DATE)} for the Tech-Triathlon walkthrough.`} />
       <div className="grid max-w-3xl gap-5 p-5 lg:p-7">
         <Card className="grid gap-4 border-danger/30 p-5">
           <div className="flex items-center gap-3">

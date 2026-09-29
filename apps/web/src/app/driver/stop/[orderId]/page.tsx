@@ -15,7 +15,7 @@ import { demoStamp, mapsUrl } from "@waypoint/core/views";
 const ACCESS: Record<string, string> = {
   rear_dock: "Rear loading dock — reverse in; ring the receiving bell.",
   street: "Kerbside unloading — use hazard lights and a trolley; keep the footpath clear.",
-  mall_bay: "Shared mall loading bay — show the Waypoint pass at the security gate.",
+  mall_bay: "Shared mall loading bay — show the DASH pass at the security gate.",
 };
 
 export default function StopDetail() {

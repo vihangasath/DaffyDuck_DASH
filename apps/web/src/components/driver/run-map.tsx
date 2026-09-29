@@ -224,7 +224,7 @@ export function RunMap({ tripId, depot, stops, nextId, online }: { tripId: strin
 
       {selected ? (
         <div className="absolute inset-x-3 bottom-7 z-[500] flex animate-rise items-center gap-3 rounded-xl bg-surface p-3 shadow-float ring-1 ring-line">
-          <span className={cx("flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold", selected.orderId === nextId ? "bg-primary text-white" : "border-2 border-navy text-navy")}>{selIndex + 1}</span>
+          <span className={cx("flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold", selected.orderId === nextId ? "bg-primary text-white" : "border-2 border-line-strong bg-subtle text-ink")}>{selIndex + 1}</span>
           <div className="min-w-0 flex-1">
             <p className="truncate font-bold">{outletName(selected.outletId)}</p>
             <p className="text-xs text-ink-2">

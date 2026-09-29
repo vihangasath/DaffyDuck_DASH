@@ -1,8 +1,10 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { RoleGuard } from "@/components/role-guard";
-import { Logo, SyncPill } from "@/components/ui";
+import { SyncPill } from "@/components/ui";
+import { DashLogo as Logo } from "@/components/logo";
 import { useOnline } from "@/lib/hooks";
 import { signOut } from "@/lib/session";
 
@@ -13,8 +15,10 @@ export default function LoaderLayout({ children }: LayoutProps<"/loader">) {
     <RoleGuard role="loader">
       {(s) => (
         <div className="min-h-dvh">
-          <div className="on-ink sticky top-0 z-20 flex items-center gap-3 bg-navy px-4 py-2.5 text-white sm:px-6">
-            <Logo size={30} label={`${s.depot} dock`} sub={s.name} dark />
+          <div className="on-ink sticky top-0 z-20 flex items-center gap-3 bg-navy px-4 py-2 text-white sm:px-6">
+            <Link href="/loader" className="flex items-center transition-opacity hover:opacity-90">
+              <Logo width={92} imageClassName="w-[72px] sm:w-[92px] h-auto" label={`${s.depot} dock`} sub={s.name} dark />
+            </Link>
             <span className="ml-auto">
               <SyncPill state={online ? "ok" : "off"} />
             </span>
