@@ -4,13 +4,17 @@ import Link from "next/link";
 import { Button, SyncPill } from "@/components/ui";
 import { useNow } from "@/lib/hooks";
 import { useDriver } from "./driver-context";
+import { DriverThemeToggle } from "./theme-toggle";
 
 export function DriverSync() {
   const d = useDriver();
   return (
-    <Link href="/driver/outbox" aria-label="Sync status">
-      <SyncPill state={!d.online ? "off" : d.syncing || d.queued ? "sync" : "ok"} queued={d.queued} />
-    </Link>
+    <div className="flex items-center gap-2">
+      <DriverThemeToggle />
+      <Link href="/driver/outbox" aria-label="Sync status">
+        <SyncPill state={!d.online ? "off" : d.syncing || d.queued ? "sync" : "ok"} queued={d.queued} />
+      </Link>
+    </div>
   );
 }
 

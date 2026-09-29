@@ -6,9 +6,9 @@ import "./globals.css";
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Waypoint Delivery Planning", template: "%s · Waypoint" },
-  description: "Ordering, planning, loading, delivery and receipt for Waypoint Fresh, Style and Tech.",
-  applicationName: "Waypoint",
+  title: { default: "DASH Delivery Planning", template: "%s · DASH" },
+  description: "Ordering, planning, loading, delivery and receipt for DASH Fresh, Style and Tech.",
+  applicationName: "DASH",
 };
 
 export const viewport: Viewport = { themeColor: "#102447", width: "device-width", initialScale: 1 };

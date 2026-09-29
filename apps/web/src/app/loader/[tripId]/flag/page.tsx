@@ -63,9 +63,9 @@ export default function FlagShortfall() {
         </div>
       </header>
       <div className="grid gap-4 p-4">
-        <label className="grid gap-1.5 text-sm font-semibold text-ink-2">
+        <label className="grid min-w-0 gap-1.5 text-sm font-semibold text-ink-2">
           Item
-          <select value={sel.key} onChange={(e) => { setKey(e.target.value); setLoaded(null); }} className="rounded-xl border border-line-strong bg-surface px-3 py-3 text-base font-normal text-ink shadow-card focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15">
+          <select value={sel.key} onChange={(e) => { setKey(e.target.value); setLoaded(null); }} className="w-full min-w-0 rounded-xl border border-line-strong bg-surface px-3 py-3 text-base font-normal text-ink shadow-card focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15">
             {lines.map((l) => (
               <option key={l.key} value={l.key}>
                 Stop {l.stop.seq + 1} {outletName(l.order.outletId)} · {l.line.name} ({l.load?.loaded ?? 0}/{l.line.qty})

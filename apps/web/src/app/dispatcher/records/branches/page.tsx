@@ -33,7 +33,7 @@ export default function BranchesPage() {
 
   return (
     <>
-      <PageHeader title="Branches" sub="Every Waypoint Fresh, Style and Tech outlet: where it is, when it accepts deliveries and how trucks get in." actions={<Button icon={Plus} onClick={() => setEditing("new")}>Add branch</Button>} />
+      <PageHeader title="Branches" sub="Every DASH Fresh, Style and Tech outlet: where it is, when it accepts deliveries and how trucks get in." actions={<Button icon={Plus} onClick={() => setEditing("new")}>Add branch</Button>} />
       <div className="grid gap-4 p-5 lg:p-7">
         <Toolbar q={q} onQ={setQ} placeholder="Search name, id, district or manager" count={rows ? `${rows.length} shown` : undefined}>
           <Chips
@@ -79,7 +79,7 @@ function BranchDrawer({ outlet, onClose }: { outlet: OutletRow | null; onClose: 
       <form id="drawer-form" className="grid gap-5" onSubmit={(e) => (e.preventDefault(), save.mutate(o, { onSuccess: onClose }))}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Branch name" className="sm:col-span-2"><TextInput required value={o.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Nugegoda" /></Field>
-          <Field label="Brand"><Select value={o.brand} onChange={(v) => set("brand", v)} options={[{ value: "Fresh", label: "Waypoint Fresh" }, { value: "Style", label: "Waypoint Style" }, { value: "Tech", label: "Waypoint Tech" }]} /></Field>
+          <Field label="Brand"><Select value={o.brand} onChange={(v) => set("brand", v)} options={[{ value: "Fresh", label: "DASH Fresh" }, { value: "Style", label: "DASH Style" }, { value: "Tech", label: "DASH Tech" }]} /></Field>
           <Field label="Phone"><TextInput type="tel" value={o.phone ?? ""} onChange={(e) => set("phone", e.target.value)} /></Field>
           <Field label="Served from"><Select value={o.depotId} onChange={(v) => setO((x) => ({ ...x, depotId: v, district: "" }))} options={(look?.depots ?? []).map((x) => ({ value: x.id, label: x.name }))} /></Field>
           <Field label="District" hint="Only districts this depot delivers to."><Select required value={o.district} onChange={(v) => set("district", v)} placeholder="Choose a district" options={districts.map((x) => ({ value: x, label: x }))} /></Field>
