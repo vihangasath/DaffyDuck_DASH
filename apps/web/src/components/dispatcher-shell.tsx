@@ -10,7 +10,8 @@ import { DEMO_DATE } from "@waypoint/core/reference";
 import { fmtDate } from "@waypoint/core/domain/time";
 import { useDb } from "@/lib/hooks";
 import { signOut as endSession, type Session } from "@/lib/session";
-import { Logo, cx } from "./ui";
+import { cx } from "./ui";
+import { DashLogo as Logo } from "./logo";
 
 export const useDepot = create<{ depot: Depot; set: (d: Depot) => void }>()(
   persist((set) => ({ depot: "Peliyagoda", set: (depot) => set({ depot }) }), { name: "waypoint-dispatch-depot" }),
@@ -73,8 +74,17 @@ export function DispatcherShell({ session, children }: { session: Session; child
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
       <aside className="on-ink flex shrink-0 flex-col gap-1 bg-navy px-3 py-3 text-white lg:sticky lg:top-0 lg:h-dvh lg:w-60 lg:overflow-y-auto lg:py-5">
-        <div className="flex items-center gap-3 px-2 pb-2 lg:pb-6">
-          <Logo size={34} label="Waypoint" sub="Dispatch console" dark />
+        <div className="flex items-center px-2 pb-2 lg:flex-col lg:items-center lg:justify-center lg:px-0 lg:pb-6 lg:pt-1 lg:text-center">
+          <Link href="/dispatcher" className="flex items-center transition-opacity hover:opacity-95 lg:flex-col lg:items-center lg:justify-center">
+            <Logo
+              width={145}
+              sub="Dispatch console"
+              dark
+              className="flex-col items-center justify-center text-center gap-1.5"
+              imageClassName="w-[85px] sm:w-[95px] h-auto lg:w-[145px]"
+              subClassName="text-[11px] font-medium tracking-wide text-on-ink-muted lg:text-xs"
+            />
+          </Link>
           {/* Compact controls for tablet/phone: the desktop footer below is hidden there. */}
           <div className="ml-auto flex items-center gap-2 lg:hidden">
             {depotSwitch}

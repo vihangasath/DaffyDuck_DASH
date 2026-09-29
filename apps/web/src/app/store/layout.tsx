@@ -3,7 +3,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, LogOut, Store } from "lucide-react";
 import { RoleGuard } from "@/components/role-guard";
-import { Logo, cx } from "@/components/ui";
+import { cx } from "@/components/ui";
+import { DashLogo as Logo } from "@/components/logo";
 import { DEMO_DATE, net, outletName } from "@waypoint/core/reference";
 import { useDb } from "@/lib/hooks";
 import { signOut, writeSession, type Session } from "@/lib/session";
@@ -29,7 +30,15 @@ function Shell({ s, children }: { s: Session; children: React.ReactNode }) {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2.5 px-4 py-3 sm:px-7">
-          <Logo size={32} label="Waypoint Stores" />
+          <Link href="/store" className="flex items-center transition-opacity hover:opacity-90">
+            <Logo
+              width={96}
+              label="DASH Stores"
+              className="gap-3"
+              imageClassName="w-[72px] sm:w-[96px] h-auto"
+              labelClassName="text-base sm:text-lg font-bold tracking-tight text-ink"
+            />
+          </Link>
           {outlets.length > 1 ? (
             <label className="relative flex items-center">
               <span className="sr-only">Outlet</span>

@@ -17,7 +17,7 @@ export async function records<T>(path: string, init: { method?: string; body?: u
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });
   } catch {
-    throw new RecordsError("Can’t reach the Waypoint server. Check your connection and try again.");
+    throw new RecordsError("Can’t reach the DASH server. Check your connection and try again.");
   }
   const json = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (res.status === 401) writeSession(null);

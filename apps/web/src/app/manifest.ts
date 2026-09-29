@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Waypoint Delivery Planning",
-    short_name: "Waypoint",
-    description: "Ordering, planning, loading and delivery for Waypoint Group.",
+    name: "DASH Delivery Planning",
+    short_name: "DASH",
+    description: "Ordering, planning, loading and delivery for DASH.",
     start_url: "/",
     display: "standalone",
     background_color: "#f5f7f9",

@@ -118,7 +118,7 @@ function VehicleDrawer({ vehicle, onClose }: { vehicle: VehicleRow | null; onClo
           <Field label="km per litre"><NumberInput required min={0.1} value={v.kmPerL} onChange={(x) => set("kmPerL", x ?? 0)} /></Field>
           <Field label="Weekly fuel quota (L)" hint="The planner refuses trips that would exceed it."><NumberInput required min={1} value={v.weeklyFuelQuotaL} onChange={(x) => set("weeklyFuelQuotaL", x ?? 0)} /></Field>
           <Field label="Status"><Select disabled={locked && v.status === "available"} value={v.status} onChange={(x) => set("status", x)} options={[{ value: "available", label: "Available" }, { value: "in_workshop", label: "In the workshop" }]} /></Field>
-          <Field label="Driver" className="sm:col-span-2" hint="The driver app opens on this vehicle for them. New drivers and licences are added by HR in Waypoint People.">
+          <Field label="Driver" className="sm:col-span-2" hint="The driver app opens on this vehicle for them. New drivers and licences are added by HR in DASH People.">
             <Select
               value={v.driverId ?? ""}
               onChange={(x) => set("driverId", x || null)}

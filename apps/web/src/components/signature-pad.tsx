@@ -7,6 +7,11 @@ export function SignaturePad({ onChange }: { onChange: (signed: boolean) => void
   const drawing = useRef(false);
   const [signed, setSigned] = useState(false);
 
+  const getStroke = () => {
+    if (!ref.current) return "#0f1b2a";
+    return getComputedStyle(ref.current).getPropertyValue("--color-ink").trim() || "#0f1b2a";
+  };
+
   useEffect(() => {
     const c = ref.current!;
     const ratio = window.devicePixelRatio || 1;
@@ -16,7 +21,7 @@ export function SignaturePad({ onChange }: { onChange: (signed: boolean) => void
     ctx.scale(ratio, ratio);
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
-    ctx.strokeStyle = "#0f1b2a";
+    ctx.strokeStyle = getStroke();
   }, []);
 
   const pos = (e: React.PointerEvent) => {
@@ -33,6 +38,7 @@ export function SignaturePad({ onChange }: { onChange: (signed: boolean) => void
         onPointerDown={(e) => {
           drawing.current = true;
           const ctx = ref.current!.getContext("2d")!;
+          ctx.strokeStyle = getStroke();
           ctx.beginPath();
           ctx.moveTo(...pos(e));
           (e.target as HTMLElement).setPointerCapture(e.pointerId);

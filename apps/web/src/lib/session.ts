@@ -63,7 +63,7 @@ export async function signIn(username: string, password: string): Promise<SignIn
     write({ token: json.token, user: json.user });
     return { ok: true, user: json.user };
   } catch {
-    return { ok: false, error: "Can’t reach the Waypoint server. Check your connection and try again." };
+    return { ok: false, error: "Can’t reach the DASH server. Check your connection and try again." };
   }
 }
 
