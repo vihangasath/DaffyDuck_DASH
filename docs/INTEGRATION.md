@@ -63,9 +63,9 @@ Used by the dispatch console's **Network records** screens in the operations app
 ## Offline sync rules (driver)
 
 1. Every action is written to IndexedDB (`outbox`) **before** any network call. The last run is cached in `snapshot`.
-2. `POST /api/ops/syncDriverEvents` sends queued events in order. The server ignores event ids it has already processed (`driver_events` table).
-3. Facts from the field (arrived, delivered, POD, problem) keep their **device time**. The server records its own `syncedAt`.
-4. If the plan version changed while offline, the device diffs its cached run against the new one and shows the driver the removed and added stops. Nothing is silently overwritten.
+2. `POST /api/ops/syncDriverEvents` sends queued events in order. The server returns `accepted`, `duplicates`, and `rejected: [{ id, reason }]`; only accepted and duplicate ids leave the device outbox. The `driver_events` table makes retries idempotent.
+3. Releasing a trip records its vehicle-to-stop assignments. If dispatch removes a stop while the driver is offline, queued records from that released vehicle can still sync; the actual delivery or problem takes precedence over the earlier deferral in the store status. Unassigned stops and unreleased trips are rejected without losing the queued record.
+4. Facts from the field (arrived, delivered, POD, problem) keep their **device time**. The server records its own `syncedAt`. If the plan version changed while offline, the device diffs its cached run against the new one and shows removed and added stops.
 5. A heartbeat sync every 20 s gives the dispatcher "last seen". In known hill-country dead zones, alerts escalate only after the usual gap.
 
 ## Datathon hooks

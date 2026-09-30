@@ -12,9 +12,9 @@ RUN npm ci
 
 FROM deps AS source
 COPY . .
-# The competition datasets aren't committed (competition terms). When ./data is present the seed is
-# rebuilt from it; otherwise the local packages/core/src/seed.json is used.
-RUN if [ -d "data/General Data" ]; then npm run seed:data; fi
+# Private CSVs rebuild the judged seed. A clean public checkout creates a clearly marked
+# independent synthetic fixture; a local private seed is used when it already exists.
+RUN node scripts/ensure-seed.mjs
 
 # ── API: owns the database, runs migrations and seeds on first start ──
 FROM source AS api

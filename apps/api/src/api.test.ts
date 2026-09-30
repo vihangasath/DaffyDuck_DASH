@@ -2,6 +2,7 @@
 // guarantees that matter — role checks, idempotent driver sync, audit trail, and state that survives a restart.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db as OpsDb, LoginResult, Snapshot } from "@waypoint/core/contract";
+import { orderState } from "@waypoint/core/views";
 import { Service } from "./service.ts";
 import { createApp } from "./app.ts";
 import { boot } from "./boot.ts";
@@ -57,6 +58,8 @@ describe("auth", () => {
 describe("walkthrough", () => {
   let orderId = "";
   it("store places an order", async () => {
+    expect((await op("placeOrder", { outletId: "OUT007", temp: "chilled", lines: [{ skuId: "F-RICE", qty: 1 }] }, "store")).status).toBe(400);
+    expect((await op("placeOrder", { outletId: "OUT007", temp: "chilled", lines: [{ skuId: "F-MILK", qty: 1 }, { skuId: "T-TV", qty: 1 }] }, "store")).status).toBe(400);
     const r = await op<{ id: string; createdBy: string }>("placeOrder", { outletId: "OUT007", temp: "chilled", lines: [{ skuId: "F-MILK", qty: 10 }, { skuId: "F-YOG", qty: 4 }] }, "store");
     expect(r.status).toBe(200);
     expect(r.json.createdBy).toBe("Dilani Fernando"); // from the session, not the request
@@ -66,6 +69,8 @@ describe("walkthrough", () => {
     const plan = await op<{ trips: unknown[]; deferred: unknown[] }>("closeOrdersAndPlan", { depot: "Peliyagoda" }, "dispatcher");
     expect(plan.status).toBe(200);
     expect(plan.json.trips.length).toBeGreaterThan(10);
+    expect((await op("closeOrdersAndPlan", { depot: "Peliyagoda" }, "dispatcher")).status).toBe(409);
+    expect((await op("moveOrder", { depot: "Kandy", orderId, target: { defer: true } }, "dispatcher")).status).toBe(404);
     expect((await op("publishPlan", { depot: "Peliyagoda" }, "dispatcher")).status).toBe(200);
     const s = await snapshot();
     expect(s.db.plans.Peliyagoda?.status).toBe("published");
@@ -75,19 +80,49 @@ describe("walkthrough", () => {
   });
   it("loader loads VEH011 and releases it", async () => {
     const s = await snapshot("loader");
-    const trip = s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId === "VEH011")!;
+    const trip = s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId === "VEH011" && x.orderIds.length > 1) ?? s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId === "VEH011")!;
     const lines = s.db.loads[trip.id].lines;
     expect((await op("releaseTrip", { tripId: trip.id }, "loader")).status).toBe(409);
     for (const [key, l] of Object.entries(lines)) expect((await op("setLoadLine", { tripId: trip.id, key, loaded: l.planned }, "loader")).status).toBe(200);
     expect((await op("releaseTrip", { tripId: trip.id }, "loader")).status).toBe(200);
+    const firstKey = Object.keys(lines)[0];
+    const [firstOrder, firstSku] = firstKey.split("|");
+    expect((await op("flagShortfall", { tripId: trip.id, orderId: firstOrder, skuId: firstSku, loaded: 0, kind: "missing", decision: "hold", photo: false }, "loader")).status).toBe(409);
+  });
+  it("holds a short load until dispatch resolves it and the loader re-picks", async () => {
+    const s = await snapshot("loader");
+    const trip = s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId !== "VEH011" && Object.keys(s.db.loads[x.id].lines).length > 1)!;
+    const [key, line] = Object.entries(s.db.loads[trip.id].lines)[0];
+    const [orderId, skuId] = key.split("|");
+    const flag = await op<{ id: string }>("flagShortfall", { tripId: trip.id, orderId, skuId, loaded: 0, kind: "missing", decision: "hold", photo: false }, "loader");
+    expect(flag.status).toBe(200);
+    expect((await op("releaseTrip", { tripId: trip.id }, "loader")).status).toBe(409);
+    expect((await op("resolveShortfall", { id: flag.json.id, resolution: "release" }, "dispatcher")).status).toBe(409);
+    expect((await op("resolveShortfall", { id: flag.json.id, resolution: "repick" }, "dispatcher")).status).toBe(200);
+    expect((await op("releaseTrip", { tripId: trip.id }, "loader")).status).toBe(409);
+    expect((await op("setLoadLine", { tripId: trip.id, key, loaded: line.planned }, "loader")).status).toBe(200);
+    expect((await op("resolveShortfall", { id: flag.json.id, resolution: "release" }, "dispatcher")).status).toBe(409);
   });
   it("driver sync is idempotent and only for their own vehicle", async () => {
     const s = await snapshot("driver");
-    const trip = s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId === "VEH011")!;
+    const trip = s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId === "VEH011" && x.orderIds.length > 1) ?? s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId === "VEH011")!;
     const stop = trip.orderIds[0];
+    const order = s.db.orders.find((o) => o.id === stop)!;
+    const lines = order.lines!.map((l) => ({ skuId: l.skuId, name: l.name, planned: l.qty, delivered: l.qty }));
+    const wrongStop = s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId !== "VEH011")!.orderIds[0];
+    const rejected = await op<{ rejected: { id: string; reason: string }[] }>("syncDriverEvents", {
+      vehicleId: "VEH011", events: [{ id: "wrong-stop", vehicleId: "VEH011", kind: "arrived", orderId: wrongStop, at: "05:01", recordedAt: new Date().toISOString() }],
+    }, "driver");
+    expect(rejected.status).toBe(200);
+    expect(rejected.json.rejected[0].id).toBe("wrong-stop");
+    expect((await snapshot()).db.stops[wrongStop]).toBeUndefined();
+    const badPod = await op<{ rejected: { id: string }[] }>("syncDriverEvents", {
+      vehicleId: "VEH011", events: [{ id: "bad-pod", vehicleId: "VEH011", kind: "delivered", orderId: stop, at: "05:03", recordedAt: new Date().toISOString(), pod: { receivedBy: "Chamari", signed: true, photos: 0, lines: [] } }],
+    }, "driver");
+    expect(badPod.json.rejected[0].id).toBe("bad-pod");
     const events = [
       { id: "e-1", vehicleId: "VEH011", kind: "arrived", orderId: stop, at: "05:02", recordedAt: new Date().toISOString() },
-      { id: "e-2", vehicleId: "VEH011", kind: "delivered", orderId: stop, at: "05:14", recordedAt: new Date().toISOString(), pod: { receivedBy: "Chamari", signed: true, photos: 1, lines: [] } },
+      { id: "e-2", vehicleId: "VEH011", kind: "delivered", orderId: stop, at: "05:14", recordedAt: new Date().toISOString(), pod: { receivedBy: "Chamari", signed: true, photos: 1, lines } },
     ];
     const first = await op<{ accepted: string[] }>("syncDriverEvents", { vehicleId: "VEH011", events }, "driver");
     expect(first.json.accepted).toEqual(["e-1", "e-2"]);
@@ -95,6 +130,30 @@ describe("walkthrough", () => {
     expect(again.json).toMatchObject({ accepted: [], duplicates: ["e-1", "e-2"] });
     expect((await op("syncDriverEvents", { vehicleId: "VEH012", events: [] }, "driver")).status).toBe(403);
     expect((await snapshot()).db.stops[stop].deliveredAt).toBe("05:14");
+    const receiptLines = lines.map((l) => ({ skuId: l.skuId, name: l.name, driverQty: l.delivered, receivedQty: l.delivered }));
+    expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines.map((l) => ({ ...l, driverQty: l.driverQty + 1 })), issues: [] }, "store")).status).toBe(400);
+    expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines, issues: [{ type: "Damaged", note: "One carton dented" }] }, "store")).status).toBe(200);
+    expect((await snapshot()).db.receipts[stop].issues).toHaveLength(1);
+  });
+  it("reconciles a released stop delivered offline after dispatch deferred it", async () => {
+    const s = await snapshot("driver");
+    const trip = s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId === "VEH011" && x.orderIds.length > 1)!;
+    const id = trip.orderIds.find((x) => !s.db.stops[x]?.deliveredAt)!;
+    expect(s.db.stops[id]?.vehicleId).toBe("VEH011"); // assignment recorded at dock release
+    const moved = await op<{ ok: boolean }>("moveOrder", { depot: "Peliyagoda", orderId: id, target: { defer: true, note: "Driver was offline" } }, "dispatcher");
+    expect(moved.json.ok).toBe(true);
+    const order = s.db.orders.find((o) => o.id === id)!;
+    const lines = order.lines!.map((l) => ({ skuId: l.skuId, name: l.name, planned: l.qty, delivered: l.qty }));
+    const sync = await op<{ accepted: string[] }>("syncDriverEvents", {
+      vehicleId: "VEH011", events: [
+        { id: "late-arrived", vehicleId: "VEH011", kind: "arrived", orderId: id, at: "05:20", recordedAt: new Date().toISOString() },
+        { id: "late-delivered", vehicleId: "VEH011", kind: "delivered", orderId: id, at: "05:32", recordedAt: new Date().toISOString(), pod: { receivedBy: "Store lead", signed: true, photos: 0, lines } },
+      ],
+    }, "driver");
+    expect(sync.json.accepted).toEqual(["late-arrived", "late-delivered"]);
+    const current = (await snapshot()).db;
+    expect(orderState(current, id).status).toBe("delivered");
+    expect(current.plans.Peliyagoda!.deferred.some((d) => d.orderId === id)).toBe(true);
   });
 });
 

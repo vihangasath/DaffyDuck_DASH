@@ -15,7 +15,7 @@ import type { AuditEntry, Service } from "../service.ts";
 const Depot = z.enum(["Peliyagoda", "Kandy"]);
 const Id = z.string().min(1).max(80);
 const DeferralCode = z.enum(["REEFER_CAPACITY", "VAN_CAPACITY", "FRESH_WINDOW", "DAY_BUDGET", "MALL_WINDOW", "FUEL_QUOTA", "CAPACITY", "OVERSIZE", "NO_VEHICLE", "MANUAL"]);
-const Hhmm = z.string().regex(/^\d{2}:\d{2}$/);
+const Hhmm = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 const PodLine = z.object({ skuId: Id, name: z.string().max(120), planned: z.number().int().min(0), delivered: z.number().int().min(0) });
 const Event = z.discriminatedUnion("kind", [
   z.object({ id: Id, vehicleId: Id, kind: z.literal("arrived"), orderId: Id, at: Hhmm, recordedAt: z.string() }),
