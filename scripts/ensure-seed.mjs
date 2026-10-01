@@ -109,7 +109,7 @@ const orders = outlets.flatMap((o, i) => {
   const types = o.brand === "Fresh" && i % 2 === 0 ? ["ambient", "chilled"] : [o.brand === "Fresh" && i % 3 === 0 ? "chilled" : "ambient"];
   return types.map((temp) => {
     orderNo += 1;
-    const volumeM3 = o.brand === "Style" ? 5 + (i % 4) : o.brand === "Tech" ? 2 + (i % 3) : temp === "chilled" ? 8 + (i % 4) * 0.7 : 5 + (i % 4) * 0.5;
+    const volumeM3 = o.brand === "Style" ? 5 + (i % 4) : o.brand === "Tech" ? 2 + (i % 3) : temp === "chilled" ? 9.5 + (i % 4) * 0.7 : 5 + (i % 4) * 0.5;
     return {
       id: `DEMO-${pad(orderNo, 3)}`, outletId: o.id, depot: o.depot, brand: o.brand, temp,
       units: 20 + i % 35, weightKg: Math.round(volumeM3 * (o.brand === "Tech" ? 220 : 100)), volumeM3,

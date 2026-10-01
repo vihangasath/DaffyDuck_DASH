@@ -5,3 +5,10 @@
 .claude
 .git
 *.tsbuildinfo
+.env
+.env.local
+.DS_Store
+.kilo
+design
+docs
+Challenge Booklet.pdf

@@ -1,10 +1,10 @@
-# Waypoint Delivery Planning · Team daffy Duck
+# DASH: delivery planning for Waypoint Group · Team Daffy Duck
 
-Tech-Triathlon 2026. One system that connects **ordering → planning → loading → delivery → receipt** for Waypoint Fresh, Style and Tech. Every deferral is explainable, and drivers keep working when the signal drops.
+Tech-Triathlon 2026. **DASH** is one system that connects **ordering → planning → loading → delivery → receipt** for Waypoint Fresh, Style and Tech. Every deferral is explainable, and drivers keep working when the signal drops.
 
 **Repository:** [https://github.com/vihangasath/IntelligentEnterprise-RootCode](https://github.com/vihangasath/IntelligentEnterprise-RootCode)
 
-> **Status (27 Sep 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app** for dispatchers, loaders, drivers and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace.
+> **Status (1 Oct 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app** for dispatchers, loaders, drivers and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace.
 
 ## Repository layout
 
@@ -49,7 +49,9 @@ cp .env.example .env && docker compose up --build
 
 **Tests:** `npm test` runs:
 - the planner tests: every Task 2B feasibility rule on the active seed (the shared peak day for the judged build, or the independent synthetic public fallback), refused manual moves and fairness;
-- the API tests: logins and role checks, the whole walkthrough over HTTP, idempotent driver sync, the audit trail, and state that survives a restart.
+- the API tests: logins and role checks, what each role may read, the whole walkthrough over HTTP, idempotent driver sync (including refused records), the audit trail, and state that survives a restart.
+
+`npm run typecheck` and `npm run lint` check all workspaces. All three commands pass on a fresh clone.
 
 ## Accounts
 
@@ -67,28 +69,32 @@ Seeded accounts (password **`waypoint`** for all; change them in Waypoint People
 
 Sign-ins are per browser tab in the operations app, so you can run each role in its own tab and watch changes appear live in the others.
 
-**Demo day: Thu 18 Dec 2025.** It is one week before Christmas (festival ramp 0.3), not a payday, and outside the monsoon, so it matches peak-day scenario S1.
+**Demo day: Thu 18 Dec 2025.** It is one week before Christmas (festival ramp 0.3), not a payday, and outside the monsoon, so it matches peak-day scenario S1. Which data you see depends on the seed (see [Datasets and confidentiality](#datasets-and-confidentiality)); the walkthrough below works on both.
+
+With the shared dataset (the judged build):
 - Peliyagoda's 85 orders and its fleet (10 vehicles in the workshop) are the **Task 2B S1 files**.
 - Kandy's 59 orders are that day's real rows from `deliveries_train.csv`.
 - Service history, fuel already used this week and weekly volumes come from the training data.
 - Drivers, plate numbers, phone numbers and licences are **synthetic demo records**, one driver per vehicle, because the datasets don't identify drivers.
+
+On a public clone without the datasets, an independent synthetic peak day with the same shape is generated instead: 115 Peliyagoda and 45 Kandy orders, the same 10 vehicles in the workshop, and chilled demand about 17% above refrigerated capacity. Order ids start with `DEMO-` instead of `S1-`.
 
 To restore the start of the day, sign in as `dispatcher` and use **Network records → Demo day → Reset the demo day**. It keeps staff, accounts, master data and the activity log.
 
 ## Judge walkthrough (≈ 10 minutes, four tabs)
 
 1. **Store: place an order.** Sign in as `store` / `waypoint`, then open **New order**, choose *Chilled*, add a few items and submit. You get an instant reference (`WP-1101`), and the order appears in the dispatcher's queue.
-2. **Dispatcher: close orders.** In a new tab, sign in as `dispatcher`. **Today** shows the confirmed queue. Demand vs capacity shows chilled 182 m³ against 172 m³ of refrigerated capacity, and the watch list shows 10 vehicles in the workshop and outlets skipped yesterday. Click **Close orders & auto-plan**.
-3. **Dispatcher: understand the plan.** **Plan & allocate** marks refrigerated capacity as **Limiting**. 72 of 85 orders are served and every deferral has a reason. Click a deferred order (e.g. `S1-075`) to see its priority breakdown, why it was deferred, and what happens if it's deferred again.
+2. **Dispatcher: close orders.** In a new tab, sign in as `dispatcher`. **Today** shows the confirmed queue. Demand vs capacity shows chilled demand above the refrigerated capacity (182 m³ against 172 m³ on the shared dataset), and the watch list shows 10 vehicles in the workshop and outlets skipped yesterday. Click **Close orders & auto-plan**.
+3. **Dispatcher: understand the plan.** **Plan & allocate** marks refrigerated capacity as **Limiting**. Most orders are served (72 of 85 on the shared dataset) and every deferral has a reason. Click any deferred order (e.g. `S1-075`) to see its priority breakdown, why it was deferred, and what happens if it's deferred again.
 4. **Dispatcher: try to break a rule.** Drag a chilled stop onto a dry-box trip. The drop target turns red with the rule ("*… is not refrigerated*") and the move is refused. Drag a stop onto a valid trip and it lands. Every move is re-validated.
 5. **Dispatcher: publish.** Click **Publish to loaders**. The loader lists, driver runs and store notices are created. Deferred outlets get a notice with the reason.
-6. **Loader: load in reverse order.** In a new tab, sign in as `loader` and open **VEH011**. The checklist runs from the last stop (deepest in the truck) to the first. Tick every line except one, then **Flag shortfall / damage** → quantity 24 of 28 → **Send & release**.
+6. **Loader: load in reverse order.** In a new tab, sign in as `loader` and open **VEH011**. The checklist runs from the last stop (deepest in the truck) to the first. Tick every line except one, then **Flag shortfall / damage** → enter the quantity actually loaded (less than planned) → **Send & release**.
 7. **Dispatcher: see the exception.** **Live tracking** now lists *VEH011 · released with shortfall*. Choosing *Hold vehicle* instead would give the dispatcher Release / Re-pick / Balance tomorrow buttons.
 8. **Driver: deliver.** In a new tab, sign in as `driver` (phone width is best). The map pins today's stops. Tap **Arrived**, then **Deliver**. The POD starts from what was actually loaded; sign with your finger, enter the receiver's name and tap **Complete delivery**.
 9. **Driver: dead zone.** Go to **More → No signal** (a simulated dead zone for this tab only). Deliver the next stop: it's saved on the phone, the outbox shows *Queued*, and a reload still shows the whole run.
 10. **Dispatcher: change the run while the driver is offline.** In the dispatcher tab, select one of VEH011's later stops and choose **Defer order**. After ~2 minutes, Live tracking shows VEH011 as *No signal*.
 11. **Driver: reconnect.** Turn **No signal** off. The queued records sync with their original times, and the driver sees *"Your run was changed by dispatch — Removed: …"*.
-12. **Store: confirm receipt.** Switch the store header to the delivered outlet (e.g. `OUT010 Mount Lavinia`). The order shows **Delivered** and the shortfall notice. Click **Confirm receipt**, mark *Damaged* with a note and confirm. The dispatcher gets a *receipt issue* exception.
+12. **Store: confirm receipt.** Switch the store header to the outlet you delivered in step 8 (the driver's stop card shows its `OUT…` id; `OUT010 Mount Lavinia` on the shared dataset). The order shows **Delivered** and the shortfall notice. Click **Confirm receipt**, mark *Damaged* with a note and confirm. The dispatcher gets a *receipt issue* exception.
 13. **Plan ahead.** **Capacity outlook** shows the 10-week volume by brand against practical capacity, the refrigerated vehicles needed, and the ×2 peak-day factor. **Deferrals** shows each outlet's 14-day service strip and the audit log (CSV export).
 14. **HR: look after the people.** Open http://localhost:3001 (Waypoint People) and sign in as `admin`, the HR officer.
     - **Front desk** shows what needs HR today: driving licences due in the next 90 days, who is on leave and when they're back, and staff who can't sign in yet.
@@ -103,7 +109,7 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 - **Order of allocation:** scarce vehicles first (chilled van-only → reefer vans, chilled → reefers, ambient van-only → vans, then the rest). Within each group, **outlets skipped yesterday go first**. Then the engine repeatedly fills the trip that serves the most priority per vehicle-minute.
 - **Priority score (shown in the UI):** skipped yesterday +30 · chilled +20 · days since served · Fresh daily +10 · festival ramp · tight or mall window.
 - **Road conditions:** each district's disruption index for the plan date (`road_conditions.csv`, 100 = normal) stretches its travel legs by 100 ÷ index. Dock handling time is not affected. Trips with an index below 95 show the stretch on the plan board. In the route-leg history, actual vs planned leg times follow this ratio closely.
-- **Deferral reasons** come from the rule that actually blocked every candidate vehicle. On the demo day the auto-plan defers 13 chilled orders (refrigerated capacity and Fresh windows run out), and one Style order (40.7 m³) is larger than any available vehicle, so it can never be served whole.
+- **Deferral reasons** come from the rule that actually blocked every candidate vehicle. On the shared dataset's demo day the auto-plan defers 13 chilled orders (refrigerated capacity and Fresh windows run out), and one Style order (40.7 m³) is larger than any available vehicle, so it can never be served whole.
 
 ## Departures from the Designathon design
 
@@ -112,11 +118,12 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 - **Delivery windows are a hard rule** in the app (the Figma showed late arrivals as warnings). Second Fresh trips must still reach stores before their windows close.
 - The live map is a **schematic district network**, not a street map. No map API key is needed and it works offline.
 - Demo convenience not in the design: the per-tab *No signal* switch. The branch switcher is only offered to area-manager store logins.
+- The product is now called **DASH** (the Designathon file used "Waypoint Delivery Planning"). Waypoint Group, its brands (Waypoint Fresh, Style and Tech) and the HR panel (Waypoint People) keep their names.
 - Added after the Designathon: Waypoint People (the HR panel, with a staff directory for every role), real sign-in with HR-issued credentials, dispatch-owned network records, and the Postgres-backed API.
 
 ## Datasets and confidentiality
 
-The competition terms forbid publishing the datasets or their derivatives. `data/` and the generated `packages/core/src/seed.json` are therefore **git-ignored**, as is the local database in `.data/`. A public fresh clone boots with an independently generated synthetic fixture that follows the booklet's published network counts. **The judged build must use the shared dataset:** place the organisers' CSVs in `data/General Data/`, `data/Training Data/`, and `data/Test Data/` before `npm run dev` or `docker compose up --build`. Do not publish the private seed or a Docker image containing it without organiser authorization.
+The competition terms forbid publishing the datasets or their derivatives. `data/` and the generated `packages/core/src/seed.json` are therefore **git-ignored**, as is the local database in `.data/`. A public fresh clone boots with an independently generated synthetic fixture that follows the booklet's published network counts and reproduces the peak-day shape (refrigerated capacity binds), so `npm test`, `npm run dev`, `docker compose up` and the judge walkthrough all work without the private data. **The judged build must use the shared dataset:** place the organisers' CSVs in `data/General Data/`, `data/Training Data/`, and `data/Test Data/` before `npm run dev` or `docker compose up --build`. Do not publish the private seed or a Docker image containing it without organiser authorization.
 
 ## More
 
