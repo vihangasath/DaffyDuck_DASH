@@ -12,6 +12,7 @@ export default function Outbox() {
   const d = useDriver();
   const queued = d.rows.filter((r) => r.status === "queued");
   const synced = d.rows.filter((r) => r.status === "synced").reverse();
+  const refused = d.rows.filter((r) => r.status === "rejected").reverse();
   return (
     <>
       <AppBar title="Outbox" sub="Records saved on this phone" right={<DriverSync />} />
@@ -23,6 +24,15 @@ export default function Outbox() {
         ) : (
           <div className="flex items-center gap-2.5 rounded-xl border border-warning/30 bg-warning-soft p-3.5 text-sm font-semibold text-warning">
             <WifiOff className="size-5" /> No signal · records wait here until you’re back in coverage
+          </div>
+        )}
+        {refused.length > 0 && (
+          <div className="grid gap-3 rounded-xl border border-danger/30 bg-danger-soft p-3.5">
+            <p className="flex items-start gap-2.5 text-sm font-semibold text-danger">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+              Dispatch didn’t accept {refused.length === 1 ? "this record" : `these ${refused.length} records`}. Nothing was deleted: call dispatch to sort it out.
+            </p>
+            <Group title={`Not accepted · ${refused.length}`} rows={refused} empty="" />
           </div>
         )}
         <Group title={`Waiting · ${queued.length}`} rows={queued} empty="Nothing waiting to send." />
@@ -58,8 +68,9 @@ function Group({ title, rows, empty }: { title: string; rows: OutboxRow[]; empty
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold">{label} · {outletName(orderOutlet(e.orderId, trips))}</div>
               <div className="truncate text-xs text-ink-2">{meta}</div>
+              {r.status === "rejected" && <div className="text-xs font-semibold text-danger">{r.rejectedReason}</div>}
             </div>
-            {r.status === "queued" ? <Pill tone="warning" icon={Clock}>Queued</Pill> : <Pill tone="success" icon={Check}>Synced</Pill>}
+            {r.status === "queued" ? <Pill tone="warning" icon={Clock}>Queued</Pill> : r.status === "rejected" ? <Pill tone="danger" icon={AlertTriangle}>Not accepted</Pill> : <Pill tone="success" icon={Check}>Synced</Pill>}
           </div>
         );
       })}

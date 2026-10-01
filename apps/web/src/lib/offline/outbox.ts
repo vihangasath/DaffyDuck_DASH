@@ -11,8 +11,10 @@ export interface OutboxRow {
   vehicleId: string;
   event: DriverEvent;
   createdAt: string;
-  status: "queued" | "synced";
+  /** "rejected" = the server refused it for good (e.g. the stop was already recorded); kept so it is never lost silently. */
+  status: "queued" | "synced" | "rejected";
   syncedAt?: string;
+  rejectedReason?: string;
 }
 
 export interface RunSnapshot {

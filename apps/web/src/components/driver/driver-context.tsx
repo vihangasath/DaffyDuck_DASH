@@ -35,6 +35,8 @@ interface DriverCtx {
   loaded: Record<string, number>;
   rows: OutboxRow[];
   queued: number;
+  /** Records the server refused; the driver needs to see them (and call dispatch). */
+  rejected: number;
   lastSyncAt?: string;
   record: (e: DriverEvent) => Promise<void>;
   flush: () => Promise<void>;
@@ -113,8 +115,12 @@ export function DriverProvider({ vehicleId, children }: { vehicleId: string; chi
       const queued = await driverDb().outbox.where({ vehicleId, status: "queued" }).sortBy("createdAt");
       const res = await api.syncDriverEvents(vehicleId, queued.map((r) => r.event));
       const done = new Set([...res.accepted, ...res.duplicates]);
+      const refused = new Map(res.rejected.filter((r) => !r.retry).map((r) => [r.id, r.reason]));
       const at = new Date().toISOString();
-      await driverDb().outbox.bulkPut(queued.filter((r) => done.has(r.id)).map((r) => ({ ...r, status: "synced" as const, syncedAt: at })));
+      await driverDb().outbox.bulkPut([
+        ...queued.filter((r) => done.has(r.id)).map((r) => ({ ...r, status: "synced" as const, syncedAt: at })),
+        ...queued.filter((r) => refused.has(r.id)).map((r) => ({ ...r, status: "rejected" as const, syncedAt: at, rejectedReason: refused.get(r.id) })),
+      ]);
       setLastSyncAt(at);
     } catch (e) {
       if (!(e instanceof OfflineError)) console.error(e);
@@ -125,6 +131,7 @@ export function DriverProvider({ vehicleId, children }: { vehicleId: string; chi
   }, [vehicleId]);
 
   const queued = rows.filter((r) => r.status === "queued").length;
+  const rejected = rows.filter((r) => r.status === "rejected").length;
 
   // Send queued records as soon as we are online; heartbeat every 20 s so dispatch sees we're alive.
   useEffect(() => {
@@ -164,7 +171,7 @@ export function DriverProvider({ vehicleId, children }: { vehicleId: string; chi
     const loaded = base ? base.loaded ?? {} : db ? loadedOf(db, trips) : {};
     const published = base ? base.trips.length > 0 : db?.plans[depotOfVehicle(vehicleId)]?.status === "published";
     return {
-      vehicleId, online, syncing, fromCache: !!base, savedAt: snapshot?.savedAt, trips, published, stops, loadStatus, loaded, rows, queued,
+      vehicleId, online, syncing, fromCache: !!base, savedAt: snapshot?.savedAt, trips, published, stops, loadStatus, loaded, rows, queued, rejected,
       lastSyncAt: lastSyncAt ?? (db?.driverSync[vehicleId]?.lastSyncAt),
       record, flush, change,
       ackChange: () => {
@@ -174,7 +181,7 @@ export function DriverProvider({ vehicleId, children }: { vehicleId: string; chi
         } catch {}
       },
     };
-  }, [online, db, snapshot, rows, vehicleId, syncing, queued, lastSyncAt, record, flush, change]);
+  }, [online, db, snapshot, rows, vehicleId, syncing, queued, rejected, lastSyncAt, record, flush, change]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

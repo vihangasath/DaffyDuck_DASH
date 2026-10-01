@@ -7,7 +7,7 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: "DASH Delivery Planning", template: "%s · DASH" },
-  description: "Ordering, planning, loading, delivery and receipt for DASH Fresh, Style and Tech.",
+  description: "Ordering, planning, loading, delivery and receipt for Waypoint Fresh, Style and Tech.",
   applicationName: "DASH",
 };
 

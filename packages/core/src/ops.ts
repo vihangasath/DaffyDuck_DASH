@@ -32,6 +32,7 @@ export class OpError extends Error {
 }
 
 const uid = () => crypto.randomUUID();
+const NOT_RELEASED = "Trip has not been released by the loader.";
 const nowIso = () => new Date().toISOString();
 
 function need(a: Actor, ...roles: Role[]) {
@@ -381,12 +382,12 @@ export const ops = {
       const reason =
         e.vehicleId !== vehicleId ? "Event vehicle differs from the signed-in driver's vehicle."
         : !assigned ? "Stop is not assigned to this driver's run."
-        : trip && db.loads[trip.id]?.status !== "released" ? "Trip has not been released by the loader."
+        : trip && db.loads[trip.id]?.status !== "released" ? NOT_RELEASED
         : existing?.deliveredAt ? "Delivery has already been recorded."
         : existing?.problem ? "A problem has already been recorded for this stop."
         : null;
       if (reason) {
-        rejected.push({ id: e.id, reason });
+        rejected.push({ id: e.id, reason, retry: reason === NOT_RELEASED });
         continue;
       }
       if (e.kind === "delivered") {
@@ -458,3 +459,76 @@ export const ops = {
 };
 
 export type OpName = keyof typeof ops;
+
+const pick = <T>(rec: Record<string, T>, keep: (key: string, v: T) => boolean) =>
+  Object.fromEntries(Object.entries(rec).filter(([k, v]) => keep(k, v)));
+
+/**
+ * The slice of operational state a signed-in user may read. Dispatchers plan the whole network and
+ * see everything; everyone else gets their own work plus what the shared screens need to compute it
+ * (a stop's ETA depends on the other stops on its trip, so those orders stay, without their contents).
+ */
+export function visibleTo(db: Db, a: Actor): Db {
+  if (a.role === "dispatcher") return db;
+  const none = { shortfalls: [], stops: {}, receipts: {}, notices: [], exceptions: [], driverSync: {}, processedEventIds: [], deferralLog: [] };
+  const depotOnly = (depot: Depot) => ({ ...db.plans, Peliyagoda: null, Kandy: null, [depot]: db.plans[depot] }) as Db["plans"];
+
+  if (a.role === "loader") {
+    const vehicles = (vid: string) => depotOfVehicle(vid) === a.depot;
+    return {
+      ...db, ...none,
+      orders: db.orders.filter((o) => o.depot === a.depot),
+      plans: depotOnly(a.depot),
+      loads: pick(db.loads, (_, l) => vehicles(l.vehicleId)),
+      shortfalls: db.shortfalls.filter((s) => vehicles(s.vehicleId)),
+    };
+  }
+
+  if (a.role === "driver") {
+    const vid = a.vehicleId;
+    const depot = (vid && net.vehicles.get(vid)?.depot) || a.depot;
+    const plan = db.plans[depot];
+    const trips = plan?.trips.filter((t) => t.vehicleId === vid) ?? [];
+    const stops = pick(db.stops, (_, s) => s.vehicleId === vid);
+    const ids = new Set([...trips.flatMap((t) => t.orderIds), ...Object.keys(stops)]);
+    return {
+      ...db, ...none,
+      orders: db.orders.filter((o) => ids.has(o.id)),
+      plans: { ...depotOnly(depot), [depot]: plan && { ...plan, trips, deferred: [] } },
+      loads: pick(db.loads, (_, l) => l.vehicleId === vid),
+      stops,
+      shortfalls: db.shortfalls.filter((s) => s.vehicleId === vid),
+      driverSync: pick(db.driverSync, (k) => k === vid),
+    };
+  }
+
+  // Store managers: their outlet (or their depot's outlets for an area manager).
+  const mine = (outletId: string) => {
+    try {
+      needOutlet(a, outletId);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const own = new Set(db.orders.filter((o) => mine(o.outletId)).map((o) => o.id));
+  const plans = Object.fromEntries(Object.entries(db.plans).map(([d, p]) => [d, p && { ...p, deferred: p.deferred.filter((x) => own.has(x.orderId)) }])) as Db["plans"];
+  const tripsWithMine = Object.values(db.plans).flatMap((p) => p?.trips ?? []).filter((t) => t.orderIds.some((id) => own.has(id)));
+  const onMyTrips = new Set(tripsWithMine.flatMap((t) => t.orderIds));
+  return {
+    ...db, ...none,
+    orders: db.orders
+      .filter((o) => own.has(o.id) || onMyTrips.has(o.id))
+      .map((o) => (own.has(o.id) ? o : { ...o, lines: undefined, createdBy: "", source: "" })),
+    plans,
+    loads: Object.fromEntries(tripsWithMine.flatMap((t) => {
+      const l = db.loads[t.id];
+      return l ? [[t.id, { ...l, lines: pick(l.lines, (k) => own.has(k.split("|")[0])) }]] : [];
+    })),
+    stops: pick(db.stops, (id) => own.has(id)),
+    receipts: pick(db.receipts, (id) => own.has(id)),
+    notices: db.notices.filter((n) => mine(n.outletId)),
+    shortfalls: db.shortfalls.filter((s) => own.has(s.orderId)),
+    deferralLog: db.deferralLog.filter((d) => mine(d.outletId)),
+  };
+}

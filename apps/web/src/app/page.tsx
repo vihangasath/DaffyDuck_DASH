@@ -206,7 +206,7 @@ export default function SignIn() {
                 {error.text}
                 {error.adminUrl && (
                   <a href={error.adminUrl} className="mt-1 flex items-center gap-1 font-semibold underline">
-                    Open DASH People <ArrowRight className="size-4" />
+                    Open Waypoint People <ArrowRight className="size-4" />
                   </a>
                 )}
               </p>
