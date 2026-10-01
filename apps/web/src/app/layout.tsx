@@ -9,6 +9,14 @@ export const metadata: Metadata = {
   title: { default: "DASH Delivery Planning", template: "%s · DASH" },
   description: "Ordering, planning, loading, delivery and receipt for Waypoint Fresh, Style and Tech.",
   applicationName: "DASH",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = { themeColor: "#102447", width: "device-width", initialScale: 1 };

@@ -120,6 +120,7 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 - The live map is a **schematic district network**, not a street map. No map API key is needed and it works offline.
 - Demo convenience not in the design: the per-tab *No signal* switch. The branch switcher is only offered to area-manager store logins.
 - The product is now called **DASH** (the Designathon file used "Waypoint Delivery Planning"). Waypoint Group, its brands (Waypoint Fresh, Style and Tech) and the HR panel (Waypoint People) keep their names.
+- **Blue-only palette (1 Oct):** the Designathon file's teal actions and green success/Fresh colours are replaced by one blue family (cobalt actions, deep-blue success, glacier-blue chilled, azure/ultramarine/midnight brands). Only alerts keep red and amber.
 - **DASH branding & visual identity:** Operations app rebranded to DASH with high-resolution brand marks (`DASH.png` / `DASH W.png`), balanced 50/50 desktop sign-in split, and responsive white brand marks on dark surfaces.
 - **Driver Dark Mode:** Dedicated dark theme designed for cab ergonomics, dawn runs, and night shifts (`#090e17`), with automatic Leaflet tile brightness/contrast inversion, dynamic canvas signature ink contrast, and system preference sync.
 - **Mobile Dark Mode Sign-in:** Automatic dark theme on mobile viewports for low-light early morning sign-ins, with mobile notch/status bar tinting.

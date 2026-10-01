@@ -364,7 +364,7 @@ function StopChip({ orderId, late, eta, chilled, selected, onSelect }: { orderId
       {...listeners}
       onClick={() => onSelect(o)}
       title={`${o} · ETA ${eta}`}
-      className={cx("inline-flex cursor-grab items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold", selected ? "border-primary bg-primary text-white" : late ? "border-warning bg-warning-soft text-warning" : "border-line bg-surface text-ink-2", isDragging && "opacity-30")}
+      className={cx("inline-flex cursor-grab items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold", selected ? "border-primary bg-primary text-on-primary" : late ? "border-warning bg-warning-soft text-warning" : "border-line bg-surface text-ink-2", isDragging && "opacity-30")}
     >
       {chilled && <Snowflake className="size-2.5" />}
       {o} <span className="font-medium opacity-70">{eta}</span>

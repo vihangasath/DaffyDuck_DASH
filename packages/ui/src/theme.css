@@ -1,7 +1,10 @@
 /* Waypoint design tokens and base styles, shared by apps/web and apps/admin.
    Import after `@import "tailwindcss";` so @theme registers the utilities. */
 /* Tokens mirror the Figma variables collection "Waypoint / Color".
-   Additions since the Designathon file: mint, navy-3, primary-bright and the shadow/ease tokens. */
+   Additions since the Designathon file: mint, navy-3, primary-bright, on-primary and the shadow/ease tokens.
+   DASH palette (1 Oct 2026): one blue family. Navy carries structure, cobalt carries action, and success,
+   info, chilled and the three brands are separate blues told apart by lightness and chroma. Only danger (red)
+   and warning (amber) leave the family, so a problem is never mistaken for a status. */
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
@@ -20,32 +23,35 @@
   --color-line: #e1e7ee;
   --color-line-strong: #c4d0df;
 
-  --color-primary: #008289;
-  --color-primary-strong: #006066;
-  --color-primary-soft: #e2f4f5;
-  --color-primary-bright: #00a4ae;
-  --color-mint: #22d3ee;
+  --color-primary: #1d5fd3; /* cobalt: actions, selection, focus */
+  --color-primary-strong: #16469e;
+  --color-primary-soft: #e8effc;
+  --color-primary-bright: #4a90ff;
+  --color-on-primary: #ffffff;
+  --color-mint: #8ecbff; /* ice blue: the accent on navy (name kept from the Designathon tokens) */
   --color-amber: #f59e0b;
 
-  --color-success: #15803d;
-  --color-success-soft: #e6f5eb;
+  --color-success: #0c4a8e; /* deep sea blue: done, settled */
+  --color-success-soft: #e1ebf7;
   --color-warning: #b45309;
   --color-warning-soft: #fdf1df;
   --color-danger: #c0262d;
   --color-danger-soft: #fce9ea;
-  --color-info: #0369a1;
-  --color-info-soft: #e3f0f8;
-  --color-chilled: #0e7490;
-  --color-chilled-soft: #dff3f7;
+  --color-info: #3a5f8a; /* steel blue: neutral news */
+  --color-info-soft: #e8eef5;
+  --color-chilled: #075985; /* glacier blue, always with the snowflake */
+  --color-chilled-soft: #e0f2fe;
   --color-neutral: #516075;
   --color-neutral-soft: #edf1f6;
 
-  --color-fresh: #4d7c0f;
-  --color-fresh-soft: #eef5e1;
-  --color-style: #a21caf;
-  --color-style-soft: #f8e8f9;
-  --color-tech: #4338ca;
-  --color-tech-soft: #ecebfb;
+  /* Brands: azure, ultramarine, midnight, stepped in lightness so stacked chart segments stay apart.
+     Always labelled, so the hue only has to separate them. */
+  --color-fresh: #1769c4;
+  --color-fresh-soft: #e3effa;
+  --color-style: #3a3aa8;
+  --color-style-soft: #e8e9f8;
+  --color-tech: #152a5a;
+  --color-tech-soft: #e3e7f2;
 
   /* Depth: tinted with navy so shadows sit in the palette instead of going grey. */
   --shadow-card: 0 1px 2px rgb(16 36 71 / 0.04), 0 2px 8px -2px rgb(16 36 71 / 0.06);
@@ -68,11 +74,11 @@
   /* The "you are here" ring on the current stop: it signals live state and nothing else. */
   @keyframes waypoint {
     0% {
-      box-shadow: 0 0 0 0 rgb(0 130 137 / 0.45);
+      box-shadow: 0 0 0 0 rgb(29 95 211 / 0.45);
     }
     70%,
     100% {
-      box-shadow: 0 0 0 10px rgb(0 130 137 / 0);
+      box-shadow: 0 0 0 10px rgb(29 95 211 / 0);
     }
   }
   /* Drawer entrance: the scrim fades, the panel slides in from the edge it lives on. */

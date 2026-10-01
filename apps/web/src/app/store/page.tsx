@@ -142,7 +142,7 @@ function OrderCard({ s }: { s: OrderState }) {
                 <li key={label} className="flex flex-1 flex-col items-center gap-1.5 text-center">
                   <div className="flex w-full items-center">
                     <span className={cx("h-1 flex-1 rounded-r-full", i === 0 ? "bg-transparent" : i <= idx ? "bg-success" : "bg-line")} />
-                    <span className={cx("flex size-8 shrink-0 items-center justify-center rounded-full ring-4 ring-surface", done ? "bg-success text-white" : cur ? (s.status === "failed" ? "bg-danger text-white" : "animate-waypoint bg-primary text-white") : "border-2 border-line-strong bg-surface")}>
+                    <span className={cx("flex size-8 shrink-0 items-center justify-center rounded-full ring-4 ring-surface", done ? "bg-success text-on-primary" : cur ? (s.status === "failed" ? "bg-danger text-white" : "animate-waypoint bg-primary text-on-primary") : "border-2 border-line-strong bg-surface")}>
                       {done ? <Check className="size-4" strokeWidth={3} /> : cur ? <Truck className="size-4" /> : null}
                     </span>
                     <span className={cx("h-1 flex-1 rounded-l-full", i === STEPS.length - 1 ? "bg-transparent" : i < idx ? "bg-success" : "bg-line")} />
