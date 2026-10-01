@@ -96,3 +96,26 @@ The update was built in the handoff file https://www.figma.com/design/r9F06rr0rd
 
 ### Branch
 The code changes are on `feat/hr-waypoint-people`. The PR still needs to be opened (the `gh` CLI isn't installed on this machine).
+
+## 28 Sep: Road disruption modeling, resilience & Figma synchronization
+- **Road disruption in trip planning:** Planner travel legs are now dynamically stretched by the day's road conditions disruption index (`100 / index`), while handling time remains constant. Route-leg history tracks this ratio. Peliyagoda demo day defers 14 orders (was 13; S1-016 chilled deferred due to disruption stretch).
+- **Resilience:**
+  - Added `error.tsx` and `global-error.tsx` to web and admin apps for graceful render failure recovery.
+  - NumberInput preserves drafts while focused to prevent mid-typing resets.
+  - Camera photo object URLs released when POD screen unmounts; revoked CSV export URLs.
+- **Figma synchronization tooling:**
+  - Added `design/figma-sync/`: browser DOM capture script (`capture.js`), Python capture receiver server (`receiver.py`), screen definitions (`screens.json`), and capture snapshots across all roles and degradation scenarios.
+
+## 29 Sep: DASH branding, driver dark mode, and mobile sign-in refinement
+- **DASH visual identity:** Rebranded operations app to DASH with high-resolution brand marks (`DASH.png` and `DASH W.png`) and unified `DashLogo` component across all consoles, layouts, and manifests.
+- **Driver Dark Mode:**
+  - Designed for dawn runs and night shifts to reduce cab glare.
+  - Dynamic palette (`#090e17`), Leaflet map tile brightness/contrast inversion, and canvas signature stroke contrast adaptation.
+  - Theme toggle in driver header and More screen with system preference and local storage persistence.
+- **Mobile Dark Mode Sign-in:**
+  - Automatic dark theme for phone viewports with ambient cyan/navy backlight wash and white DASH logo.
+  - Mobile notch and status bar color synchronization (`#090e17`).
+- **Sign-in page layout:**
+  - Balanced desktop layout to an exact 50/50 split (`lg:grid-cols-2`).
+  - Enlarged right-side form card (`max-w-lg`) and input fields.
+  - Streamlined typography with compact guidance copy and removed decorative key icon.

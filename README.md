@@ -1,10 +1,10 @@
-# Waypoint Delivery Planning · Team daffy Duck
+# DASH Delivery Planning (Waypoint Group) · Team daffy Duck
 
-Tech-Triathlon 2026. One system that connects **ordering → planning → loading → delivery → receipt** for Waypoint Fresh, Style and Tech. Every deferral is explainable, and drivers keep working when the signal drops.
+Tech-Triathlon 2026. One system that connects **ordering → planning → loading → delivery → receipt** for DASH Fresh, Style and Tech. Every deferral is explainable, drivers keep working when the signal drops, and night shifts/dawn runs stay glare-free with driver dark mode.
 
 **Repository:** [https://github.com/vihangasath/IntelligentEnterprise-RootCode](https://github.com/vihangasath/IntelligentEnterprise-RootCode)
 
-> **Status (27 Sep 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app** for dispatchers, loaders, drivers and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace.
+> **Status (29 Sep 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app (DASH)** for dispatchers, loaders, drivers (offline-first, with cab-ergonomic dark mode) and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace.
 
 ## Repository layout
 
@@ -12,12 +12,13 @@ Tech-Triathlon 2026. One system that connects **ordering → planning → loadin
 apps/api/        Waypoint API (Hono + Drizzle): database, migrations, auth, business rules, people (HR) and network endpoints, live events
   src/db/          schema.ts (31 tables), seed.ts (first-run data), client.ts (embedded Postgres or a Postgres server)
   drizzle/         SQL migrations (applied on start-up)
-apps/web/        Operations app (Next.js 16): dispatcher (incl. network records: vehicles, branches, depots, products), loader, driver (offline-first) and store screens
+apps/web/        DASH operations app (Next.js 16): dispatcher (incl. network records: vehicles, branches, depots, products), loader, driver (offline-first with dark mode) and store screens
 apps/admin/      Waypoint People, the HR panel (Next.js 16): staff directory for every role, licence renewals, sign-in access, activity log
 packages/core/   Shared by the API and the apps: domain model, planner (+ tests), business rules, API contract, dataset seed
 packages/ui/     Shared design system: tokens (theme.css) and UI kit
 data/            Shared competition datasets (local only, not committed)
 design/figma-build/  Scripts that build the Designathon Figma file
+design/figma-sync/   Figma sync scripts, screen definitions and captured screen snapshots
 docs/            Plan, integration contract, architecture, AI disclosure
 ```
 
@@ -84,7 +85,7 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 5. **Dispatcher: publish.** Click **Publish to loaders**. The loader lists, driver runs and store notices are created. Deferred outlets get a notice with the reason.
 6. **Loader: load in reverse order.** In a new tab, sign in as `loader` and open **VEH011**. The checklist runs from the last stop (deepest in the truck) to the first. Tick every line except one, then **Flag shortfall / damage** → quantity 24 of 28 → **Send & release**.
 7. **Dispatcher: see the exception.** **Live tracking** now lists *VEH011 · released with shortfall*. Choosing *Hold vehicle* instead would give the dispatcher Release / Re-pick / Balance tomorrow buttons.
-8. **Driver: deliver.** In a new tab, sign in as `driver` (phone width is best). The map pins today's stops. Tap **Arrived**, then **Deliver**. The POD starts from what was actually loaded; sign with your finger, enter the receiver's name and tap **Complete delivery**.
+8. **Driver: deliver & dark mode.** In a new tab, sign in as `driver` (phone width is best). Tap the theme toggle in the header or in **More** to test dark mode for dawn/night shifts—the Leaflet map tiles, signature pad strokes, and checklists adapt automatically to reduce cab glare. Tap **Arrived**, then **Deliver**. The POD starts from what was actually loaded; sign with your finger, enter the receiver's name and tap **Complete delivery**.
 9. **Driver: dead zone.** Go to **More → No signal** (a simulated dead zone for this tab only). Deliver the next stop: it's saved on the phone, the outbox shows *Queued*, and a reload still shows the whole run.
 10. **Dispatcher: change the run while the driver is offline.** In the dispatcher tab, select one of VEH011's later stops and choose **Defer order**. After ~2 minutes, Live tracking shows VEH011 as *No signal*.
 11. **Driver: reconnect.** Turn **No signal** off. The queued records sync with their original times, and the driver sees *"Your run was changed by dispatch — Removed: …"*.
@@ -103,7 +104,7 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 - **Order of allocation:** scarce vehicles first (chilled van-only → reefer vans, chilled → reefers, ambient van-only → vans, then the rest). Within each group, **outlets skipped yesterday go first**. Then the engine repeatedly fills the trip that serves the most priority per vehicle-minute.
 - **Priority score (shown in the UI):** skipped yesterday +30 · chilled +20 · days since served · Fresh daily +10 · festival ramp · tight or mall window.
 - **Road conditions:** each district's disruption index for the plan date (`road_conditions.csv`, 100 = normal) stretches its travel legs by 100 ÷ index. Dock handling time is not affected. Trips with an index below 95 show the stretch on the plan board. In the route-leg history, actual vs planned leg times follow this ratio closely.
-- **Deferral reasons** come from the rule that actually blocked every candidate vehicle. On the demo day the auto-plan defers 13 chilled orders (refrigerated capacity and Fresh windows run out), and one Style order (40.7 m³) is larger than any available vehicle, so it can never be served whole.
+- **Deferral reasons** come from the rule that actually blocked every candidate vehicle. On the demo day the auto-plan defers 14 orders: 13 chilled orders (refrigerated capacity and Fresh windows run out; S1-016 chilled deferred due to road disruption stretch) and one Style order (40.7 m³, larger than any available vehicle, so it can never be served whole).
 
 ## Departures from the Designathon design
 
@@ -112,6 +113,10 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 - **Delivery windows are a hard rule** in the app (the Figma showed late arrivals as warnings). Second Fresh trips must still reach stores before their windows close.
 - The live map is a **schematic district network**, not a street map. No map API key is needed and it works offline.
 - Demo convenience not in the design: the per-tab *No signal* switch. The branch switcher is only offered to area-manager store logins.
+- **DASH branding & visual identity:** Operations app rebranded to DASH with high-resolution brand marks (`DASH.png` / `DASH W.png`), balanced 50/50 desktop sign-in split, and responsive white brand marks on dark surfaces.
+- **Driver Dark Mode:** Dedicated dark theme designed for cab ergonomics, dawn runs, and night shifts (`#090e17`), with automatic Leaflet tile brightness/contrast inversion, dynamic canvas signature ink contrast, and system preference sync.
+- **Mobile Dark Mode Sign-in:** Automatic dark theme on mobile viewports for low-light early morning sign-ins, with mobile notch/status bar tinting.
+- **Road disruption stretching in trip timing:** Travel legs dynamically stretched by `100 / index` using `road_conditions.csv` disruption metrics.
 - Added after the Designathon: Waypoint People (the HR panel, with a staff directory for every role), real sign-in with HR-issued credentials, dispatch-owned network records, and the Postgres-backed API.
 
 ## Datasets and confidentiality
