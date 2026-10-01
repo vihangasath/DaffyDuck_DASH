@@ -45,18 +45,20 @@ export function orderState(db: Db, orderId: string): OrderState {
   if (order.forDate === "next-run") return { order, status: "next_run", plan: null };
   const plan = db.plans[order.depot];
   if (!plan || plan.status !== "published") return { order, status: "confirmed", plan };
-  const deferral = plan.deferred.find((d) => d.orderId === orderId);
-  if (deferral) return { order, status: "deferred", plan, deferral };
   const trip = plan.trips.find((t) => t.orderIds.includes(orderId));
-  if (!trip) return { order, status: "planned", plan };
-  const te = vehicleTrips(db, trip.vehicleId).find((t) => t.trip.id === trip.id);
+  const te = trip ? vehicleTrips(db, trip.vehicleId).find((t) => t.trip.id === trip.id) : undefined;
   const idx = te?.stops.findIndex((s) => s.orderId === orderId) ?? -1;
-  const base = { order, plan, tripEval: te, stopIndex: idx, eta: te?.stops[idx]?.arrive };
+  const base = { order, plan, tripEval: te, stopIndex: idx, eta: idx >= 0 ? te?.stops[idx]?.arrive : undefined };
   const stop = db.stops[orderId];
+  // A late offline driver record is a delivery fact and takes precedence over a deferral
+  // made while dispatch could not see the phone.
   if (db.receipts[orderId]) return { ...base, status: "received" };
   if (stop?.deliveredAt) return { ...base, status: "delivered" };
   if (stop?.problem) return { ...base, status: "failed" };
   if (stop?.arrivedAt) return { ...base, status: "arrived" };
+  const deferral = plan.deferred.find((d) => d.orderId === orderId);
+  if (deferral) return { ...base, status: "deferred", deferral };
+  if (!trip) return { ...base, status: "planned" };
   const load = db.loads[trip.id];
   if (load?.status === "released") return { ...base, status: "on_the_way" };
   if (load && load.status !== "not_started") return { ...base, status: "loading" };

@@ -70,7 +70,7 @@ export interface StopRecord {
   deliveredAt?: string;
   pod?: { receivedBy: string; signed: boolean; photos: number; lines: PodLine[]; note?: string };
   problem?: { reason: string; tempC?: number; note?: string };
-  recordedAt: string; // device wall-clock ISO when captured
+  recordedAt: string; // release time until the first device event, then device wall-clock ISO
   syncedAt: string; // server wall-clock ISO when received
 }
 
@@ -128,6 +128,8 @@ export type DriverEvent =
 export interface SyncResult {
   accepted: string[];
   duplicates: string[];
+  /** Rejected events remain in the device outbox for review and retry. */
+  rejected: { id: string; reason: string }[];
   planVersion: number;
 }
 
