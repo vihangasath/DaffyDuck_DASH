@@ -1,4 +1,4 @@
-# Waypoint Delivery Planning · Team Daffy Duck
+# Waypoint Delivery Planning · Team daffy Duck
 
 Tech-Triathlon 2026. One system that connects **ordering → planning → loading → delivery → receipt** for Waypoint Fresh, Style and Tech. Every deferral is explainable, and drivers keep working when the signal drops.
 
