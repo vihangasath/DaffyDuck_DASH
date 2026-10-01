@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { DriverEvent, Snapshot } from "@waypoint/core/contract";
-import { ops, type Actor } from "@waypoint/core/ops";
+import { ops, visibleTo, type Actor } from "@waypoint/core/ops";
 import { outletName } from "@waypoint/core/reference";
 import * as t from "../db/schema.ts";
 import { actorOf } from "../auth.ts";
@@ -130,7 +130,7 @@ const OPS = {
 
 export const opsRoutes = new Hono<Env>()
   .use(requireAuth("dispatcher", "loader", "driver", "store"))
-  .get("/snapshot", (c) => c.json({ db: c.var.svc.ops, reference: reference() } satisfies Snapshot))
+  .get("/snapshot", (c) => c.json({ db: visibleTo(c.var.svc.ops, actorOf(c.var.auth.user)), reference: reference() } satisfies Snapshot))
   .post("/:name", async (c) => {
     const name = c.req.param("name") as keyof typeof OPS;
     const def = OPS[name] as OpDef<z.ZodType, unknown> | undefined;

@@ -3,6 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db as OpsDb, LoginResult, Snapshot } from "@waypoint/core/contract";
 import { orderState } from "@waypoint/core/views";
+import { net } from "@waypoint/core/reference";
 import { Service } from "./service.ts";
 import { createApp } from "./app.ts";
 import { boot } from "./boot.ts";
@@ -109,12 +110,12 @@ describe("walkthrough", () => {
     const stop = trip.orderIds[0];
     const order = s.db.orders.find((o) => o.id === stop)!;
     const lines = order.lines!.map((l) => ({ skuId: l.skuId, name: l.name, planned: l.qty, delivered: l.qty }));
-    const wrongStop = s.db.plans.Peliyagoda!.trips.find((x) => x.vehicleId !== "VEH011")!.orderIds[0];
-    const rejected = await op<{ rejected: { id: string; reason: string }[] }>("syncDriverEvents", {
+    const wrongStop = (await snapshot()).db.plans.Peliyagoda!.trips.find((x) => x.vehicleId !== "VEH011")!.orderIds[0];
+    const rejected = await op<{ rejected: { id: string; reason: string; retry?: boolean }[] }>("syncDriverEvents", {
       vehicleId: "VEH011", events: [{ id: "wrong-stop", vehicleId: "VEH011", kind: "arrived", orderId: wrongStop, at: "05:01", recordedAt: new Date().toISOString() }],
     }, "driver");
     expect(rejected.status).toBe(200);
-    expect(rejected.json.rejected[0].id).toBe("wrong-stop");
+    expect(rejected.json.rejected[0]).toMatchObject({ id: "wrong-stop", retry: false });
     expect((await snapshot()).db.stops[wrongStop]).toBeUndefined();
     const badPod = await op<{ rejected: { id: string }[] }>("syncDriverEvents", {
       vehicleId: "VEH011", events: [{ id: "bad-pod", vehicleId: "VEH011", kind: "delivered", orderId: stop, at: "05:03", recordedAt: new Date().toISOString(), pod: { receivedBy: "Chamari", signed: true, photos: 0, lines: [] } }],
@@ -134,6 +135,32 @@ describe("walkthrough", () => {
     expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines.map((l) => ({ ...l, driverQty: l.driverQty + 1 })), issues: [] }, "store")).status).toBe(400);
     expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines, issues: [{ type: "Damaged", note: "One carton dented" }] }, "store")).status).toBe(200);
     expect((await snapshot()).db.receipts[stop].issues).toHaveLength(1);
+  });
+  it("asks the phone to keep a record queued until the loader releases the trip", async () => {
+    const d = (await snapshot()).db;
+    const unreleased = d.plans.Peliyagoda!.trips.find((x) => x.vehicleId === "VEH011" && d.loads[x.id].status !== "released");
+    if (!unreleased) return; // VEH011 runs a single trip on this seed
+    const r = await op<{ rejected: { id: string; retry?: boolean }[] }>("syncDriverEvents", {
+      vehicleId: "VEH011", events: [{ id: "early", vehicleId: "VEH011", kind: "arrived", orderId: unreleased.orderIds[0], at: "09:00", recordedAt: new Date().toISOString() }],
+    }, "driver");
+    expect(r.json.rejected).toEqual([expect.objectContaining({ id: "early", retry: true })]);
+  });
+  it("gives each role only its own slice of the operational state", async () => {
+    const all = (await snapshot()).db;
+    const store = (await snapshot("store")).db; // area manager: every Peliyagoda branch
+    expect(store.exceptions).toEqual([]);
+    expect(store.notices.every((n) => net.outlets.get(n.outletId)?.depot === "Peliyagoda")).toBe(true);
+    expect(store.orders.filter((o) => o.depot === "Kandy" && o.lines)).toEqual([]);
+    expect(store.plans.Peliyagoda!.trips).toEqual(all.plans.Peliyagoda!.trips); // ETAs need the whole trip
+    const driver = (await snapshot("driver")).db;
+    expect(driver.plans.Peliyagoda!.trips.every((t) => t.vehicleId === "VEH011")).toBe(true);
+    expect(Object.values(driver.stops).every((x) => x.vehicleId === "VEH011")).toBe(true);
+    expect(Object.values(driver.loads).every((l) => l.vehicleId === "VEH011")).toBe(true);
+    expect([driver.notices, driver.exceptions, driver.deferralLog, driver.processedEventIds]).toEqual([[], [], [], []]);
+    const loader = (await snapshot("loader")).db;
+    expect(loader.plans.Kandy).toBeNull();
+    expect(loader.orders.every((o) => o.depot === "Peliyagoda")).toBe(true);
+    expect(Object.keys(loader.receipts)).toEqual([]);
   });
   it("reconciles a released stop delivered offline after dispatch deferred it", async () => {
     const s = await snapshot("driver");

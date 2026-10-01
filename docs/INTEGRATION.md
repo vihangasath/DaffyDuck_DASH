@@ -15,7 +15,7 @@ Every request except sign-in carries `Authorization: Bearer <token>`. Errors com
 
 ## Operations (dispatcher, loader, driver, store)
 
-`GET /api/ops/snapshot` → `{ db, reference }`: the operational state plus the reference data (depots, branches, vehicles, products, travel, calendar, history).
+`GET /api/ops/snapshot` → `{ db, reference }`: the operational state plus the reference data (depots, branches, vehicles, products, travel, calendar, history). `db` is scoped to the caller: dispatchers get everything, loaders their depot, drivers their vehicle, store managers their outlets (see [`ARCHITECTURE.md → Who can read what`](ARCHITECTURE.md#who-can-read-what)).
 
 Each operation is `POST /api/ops/<name>` with a JSON body. It is validated, checked against the caller's role and scope, run, persisted in one transaction and audited:
 
@@ -63,8 +63,8 @@ Used by the dispatch console's **Network records** screens in the operations app
 ## Offline sync rules (driver)
 
 1. Every action is written to IndexedDB (`outbox`) **before** any network call. The last run is cached in `snapshot`.
-2. `POST /api/ops/syncDriverEvents` sends queued events in order. The server returns `accepted`, `duplicates`, and `rejected: [{ id, reason }]`; only accepted and duplicate ids leave the device outbox. The `driver_events` table makes retries idempotent.
-3. Releasing a trip records its vehicle-to-stop assignments. If dispatch removes a stop while the driver is offline, queued records from that released vehicle can still sync; the actual delivery or problem takes precedence over the earlier deferral in the store status. Unassigned stops and unreleased trips are rejected without losing the queued record.
+2. `POST /api/ops/syncDriverEvents` sends queued events in order. The server returns `accepted`, `duplicates`, and `rejected: [{ id, reason, retry }]`. Accepted and duplicate records are marked synced. A rejection with `retry: true` (the loader hasn't released the trip yet) stays queued; any other rejection moves to **Not accepted** on the driver's Outbox screen with the server's reason, so it is never retried forever or lost silently. The `driver_events` table makes retries idempotent.
+3. Releasing a trip records its vehicle-to-stop assignments. If dispatch removes a stop while the driver is offline, queued records from that released vehicle can still sync; the actual delivery or problem takes precedence over the earlier deferral in the store status. Unassigned stops are refused and kept on the phone under **Not accepted**; records for a trip that hasn't been released stay queued until it is.
 4. Facts from the field (arrived, delivered, POD, problem) keep their **device time**. The server records its own `syncedAt`. If the plan version changed while offline, the device diffs its cached run against the new one and shows removed and added stops.
 5. A heartbeat sync every 20 s gives the dispatcher "last seen". In known hill-country dead zones, alerts escalate only after the usual gap.
 

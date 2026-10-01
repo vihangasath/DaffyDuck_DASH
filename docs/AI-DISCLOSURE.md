@@ -12,6 +12,7 @@ We used **Claude (Anthropic) through Claude Code** and **OpenAI Codex** as pair-
 - **Waypoint People, the HR panel (27 Sep).** Turning the admin console into a separate HR product: the `staff` table and its seed, the `/api/people` and `/api/network` routes (split from the old admin routes), moving vehicles, branches, depots, products and the demo reset into the dispatch console, and the new "personnel file cabinet" interface for `apps/admin`.
 - **Documentation.** First drafts of the README, the integration contract and the architecture notes.
 - **Hackathon backend hardening (30 Sep, Codex).** Reviewing the booklet against the existing stack; tightening order, plan, loading, driver-sync and receipt rules; extending the API walkthrough tests; and adding an independently generated public demo seed that keeps the private competition data out of the repository.
+- **Hackathon review (1 Oct, Claude Code).** Reviewing the build against the booklet and on a fresh clone. Fixes: each role now reads only its own slice of the operational state; the driver app shows records the server refused instead of retrying them forever; the synthetic public seed reproduces the peak day (refrigerated capacity binds); typechecking works on a fresh clone; restored Waypoint brand names after the DASH rename; the ER diagram in `ARCHITECTURE.md`.
 
 ## Decisions made by the team
 
@@ -27,4 +28,6 @@ We used **Claude (Anthropic) through Claude Code** and **OpenAI Codex** as pair-
 - Every screen was exercised end-to-end in a browser across all four roles, including the offline and conflict scenario.
 - The AI assistant read samples of the competition CSVs while building the seed script and planner (for example header rows and summary statistics). The datasets were not uploaded to any other service.
 
-The 30 Sep backend edits were syntax-checked with esbuild. The independent synthetic peak day passed the pure planner for both depots with zero feasibility violations. An isolated business-rules walkthrough covered ordering, loading, offline delivery reconciliation and receipt, plus refusal of held-load release and an out-of-run driver event. The database-backed API and browser suites still need Node.js 22.18 or newer in the working environment.
+The 30 Sep backend edits were syntax-checked with esbuild. The independent synthetic peak day passed the pure planner for both depots with zero feasibility violations. An isolated business-rules walkthrough covered ordering, loading, offline delivery reconciliation and receipt, plus refusal of held-load release and an out-of-run driver event.
+
+On 1 Oct the full suites (`npm test`, `npm run typecheck`, `npm run lint`) and both production builds were run on the private seed and again on a fresh clone with the synthetic seed. The role screens were checked in a browser, including the driver and loader at phone width.

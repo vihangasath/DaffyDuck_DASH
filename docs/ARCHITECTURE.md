@@ -27,4 +27,89 @@ flowchart LR
 
 ## Data model
 
-See [`INTEGRATION.md → Data model`](INTEGRATION.md#data-model) and `apps/api/src/db/schema.ts`.
+The main tables and how they connect (31 tables in all; the full column list is in `apps/api/src/db/schema.ts`, and the table groups are listed in [`INTEGRATION.md → Data model`](INTEGRATION.md#data-model)). Solid lines are foreign keys. Dashed lines link by id without a constraint, on purpose: a load list, its shortfalls and the raw device log must outlive later plan edits (a truck that has left keeps its load even if dispatch moves a stop).
+
+```mermaid
+erDiagram
+  depots ||--o{ outlets : serves
+  depots ||--o{ vehicles : "home depot"
+  depots ||--o{ drivers : employs
+  vehicles |o--o| drivers : "assigned to"
+  depots ||--o{ district_travel : "travel times"
+  outlets ||--o| service_history : "14-day strip"
+
+  depots ||--o{ staff : employs
+  staff |o--o| drivers : "driver record"
+  staff |o--o| users : "login"
+  users ||--o{ sessions : "hashed tokens"
+
+  outlets ||--o{ orders : places
+  orders ||--o{ order_lines : "SKU lines"
+  depots ||--|| ops_days : "16:00 cutoff"
+  depots ||--o| plans : "current plan"
+  plans ||--o{ trips : contains
+  vehicles ||--o{ trips : runs
+  trips ||--o{ trip_stops : "stop sequence"
+  orders ||--o| trip_stops : "served on"
+  plans ||--o{ plan_deferrals : defers
+  orders ||--o| plan_deferrals : "deferred with reason"
+  trips ||..|| loads : "load list"
+  loads ||--o{ load_lines : "line per order and SKU"
+  loads ||..o{ shortfalls : flags
+  orders ||--o{ shortfalls : "short item"
+  orders ||--o| stop_records : "arrival, POD, problem"
+  stop_records ||..o{ driver_events : "idempotent device records"
+  orders ||--o| receipts : "store confirmation"
+  outlets ||--o{ notices : "deferral, ETA, delivered"
+  depots ||--o{ exceptions : "dispatcher alerts"
+  outlets ||--o{ deferral_log : "fairness history"
+
+  orders {
+    text id PK
+    text outlet_id FK
+    text depot_id
+    text brand
+    text temp "chilled | ambient"
+    float weight_kg
+    float volume_m3
+    text for_date "date or next-run"
+  }
+  plans {
+    text depot_id PK
+    int version
+    text status "draft | published"
+  }
+  trips {
+    text id PK
+    text vehicle_id FK
+    int trip_no "1 or 2"
+    text brand
+    text district
+  }
+  stop_records {
+    text order_id PK
+    text vehicle_id FK
+    text arrived_at
+    text delivered_at
+    jsonb pod
+  }
+  driver_events {
+    text id PK "device UUID"
+    text vehicle_id
+    text order_id
+    jsonb payload
+  }
+```
+
+Reference data the planner reads but nothing points at: `products`, `service_allowance`, `calendar_days`, `road_conditions`, `weekly_volume` and `app_meta`. `audit_log` records every write with the acting user, role and the rows it changed.
+
+## Who can read what
+
+`GET /api/ops/snapshot` returns a slice of the operational state per role (`visibleTo` in `packages/core/src/ops.ts`):
+
+| Role | Receives |
+|---|---|
+| Dispatcher | Everything, for both depots |
+| Loader | Their depot's plan, orders, load lists and shortfalls |
+| Driver | Their vehicle's trips, orders, load lists, stop records and sync status |
+| Store manager | Their outlet's (or, for an area manager, their depot's) orders, notices, receipts and stop records. Other orders on the same trips stay so ETAs can be computed, without their line items |

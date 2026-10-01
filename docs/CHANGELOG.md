@@ -119,3 +119,12 @@ The code changes are on `feat/hr-waypoint-people`. The PR still needs to be open
   - Balanced desktop layout to an exact 50/50 split (`lg:grid-cols-2`).
   - Enlarged right-side form card (`max-w-lg`) and input fields.
   - Streamlined typography with compact guidance copy and removed decorative key icon.
+
+## 1 Oct: Hackathon review against the booklet
+A pass over the build as a judge would see it: the booklet's Hackathon requirements, a fresh clone, and every role in a browser (driver and loader at phone width).
+- **Each role reads only its own data.** `GET /api/ops/snapshot` used to send every order, notice, POD and exception to every signed-in user. It now sends dispatchers everything, loaders their depot, drivers their vehicle and store managers their outlets (`visibleTo` in `packages/core/src/ops.ts`).
+- **Refused driver records are shown, not retried forever.** A record the server refuses for good (for example, a stop already recorded) moves to **Not accepted** on the driver's Outbox with the reason, and the Outbox tab badge turns red. Records waiting for the loader to release the trip stay queued.
+- **A fresh clone works.** The synthetic public seed now reproduces the peak day (chilled demand about 17% over refrigerated capacity), so `npm test` passes without the private data, and `npm run typecheck` generates Next.js route types first. The README walkthrough no longer depends on ids or numbers that exist only in the shared dataset.
+- **Naming.** DASH is the product; Waypoint Group's brands (Waypoint Fresh, Style, Tech) and Waypoint People had been renamed by mistake and are restored. The rename is listed as a departure from the Designathon design.
+- **Docs.** An ER diagram and a "who can read what" table in [`ARCHITECTURE.md`](ARCHITECTURE.md); sync rules updated in [`INTEGRATION.md`](INTEGRATION.md). `.dockerignore` now keeps `.env`, docs and design files out of the image.
+- Tests: 15 planner + 19 API, passing on both seeds.

@@ -128,8 +128,11 @@ export type DriverEvent =
 export interface SyncResult {
   accepted: string[];
   duplicates: string[];
-  /** Rejected events remain in the device outbox for review and retry. */
-  rejected: { id: string; reason: string }[];
+  /**
+   * Events the server refused. `retry` = the refusal may clear on its own (the loader hasn't released the
+   * trip yet), so the phone keeps the record queued; otherwise it is shown to the driver as "not accepted".
+   */
+  rejected: { id: string; reason: string; retry?: boolean }[];
   planVersion: number;
 }
 
