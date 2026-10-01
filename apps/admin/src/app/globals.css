@@ -51,6 +51,7 @@
   --color-primary: #008289;
   --color-primary-strong: #006066;
   --color-primary-soft: #e2f4f5;
+  --color-on-primary: #ffffff; /* text on primary fills in the shared UI kit */
   --color-success: #15803d;
   --color-success-soft: #e6f5eb;
   --color-warning: #b45309;

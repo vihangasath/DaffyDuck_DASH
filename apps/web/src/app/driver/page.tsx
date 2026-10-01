@@ -85,7 +85,7 @@ export default function Run() {
           <NextStop key={next.orderId} orderId={next.orderId} eta={next.arrive} index={stops.indexOf(next)} total={stops.length} arrived={!!d.stops[next.orderId]?.arrivedAt} onArrive={arrive} />
         ) : (
           <Card className="flex items-center gap-3 border-success/30 bg-success-soft p-4">
-            <span className="flex size-10 items-center justify-center rounded-full bg-success text-white"><Check className="size-5" strokeWidth={3} /></span>
+            <span className="flex size-10 items-center justify-center rounded-full bg-success text-on-primary"><Check className="size-5" strokeWidth={3} /></span>
             <div>
               <p className="font-bold">Trip {trip.trip.tripNo} complete</p>
               <p className="text-sm text-ink-2">Return to depot · back ~{fmtMin(trip.returnAt)}</p>
@@ -110,13 +110,13 @@ export default function Run() {
               return (
                 <li key={s.orderId}>
                   <Link href={`/driver/stop/${s.orderId}`} className={cx("group relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-canvas", cur && "bg-primary-soft/70 hover:bg-primary-soft")}>
-                    {/* The route spine: segments turn green behind the driver as stops are completed. */}
+                    {/* The route spine: segments turn solid blue behind the driver as stops are completed. */}
                     {i > 0 && <span aria-hidden className={cx("absolute left-[30.5px] top-0 h-1/2 w-[3px]", passed || cur ? "bg-success" : "bg-line")} />}
                     {!last && <span aria-hidden className={cx("absolute bottom-0 left-[30.5px] h-1/2 w-[3px]", passed ? "bg-success" : "bg-line")} />}
                     <span
                       className={cx(
                         "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold ring-4",
-                        done ? "bg-success text-white ring-surface" : failed ? "bg-danger text-white ring-surface" : cur ? "animate-waypoint bg-primary text-white ring-primary-soft" : "border-2 border-line-strong bg-surface text-ink-2 ring-surface",
+                        done ? "bg-success text-on-primary ring-surface" : failed ? "bg-danger text-white ring-surface" : cur ? "animate-waypoint bg-primary text-on-primary ring-primary-soft" : "border-2 border-line-strong bg-surface text-ink-2 ring-surface",
                       )}
                     >
                       {done ? <Check className="size-4" strokeWidth={3} /> : failed ? "!" : i + 1}

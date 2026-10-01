@@ -105,7 +105,7 @@ export default function LoadList() {
                         aria-label={done ? `Unmark ${l.name}` : `Mark ${l.name} loaded`}
                         disabled={locked || busy}
                         onClick={() => run(() => api.setLoadLine(tripId, key, done ? 0 : line.planned))}
-                        className={cx("flex size-11 shrink-0 items-center justify-center rounded-xl border-2 font-bold transition-[background-color,border-color,transform] duration-150 active:scale-95", done ? "border-success bg-success text-white" : sf ? "border-warning bg-warning text-white" : "border-line-strong bg-surface hover:border-primary hover:bg-primary-soft")}
+                        className={cx("flex size-11 shrink-0 items-center justify-center rounded-xl border-2 font-bold transition-[background-color,border-color,transform] duration-150 active:scale-95", done ? "border-success bg-success text-on-primary" : sf ? "border-warning bg-warning text-white" : "border-line-strong bg-surface hover:border-primary hover:bg-primary-soft")}
                       >
                         {done ? <Check className="size-6" strokeWidth={3} /> : sf ? <AlertTriangle className="size-5" /> : null}
                       </button>

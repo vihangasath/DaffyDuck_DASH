@@ -31,16 +31,16 @@ const TONE: Record<Tone, string> = {
   tech: "bg-tech-soft text-tech",
 };
 const SOLID: Record<Tone, string> = {
-  success: "bg-success text-white",
+  success: "bg-success text-on-primary",
   warning: "bg-warning text-white",
   danger: "bg-danger text-white",
-  info: "bg-info text-white",
-  chilled: "bg-chilled text-white",
+  info: "bg-info text-on-primary",
+  chilled: "bg-chilled text-on-primary",
   neutral: "bg-neutral text-white",
-  primary: "bg-primary text-white",
-  fresh: "bg-fresh text-white",
-  style: "bg-style text-white",
-  tech: "bg-tech text-white",
+  primary: "bg-primary text-on-primary",
+  fresh: "bg-fresh text-on-primary",
+  style: "bg-style text-on-primary",
+  tech: "bg-tech text-on-primary",
 };
 export const DOT: Record<Tone, string> = {
   success: "bg-success", warning: "bg-warning", danger: "bg-danger", info: "bg-info", chilled: "bg-chilled", neutral: "bg-neutral",
@@ -106,7 +106,7 @@ export const BrandPill = ({ brand }: { brand: string }) => <Pill tone={brandTone
 
 type BtnKind = "primary" | "secondary" | "ghost" | "danger" | "warn" | "soft" | "dark";
 const BTN: Record<BtnKind, string> = {
-  primary: "bg-primary text-white shadow-button hover:bg-primary-strong",
+  primary: "bg-primary text-on-primary shadow-button hover:bg-primary-strong",
   secondary: "bg-surface text-ink border border-line-strong shadow-card hover:border-ink-2/40 hover:bg-canvas",
   ghost: "text-primary hover:bg-primary-soft",
   danger: "bg-danger text-white shadow-button hover:brightness-95",

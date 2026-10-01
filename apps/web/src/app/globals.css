@@ -37,7 +37,7 @@
   height: 7px;
   margin-left: -9px;
   border-radius: 50%;
-  background: rgb(0 130 137 / 0.5);
+  background: rgb(29 95 211 / 0.5);
   animation: wp-pulse 1.8s ease-out infinite;
 }
 .wp-truck {
@@ -112,32 +112,33 @@
   --color-line: rgba(255, 255, 255, 0.09);
   --color-line-strong: rgba(255, 255, 255, 0.18);
 
-  --color-primary: #00c2cb;
-  --color-primary-strong: #22d3ee;
-  --color-primary-soft: rgba(0, 194, 203, 0.18);
-  --color-primary-bright: #38bdf8;
-  --color-mint: #22d3ee;
+  --color-primary: #5aa2ff;
+  --color-primary-strong: #9ccaff;
+  --color-primary-soft: rgba(90, 162, 255, 0.18);
+  --color-primary-bright: #7db6ff;
+  --color-on-primary: #08111f;
+  --color-mint: #8ecbff;
   --color-amber: #f59e0b;
 
-  --color-success: #22c55e;
-  --color-success-soft: rgba(34, 197, 94, 0.18);
+  --color-success: #93c5fd;
+  --color-success-soft: rgba(147, 197, 253, 0.16);
   --color-warning: #f59e0b;
   --color-warning-soft: rgba(245, 158, 11, 0.18);
   --color-danger: #ef4444;
   --color-danger-soft: rgba(239, 68, 68, 0.18);
-  --color-info: #0ea5e9;
-  --color-info-soft: rgba(14, 165, 233, 0.18);
-  --color-chilled: #06b6d4;
-  --color-chilled-soft: rgba(6, 182, 212, 0.18);
+  --color-info: #a3b8d6;
+  --color-info-soft: rgba(163, 184, 214, 0.16);
+  --color-chilled: #7dd3fc;
+  --color-chilled-soft: rgba(125, 211, 252, 0.16);
   --color-neutral: #94a3b8;
   --color-neutral-soft: rgba(148, 163, 184, 0.14);
 
-  --color-fresh: #84cc16;
-  --color-fresh-soft: rgba(132, 204, 22, 0.18);
-  --color-style: #c084fc;
-  --color-style-soft: rgba(192, 132, 252, 0.18);
-  --color-tech: #818cf8;
-  --color-tech-soft: rgba(129, 140, 248, 0.18);
+  --color-fresh: #5fb0ff;
+  --color-fresh-soft: rgba(95, 176, 255, 0.16);
+  --color-style: #a5b4fc;
+  --color-style-soft: rgba(165, 180, 252, 0.16);
+  --color-tech: #8ea8e6;
+  --color-tech-soft: rgba(142, 168, 230, 0.16);
 
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.45), 0 2px 8px -2px rgba(0, 0, 0, 0.55);
   --shadow-raised: 0 2px 4px rgba(0, 0, 0, 0.55), 0 10px 24px -8px rgba(0, 0, 0, 0.75);
@@ -170,11 +171,11 @@
   color: var(--color-ink-2);
 }
 .driver-dark .wp-truck {
-  border-color: #22d3ee;
+  border-color: var(--color-mint);
   background: #090e17;
 }
 .driver-dark .wp-depot {
-  border-color: #22d3ee;
+  border-color: var(--color-mint);
   background: #090e17;
 }
 
@@ -196,23 +197,24 @@
     --color-line: rgba(255, 255, 255, 0.09);
     --color-line-strong: rgba(255, 255, 255, 0.18);
 
-    --color-primary: #00c2cb;
-    --color-primary-strong: #22d3ee;
-    --color-primary-soft: rgba(0, 194, 203, 0.18);
-    --color-primary-bright: #38bdf8;
-    --color-mint: #22d3ee;
+    --color-primary: #5aa2ff;
+    --color-primary-strong: #9ccaff;
+    --color-primary-soft: rgba(90, 162, 255, 0.18);
+    --color-primary-bright: #7db6ff;
+    --color-on-primary: #08111f;
+    --color-mint: #8ecbff;
     --color-amber: #f59e0b;
 
-    --color-success: #22c55e;
-    --color-success-soft: rgba(34, 197, 94, 0.18);
+    --color-success: #93c5fd;
+    --color-success-soft: rgba(147, 197, 253, 0.16);
     --color-warning: #f59e0b;
     --color-warning-soft: rgba(245, 158, 11, 0.18);
     --color-danger: #ef4444;
     --color-danger-soft: rgba(239, 68, 68, 0.18);
-    --color-info: #0ea5e9;
-    --color-info-soft: rgba(14, 165, 233, 0.18);
-    --color-chilled: #06b6d4;
-    --color-chilled-soft: rgba(6, 182, 212, 0.18);
+    --color-info: #a3b8d6;
+    --color-info-soft: rgba(163, 184, 214, 0.16);
+    --color-chilled: #7dd3fc;
+    --color-chilled-soft: rgba(125, 211, 252, 0.16);
     --color-neutral: #94a3b8;
     --color-neutral-soft: rgba(148, 163, 184, 0.14);
 

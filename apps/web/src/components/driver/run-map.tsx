@@ -40,7 +40,8 @@ interface Live {
 // OpenStreetMap standard tiles: free with attribution, no API key. Swap for a hosted tile service in production.
 const TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-const PRIMARY = "#008289";
+/** Leaflet draws its own SVG, so read the theme's action blue (light or driver-dark) when the map is built. */
+const primary = () => (typeof window === "undefined" ? "" : getComputedStyle(document.documentElement).getPropertyValue("--color-primary").trim()) || "#1d5fd3";
 const TRUCK_SVG =
   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>';
 
@@ -105,8 +106,8 @@ export function RunMap({ tripId, depot, stops, nextId, online }: { tripId: strin
         .addTo(map);
       const home = DEPOT_LATLNG[depot];
       L.marker(home, { interactive: false, keyboard: false, icon: L.divIcon({ className: "wp-marker", iconSize: [26, 26], iconAnchor: [13, 13], html: '<div class="wp-depot"><span></span></div>' }) }).addTo(map);
-      const route = L.polyline([], { color: PRIMARY, weight: 4, opacity: 0.5, dashArray: "1 9", lineCap: "round", interactive: false }).addTo(map);
-      const leg = L.polyline([], { color: PRIMARY, weight: 5, opacity: 0.9, lineCap: "round", interactive: false }).addTo(map);
+      const route = L.polyline([], { color: primary(), weight: 4, opacity: 0.5, dashArray: "1 9", lineCap: "round", interactive: false }).addTo(map);
+      const leg = L.polyline([], { color: primary(), weight: 5, opacity: 0.9, lineCap: "round", interactive: false }).addTo(map);
       const truck = L.marker(home, {
         interactive: false,
         keyboard: false,
@@ -224,7 +225,7 @@ export function RunMap({ tripId, depot, stops, nextId, online }: { tripId: strin
 
       {selected ? (
         <div className="absolute inset-x-3 bottom-7 z-[500] flex animate-rise items-center gap-3 rounded-xl bg-surface p-3 shadow-float ring-1 ring-line">
-          <span className={cx("flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold", selected.orderId === nextId ? "bg-primary text-white" : "border-2 border-line-strong bg-subtle text-ink")}>{selIndex + 1}</span>
+          <span className={cx("flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold", selected.orderId === nextId ? "bg-primary text-on-primary" : "border-2 border-line-strong bg-subtle text-ink")}>{selIndex + 1}</span>
           <div className="min-w-0 flex-1">
             <p className="truncate font-bold">{outletName(selected.outletId)}</p>
             <p className="text-xs text-ink-2">

@@ -13,7 +13,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
           <p className="text-lg font-bold tracking-tight">DASH couldn’t load</p>
           <p className="text-sm leading-relaxed text-ink-2">Anything already saved is kept. Try again, or reload the app.</p>
           <div className="flex flex-wrap justify-center gap-2">
-            <button onClick={() => retry()} className="rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white">
+            <button onClick={() => retry()} className="rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-on-primary">
               Try again
             </button>
             <button onClick={() => window.location.reload()} className="rounded-lg border border-line-strong bg-surface px-3.5 py-2 text-sm font-semibold">
