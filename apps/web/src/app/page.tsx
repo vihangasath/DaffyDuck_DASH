@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { ArrowRight, Eye, EyeOff, KeyRound, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { Button, cx } from "@/components/ui";
 import { DashLogo as Logo } from "@/components/logo";
 import { HOME, signIn, useSession } from "@/lib/session";
@@ -106,7 +106,7 @@ export default function SignIn() {
   }, []);
 
   return (
-    <main className="phone-dark-signin grid min-h-dvh bg-canvas text-ink transition-colors duration-200 lg:grid-cols-[1.15fr_1fr]">
+    <main className="phone-dark-signin grid min-h-dvh bg-canvas text-ink transition-colors duration-200 lg:grid-cols-2">
       <section className="on-ink relative hidden flex-col justify-center gap-10 overflow-hidden bg-navy p-12 text-white lg:flex xl:p-14">
         {/* A faint topographic wash so the navy field has depth without decoration competing with the loop. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_85%_0%,rgb(0_130_137/0.22),transparent_60%),radial-gradient(60%_50%_at_0%_100%,rgb(16_36_71/0.95),transparent_70%)]" />
@@ -125,13 +125,13 @@ export default function SignIn() {
         </div>
       </section>
 
-      <section className="relative flex flex-col justify-center px-5 py-10 sm:px-12 xl:px-20">
+      <section className="relative flex flex-col justify-center px-6 py-10 sm:px-12 xl:px-20">
         {/* Subtle dark ambient glow on mobile */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_50%_0%,rgb(0_130_137/0.18),transparent_65%),radial-gradient(60%_50%_at_0%_100%,rgb(16_36_71/0.85),transparent_70%)] lg:hidden"
         />
-        <div className="relative mx-auto grid w-full max-w-md gap-8">
+        <div className="relative mx-auto grid w-full max-w-lg gap-8">
           {/* Phone/tablet: the brand panel is hidden, so carry the mark here without redundant slogan. */}
           <div className="flex justify-center lg:hidden">
             <Logo
@@ -144,21 +144,18 @@ export default function SignIn() {
           </div>
 
           <div className="grid gap-2">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary-soft text-primary">
-              <KeyRound className="size-6" />
-            </span>
-            <h2 className="text-[28px] font-bold tracking-tight">Sign in</h2>
-            <p className="text-[15px] leading-relaxed text-ink-2">Use the username and password HR gave you. You’ll go straight to your own workspace: dispatch, the dock, your run or your store.</p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-[34px]">Sign in</h2>
+            <p className="text-xs sm:text-[13px] leading-relaxed text-ink-2">Use the username and password HR gave you. You’ll go straight to your own workspace: dispatch, the dock, your run or your store.</p>
           </div>
 
           <form
-            className="grid gap-4"
+            className="grid gap-4 sm:gap-5"
             onSubmit={(e) => {
               e.preventDefault();
               void submit();
             }}
           >
-            <label className="grid gap-1.5 text-sm font-semibold text-ink-2">
+            <label className="grid gap-2 text-sm sm:text-[15px] font-semibold text-ink-2">
               Username
               <input
                 value={username}
@@ -170,10 +167,10 @@ export default function SignIn() {
                 autoCapitalize="none"
                 spellCheck={false}
                 autoFocus
-                className="rounded-xl border border-line-strong bg-surface px-3.5 py-3 text-base font-normal text-ink shadow-card transition-[border-color,box-shadow] placeholder:text-muted focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
+                className="rounded-xl border border-line-strong bg-surface px-4 py-3.5 text-base sm:text-[17px] font-normal text-ink shadow-card transition-[border-color,box-shadow] placeholder:text-muted focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
               />
             </label>
-            <label className="grid gap-1.5 text-sm font-semibold text-ink-2">
+            <label className="grid gap-2 text-sm sm:text-[15px] font-semibold text-ink-2">
               Password
               <span className="relative flex">
                 <input
@@ -187,7 +184,7 @@ export default function SignIn() {
                   aria-invalid={!!error}
                   aria-describedby={error ? "signin-error" : undefined}
                   className={cx(
-                    "w-full rounded-xl border bg-surface py-3 pl-3.5 pr-12 text-base font-normal text-ink shadow-card transition-[border-color,box-shadow] focus:outline-none focus:ring-4",
+                    "w-full rounded-xl border bg-surface py-3.5 pl-4 pr-12 text-base sm:text-[17px] font-normal text-ink shadow-card transition-[border-color,box-shadow] focus:outline-none focus:ring-4",
                     error ? "border-danger focus:ring-danger/15" : "border-line-strong focus:border-primary focus:ring-primary/15",
                   )}
                 />
@@ -202,7 +199,7 @@ export default function SignIn() {
               </span>
             </label>
             {error && (
-              <p id="signin-error" role="alert" className="rounded-xl bg-danger-soft px-3.5 py-3 text-sm font-medium text-danger">
+              <p id="signin-error" role="alert" className="rounded-xl bg-danger-soft px-4 py-3.5 text-sm font-medium text-danger">
                 {error.text}
                 {error.adminUrl && (
                   <a href={error.adminUrl} className="mt-1 flex items-center gap-1 font-semibold underline">
@@ -211,12 +208,12 @@ export default function SignIn() {
                 )}
               </p>
             )}
-            <Button type="submit" big busy={busy}>
+            <Button type="submit" big busy={busy} className="h-12 sm:h-13 text-base sm:text-lg">
               Sign in <ArrowRight className="size-5" />
             </Button>
           </form>
 
-          <p className="flex items-start gap-2 text-sm text-ink-2">
+          <p className="flex items-start gap-2 text-xs sm:text-[13px] text-ink-2">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
             Forgot your login? Please contact HR.
           </p>
