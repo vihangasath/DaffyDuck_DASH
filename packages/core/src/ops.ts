@@ -92,6 +92,17 @@ function loadOf(db: Db, tripId: string): LoadCheck {
   return must(db.loads[tripId], "Load list");
 }
 
+/** Remember who received each stop when a vehicle leaves, even if dispatch later changes the plan offline. */
+function markReleasedStops(db: Db, tripId: string, vehicleId: string) {
+  const plan = db.plans[depotOfVehicle(vehicleId)];
+  if (plan?.status !== "published") throw new OpError(409, "Publish the plan before releasing a vehicle.");
+  const trip = must(plan.trips.find((t) => t.id === tripId && t.vehicleId === vehicleId), "Trip in published plan");
+  const at = nowIso();
+  for (const orderId of trip.orderIds) {
+    if (!db.stops[orderId]) db.stops[orderId] = { orderId, vehicleId, recordedAt: at, syncedAt: at };
+  }
+}
+
 /** Keeps each trip's load list in step with the plan; flags lists that changed after loading began. */
 function syncLoads(db: Db, plan: Plan, live = false) {
   const orders = new Map(db.orders.map((o) => [o.id, o]));
@@ -128,26 +139,33 @@ export const ops = {
     const closed = db.day[outlet.depot].ordersClosed;
     const merged = new Map<string, number>();
     for (const l of input.lines) merged.set(l.skuId, (merged.get(l.skuId) ?? 0) + l.qty);
-    const skus = [...merged].map(([skuId, qty]) => ({ skuId, qty }))
-      .map((l) => ({ l, s: CATALOG.find((c) => c.id === l.skuId) }))
-      .filter((x): x is { l: typeof x.l; s: NonNullable<typeof x.s> } => !!x.s && x.s.active !== false && x.s.brand === outlet.brand && Number.isInteger(x.l.qty) && x.l.qty > 0);
+    if (outlet.brand !== "Fresh" && input.temp !== "ambient")
+      throw new OpError(400, "Only Fresh outlets can place chilled orders.");
+    const temp = input.temp;
+    const skus = [...merged].map(([skuId, qty]) => ({
+      l: { skuId, qty },
+      s: CATALOG.find((c) => c.id === skuId),
+    }));
     if (!skus.length) throw new OpError(400, "Add at least one item before submitting.");
+    if (skus.some(({ l, s }) => !s || s.active === false || s.brand !== outlet.brand || s.temp !== temp || !Number.isSafeInteger(l.qty) || l.qty <= 0))
+      throw new OpError(400, `Every item must be an active ${outlet.brand} product for the ${temp} order.`);
+    const validSkus = skus as { l: { skuId: string; qty: number }; s: NonNullable<(typeof skus)[number]["s"]> }[];
     const order: Order = {
       id: `WP-${String(1100 + db.orders.filter((o) => o.id.startsWith("WP-")).length + 1)}`,
       outletId: outlet.id,
       depot: outlet.depot,
       brand: outlet.brand,
-      temp: outlet.brand === "Fresh" ? input.temp : "ambient",
-      units: skus.reduce((s, x) => s + x.l.qty, 0),
-      weightKg: Math.round(skus.reduce((s, x) => s + x.l.qty * x.s.weightKg, 0) * 10) / 10,
-      volumeM3: Math.round(skus.reduce((s, x) => s + x.l.qty * x.s.volumeM3, 0) * 1000) / 1000,
+      temp,
+      units: validSkus.reduce((s, x) => s + x.l.qty, 0),
+      weightKg: Math.round(validSkus.reduce((s, x) => s + x.l.qty * x.s.weightKg, 0) * 10) / 10,
+      volumeM3: Math.round(validSkus.reduce((s, x) => s + x.l.qty * x.s.volumeM3, 0) * 1000) / 1000,
       deferredYesterday: false,
       daysSinceLastServed: 1,
       source: "Store app",
       forDate: closed ? "next-run" : DEMO_DATE,
       createdAt: nowIso(),
       createdBy: a.name,
-      lines: skus.map((x) => ({ skuId: x.s.id, name: x.s.name, unit: x.s.unit, qty: x.l.qty })),
+      lines: validSkus.map((x) => ({ skuId: x.s.id, name: x.s.name, unit: x.s.unit, qty: x.l.qty })),
     };
     db.orders.push(order);
     notice(db, {
@@ -164,6 +182,7 @@ export const ops = {
 
   closeOrdersAndPlan(db: Db, a: Actor, depot: Depot): Plan {
     need(a, "dispatcher");
+    if (db.plans[depot]) throw new OpError(409, "A plan already exists for this depot. Use Replan while it is a draft, or edit a published plan move by move.");
     db.day[depot] = { ordersClosed: true, closedAt: nowIso(), closedBy: a.name };
     const plan = autoPlan({ date: DEMO_DATE, depot, orders: depotOrders(db, depot), ctx: ctxOf(db), festivalRamp });
     db.plans[depot] = plan;
@@ -182,6 +201,17 @@ export const ops = {
   moveOrder(db: Db, a: Actor, depot: Depot, orderId: string, target: MoveTarget): { ok: boolean; violations: Violation[]; warnings: string[] } {
     need(a, "dispatcher");
     const plan = planOf(db, depot);
+    const order = must(db.orders.find((o) => o.id === orderId), "Order");
+    if (order.depot !== depot || order.forDate !== DEMO_DATE ||
+      (!plan.deferred.some((d) => d.orderId === orderId) && !plan.trips.some((t) => t.orderIds.includes(orderId))))
+      throw new OpError(409, "This order is not in the selected depot's current plan.");
+    const source = plan.trips.find((t) => t.orderIds.includes(orderId));
+    if ("defer" in target && (db.stops[orderId]?.arrivedAt || db.stops[orderId]?.deliveredAt))
+      throw new OpError(409, "The driver has already reached this stop. Resolve the delivery outcome instead.");
+    if (source && db.loads[source.id]?.status === "released" && !("defer" in target))
+      throw new OpError(409, "That order is already on a vehicle that left the depot.");
+    if ("newTripOn" in target && !net.vehicles.has(target.newTripOn))
+      throw new OpError(404, "Target vehicle not found.");
     if ("defer" in target) target = { ...target, by: a.name };
     if ("tripId" in target && db.loads[target.tripId]?.status === "released") {
       const t = must(plan.trips.find((x) => x.id === target.tripId), "Trip");
@@ -250,8 +280,11 @@ export const ops = {
     const l = loadOf(db, input.tripId);
     const depot = depotOfVehicle(l.vehicleId);
     needDepot(a, depot);
+    if (l.status === "released" || l.status === "held") throw new OpError(409, "This vehicle’s load list is locked.");
     const key = `${input.orderId}|${input.skuId}`;
     const line = must(l.lines[key], "Load line");
+    if (db.shortfalls.some((s) => s.tripId === input.tripId && s.orderId === input.orderId && s.skuId === input.skuId && !s.resolution))
+      throw new OpError(409, "This item already has an open shortfall.");
     const order = must(db.orders.find((o) => o.id === input.orderId), "Order");
     const item = order.lines?.find((x) => x.skuId === input.skuId);
     const loaded = Math.max(0, Math.min(Math.round(input.loaded), line.planned));
@@ -282,9 +315,12 @@ export const ops = {
     need(a, "loader");
     const l = loadOf(db, tripId);
     needDepot(a, depotOfVehicle(l.vehicleId));
-    const flagged = new Set(db.shortfalls.filter((s) => s.tripId === tripId).map((s) => `${s.orderId}|${s.skuId}`));
+    if (l.status === "held") throw new OpError(409, "Dispatch must resolve the held shortfall before this vehicle can leave.");
+    if (l.status === "released") throw new OpError(409, "This vehicle has already left the dock.");
+    const flagged = new Set(db.shortfalls.filter((s) => s.tripId === tripId && s.resolution !== "repick").map((s) => `${s.orderId}|${s.skuId}`));
     const open = Object.entries(l.lines).filter(([k, x]) => x.loaded < x.planned && !flagged.has(k));
     if (open.length) throw new OpError(409, `Load every line, or flag it as short, before releasing (${open.length} line${open.length > 1 ? "s" : ""} left).`);
+    markReleasedStops(db, tripId, l.vehicleId);
     l.status = "released";
     l.releasedAt = nowIso();
     l.releasedBy = a.name;
@@ -293,13 +329,21 @@ export const ops = {
   resolveShortfall(db: Db, a: Actor, id: string, resolution: NonNullable<Shortfall["resolution"]>) {
     need(a, "dispatcher");
     const s = must(db.shortfalls.find((x) => x.id === id), "Shortfall");
+    if (s.resolution) throw new OpError(409, "This shortfall has already been resolved.");
+    if (s.decision !== "hold") throw new OpError(409, "This shortfall was already released from the dock.");
+    const l = loadOf(db, s.tripId);
+    if (l.status !== "held") throw new OpError(409, "This vehicle is not waiting for a dispatcher decision.");
+    if (resolution !== "repick") {
+      const open = Object.entries(l.lines).filter(([key, line]) =>
+        key !== `${s.orderId}|${s.skuId}` && line.loaded < line.planned);
+      if (open.length) throw new OpError(409, "The loader must finish or flag every other line before the vehicle can be released.");
+    }
     s.resolution = resolution;
     s.resolvedBy = a.name;
-    const l = loadOf(db, s.tripId);
     if (resolution === "repick") {
-      l.lines[`${s.orderId}|${s.skuId}`].loaded = s.planned;
       l.status = "loading";
     } else {
+      markReleasedStops(db, s.tripId, l.vehicleId);
       l.status = "released";
       l.releasedAt = nowIso();
       l.releasedBy = a.name;
@@ -315,7 +359,9 @@ export const ops = {
     if (a.vehicleId !== vehicleId) throw new OpError(403, `Your account is assigned to ${a.vehicleId ?? "no vehicle"}, not ${vehicleId}.`);
     const accepted: string[] = [];
     const duplicates: string[] = [];
+    const rejected: SyncResult["rejected"] = [];
     const depot = depotOfVehicle(vehicleId);
+    const plan = db.plans[depot];
     const seen = new Set(db.processedEventIds);
     for (const e of events) {
       if (seen.has(e.id)) {
@@ -323,8 +369,38 @@ export const ops = {
         continue;
       }
       const o = db.orders.find((x) => x.id === e.orderId);
-      if (!o) continue; // an order that no longer exists: drop, never fail the whole batch
-      const rec = db.stops[e.orderId] ?? { orderId: e.orderId, vehicleId, recordedAt: e.recordedAt, syncedAt: nowIso() };
+      if (!o) {
+        rejected.push({ id: e.id, reason: "Order no longer exists." });
+        continue;
+      }
+      const trip = plan?.status === "published" ? plan.trips.find((t) => t.vehicleId === vehicleId && t.orderIds.includes(e.orderId)) : undefined;
+      const existing = db.stops[e.orderId];
+      // A previously synced arrival proves that an offline completion belonged to this driver,
+      // even if dispatch removed the stop while the phone was out of coverage.
+      const assigned = !!trip || existing?.vehicleId === vehicleId;
+      const reason =
+        e.vehicleId !== vehicleId ? "Event vehicle differs from the signed-in driver's vehicle."
+        : !assigned ? "Stop is not assigned to this driver's run."
+        : trip && db.loads[trip.id]?.status !== "released" ? "Trip has not been released by the loader."
+        : existing?.deliveredAt ? "Delivery has already been recorded."
+        : existing?.problem ? "A problem has already been recorded for this stop."
+        : null;
+      if (reason) {
+        rejected.push({ id: e.id, reason });
+        continue;
+      }
+      if (e.kind === "delivered") {
+        const planned = new Map((o.lines ?? []).map((l) => [l.skuId, l.qty]));
+        const supplied = new Set(e.pod.lines.map((l) => l.skuId));
+        const valid = e.pod.signed && planned.size === supplied.size && e.pod.lines.length === planned.size && e.pod.lines.every((l) =>
+          planned.get(l.skuId) === l.planned && l.delivered <= l.planned &&
+          (!trip || l.delivered <= (db.loads[trip.id]?.lines[`${e.orderId}|${l.skuId}`]?.loaded ?? 0)));
+        if (!valid) {
+          rejected.push({ id: e.id, reason: "Proof of delivery must match the order and the goods released from the dock." });
+          continue;
+        }
+      }
+      const rec = existing ?? { orderId: e.orderId, vehicleId, recordedAt: e.recordedAt, syncedAt: nowIso() };
       if (e.kind === "arrived") rec.arrivedAt = e.at;
       if (e.kind === "delivered") {
         rec.deliveredAt = e.at;
@@ -345,9 +421,8 @@ export const ops = {
       seen.add(e.id);
       accepted.push(e.id);
     }
-    const plan = db.plans[depot];
     db.driverSync[vehicleId] = { lastSyncAt: nowIso(), lastPlanVersion: plan?.version ?? 0 };
-    return { accepted, duplicates, planVersion: plan?.version ?? 0 };
+    return { accepted, duplicates, rejected, planVersion: plan?.version ?? 0 };
   },
 
   ackNotice(db: Db, a: Actor, id: string, response: "ok" | "reduce") {
@@ -361,8 +436,16 @@ export const ops = {
     need(a, "store");
     const o = must(db.orders.find((x) => x.id === r.orderId), "Order");
     needOutlet(a, o.outletId);
-    if (!db.stops[r.orderId]?.pod) throw new OpError(409, "There is no proof of delivery for this order yet.");
+    const pod = db.stops[r.orderId]?.pod;
+    if (!pod) throw new OpError(409, "There is no proof of delivery for this order yet.");
     if (db.receipts[r.orderId]) throw new OpError(409, "This receipt was already confirmed.");
+    const driverLines = new Map(pod.lines.map((l) => [l.skuId, l]));
+    if (r.lines.length !== driverLines.size || new Set(r.lines.map((l) => l.skuId)).size !== r.lines.length ||
+      r.lines.some((l) => {
+        const driver = driverLines.get(l.skuId);
+        return !driver || l.name !== driver.name || l.driverQty !== driver.delivered || l.receivedQty > driver.planned;
+      }))
+      throw new OpError(400, "Receipt quantities must match the driver's proof of delivery.");
     db.receipts[r.orderId] = { ...r, by: a.name, confirmedAt: nowIso() };
     if (r.issues.length)
       exception(db, { depot: o.depot, kind: "receipt_issue", severity: "warning", title: `${outletName(o.outletId)} · receipt issue`, body: r.issues.map((i) => i.type + (i.note ? ` (${i.note})` : "")).join(" · "), ref: { orderId: o.id } });

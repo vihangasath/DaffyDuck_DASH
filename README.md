@@ -1,4 +1,4 @@
-# DASH Delivery Planning (Waypoint Group) · Team Daffy Duck
+# DASH Delivery Planning (Waypoint Group) · Team daffy Duck
 
 Tech-Triathlon 2026. One system that connects **ordering → planning → loading → delivery → receipt** for DASH Fresh, Style and Tech. Every deferral is explainable, drivers keep working when the signal drops, and night shifts/dawn runs stay glare-free with driver dark mode.
 
@@ -40,7 +40,7 @@ This starts three services:
 | Waypoint People | http://localhost:3001 | HR officers |
 | API | http://localhost:4000 | Used by both apps (they proxy `/api`), health check at `/` and `/api/health` |
 
-In development the API runs an **embedded Postgres** (PGlite), stored in `./.data/pglite`. On first start it creates the tables and seeds them from the dataset. `npm run db:reset` deletes that folder, so the next start builds a fresh database. To use a Postgres server instead, set `DATABASE_URL`. `npm run seed:data` rebuilds `packages/core/src/seed.json` from the CSVs in `/data` (the folder layout from the organisers' Drive).
+In development the API runs an **embedded Postgres** (PGlite), stored in `./.data/pglite`. On first start it creates the tables and seeds them from `packages/core/src/seed.json`. The root dev/build/test commands create an **independent synthetic demo seed** when the private competition CSVs and local seed are absent. If the CSVs are present under `data/General Data/` and `data/Training Data/` and `data/Test Data/`, those commands rebuild the seed from the shared dataset instead. `npm run db:reset` deletes that folder, so the next start builds a fresh database. To use a Postgres server instead, set `DATABASE_URL`. `npm run seed:data` rebuilds `packages/core/src/seed.json` from the CSVs in `/data` (the folder layout from the organisers' Drive).
 
 **Docker (real Postgres 17)**
 
@@ -49,7 +49,7 @@ cp .env.example .env && docker compose up --build
 ```
 
 **Tests:** `npm test` runs:
-- the planner tests: every Task 2B feasibility rule on the real peak day, refused manual moves and fairness;
+- the planner tests: every Task 2B feasibility rule on the active seed (the shared peak day for the judged build, or the independent synthetic public fallback), refused manual moves and fairness;
 - the API tests: logins and role checks, the whole walkthrough over HTTP, idempotent driver sync, the audit trail, and state that survives a restart.
 
 ## Accounts
@@ -121,7 +121,7 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 
 ## Datasets and confidentiality
 
-The competition terms forbid sharing the datasets or their derivatives. `data/` and the generated `packages/core/src/seed.json` are therefore **git-ignored**, as is the local database in `.data/`. Anyone running the repo places the organisers' CSVs in `data/` first. *(Team decision pending: the Hackathon brief asks for seed data on a fresh install, so we need to confirm with the organisers whether committing `seed.json` is allowed.)*
+The competition terms forbid publishing the datasets or their derivatives. `data/` and the generated `packages/core/src/seed.json` are therefore **git-ignored**, as is the local database in `.data/`. A public fresh clone boots with an independently generated synthetic fixture that follows the booklet's published network counts. **The judged build must use the shared dataset:** place the organisers' CSVs in `data/General Data/`, `data/Training Data/`, and `data/Test Data/` before `npm run dev` or `docker compose up --build`. Do not publish the private seed or a Docker image containing it without organiser authorization.
 
 ## More
 

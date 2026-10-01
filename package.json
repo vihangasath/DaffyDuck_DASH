@@ -7,11 +7,12 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently -k -n api,web,admin -c blue,green,magenta \"npm run dev -w @waypoint/api\" \"npm run dev -w @waypoint/web\" \"npm run dev -w @waypoint/admin\"",
-    "build": "npm run build -w @waypoint/web && npm run build -w @waypoint/admin",
-    "test": "npm run test --workspaces --if-present",
+    "dev": "npm run seed:ensure && concurrently -k -n api,web,admin -c blue,green,magenta \"npm run dev -w @waypoint/api\" \"npm run dev -w @waypoint/web\" \"npm run dev -w @waypoint/admin\"",
+    "build": "npm run seed:ensure && npm run build -w @waypoint/web && npm run build -w @waypoint/admin",
+    "test": "npm run seed:ensure && npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run seed:ensure && npm run typecheck --workspaces --if-present",
+    "seed:ensure": "node scripts/ensure-seed.mjs",
     "seed:data": "npm run seed -w @waypoint/core",
     "db:generate": "npm run db:generate -w @waypoint/api",
     "db:reset": "npm run db:reset -w @waypoint/api"
