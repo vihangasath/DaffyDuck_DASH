@@ -9,6 +9,7 @@ import { outletName } from "@waypoint/core/reference";
 import * as t from "../db/schema.ts";
 import { actorOf } from "../auth.ts";
 import { body, requireAuth, type Env } from "../http.ts";
+import { refreshPredictions } from "../models.ts";
 import { reference } from "../reference.ts";
 import type { AuditEntry, Service } from "../service.ts";
 
@@ -127,6 +128,7 @@ const OPS = {
   }),
 };
 
+const PLAN_OPS = new Set<string>(["closeOrdersAndPlan", "replan", "moveOrder", "publishPlan"]);
 
 export const opsRoutes = new Hono<Env>()
   .use(requireAuth("dispatcher", "loader", "driver", "store"))
@@ -157,5 +159,7 @@ export const opsRoutes = new Hono<Env>()
           }
         : {},
     );
+    // A changed plan changes the stops the Task 1 model scores (no-op without a model service).
+    if (PLAN_OPS.has(name)) void refreshPredictions(svc);
     return c.json(result ?? { ok: true });
   });

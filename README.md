@@ -14,6 +14,7 @@ apps/api/        Waypoint API (Hono + Drizzle): database, migrations, auth, busi
   drizzle/         SQL migrations (applied on start-up)
 apps/web/        DASH operations app (Next.js 16): dispatcher (incl. network records: vehicles, branches, depots, products), loader, driver (offline-first with dark mode) and store screens
 apps/admin/      Waypoint People, the HR panel (Next.js 16): staff directory for every role, licence renewals, sign-in access, activity log
+apps/models/     Optional Datathon model service (Python): Task 1 service time and lateness, Task 2A forecast. Model files go in artifacts/
 packages/core/   Shared by the API and the apps: domain model, planner (+ tests), business rules, API contract, dataset seed
 packages/ui/     Shared design system: tokens (theme.css) and UI kit
 data/            Shared competition datasets (local only, not committed)
@@ -115,6 +116,18 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 - **Priority score (shown in the UI):** skipped yesterday +30 · chilled +20 · days since served · Fresh daily +10 · festival ramp · tight or mall window.
 - **Road conditions:** each district's disruption index for the plan date (`road_conditions.csv`, 100 = normal) stretches its travel legs by 100 ÷ index. Dock handling time is not affected. Trips with an index below 95 show the stretch on the plan board. In the route-leg history, actual vs planned leg times follow this ratio closely.
 - **Deferral reasons** come from the rule that actually blocked every candidate vehicle. On the shared dataset's demo day the auto-plan defers 14 orders: 13 chilled orders (refrigerated capacity and Fresh windows run out; S1-016 is deferred because of the road disruption stretch) and one Style order (40.7 m³, larger than any available vehicle, so it can never be served whole).
+
+## Datathon models (optional)
+
+The Datathon models plug in through a separate Python service, `apps/models`. Until they are added, the app uses transparent baselines: the service allowance for handling time, ETA vs window close for late risk, and a 6-week mean with festival uplift for the forecast.
+
+1. Put the trained files in `apps/models/artifacts/` (`task1_service.joblib`, `task1_late.joblib`, `task2a_forecast.joblib`). Then fill in the feature functions in `apps/models/predict.py`, unless the saved models are full scikit-learn Pipelines.
+2. Start it:
+   - Docker: `MODEL_URL=http://models:8000 docker compose --profile models up --build`.
+   - Locally: `python3 apps/models/server.py`, with `MODEL_URL=http://localhost:8000` for the API.
+3. Check **GET /api/models**, or the source tag on Live tracking and Capacity outlook. Each task switches from `baseline` to `model` independently.
+
+Where each prediction is used, and the request format, are in [`docs/INTEGRATION.md → Datathon hooks`](docs/INTEGRATION.md#datathon-hooks).
 
 ## Departures from the Designathon design
 

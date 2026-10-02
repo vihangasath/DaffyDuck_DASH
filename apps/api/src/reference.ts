@@ -5,6 +5,7 @@ import { hydrate, type DepotInfo, type Reference } from "@waypoint/core/referenc
 import type { SeedData } from "@waypoint/core/domain/network";
 import type { Brand, Depot, DockType, Outlet, Parking, Temp, Vehicle } from "@waypoint/core/domain/types";
 import type { Db } from "./db/client.ts";
+import { applyPredictions } from "./models.ts";
 import * as t from "./db/schema.ts";
 
 export async function loadReference(db: Db): Promise<Reference> {
@@ -52,7 +53,7 @@ export const reference = () => current!;
 
 /** Re-reads the master tables and hydrates the shared core modules. */
 export async function refreshReference(db: Db) {
-  current = await loadReference(db);
+  current = applyPredictions(await loadReference(db));
   hydrate(current);
   return current;
 }

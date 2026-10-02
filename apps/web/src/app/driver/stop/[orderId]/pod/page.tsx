@@ -40,7 +40,7 @@ export default function Pod() {
 
   const complete = async () => {
     setBusy(true);
-    const service = net.allowance(order.brand, o.dockType);
+    const service = net.serviceMin(orderId, order.brand, o.dockType);
     await d.record({
       id: newId(),
       vehicleId: d.vehicleId,

@@ -104,6 +104,14 @@ export class Service {
     });
   }
 
+  /** Re-reads the reference data (e.g. new model predictions) and tells clients to re-hydrate. */
+  reloadReference() {
+    return this.serial(async () => {
+      await refreshReference(this.db);
+      this.publish("reference");
+    });
+  }
+
   publish(kind: ChangeKind) {
     this.events.emit("change", kind);
   }

@@ -13,4 +13,7 @@ export const env = {
   /** Waypoint People (the HR panel): shown to HR accounts that try to sign in to the operations app. */
   adminUrl: process.env.ADMIN_URL ?? "http://localhost:3001",
   migrationsDir: join(repoRoot, "apps/api/drizzle"),
+  /** The Datathon model service (apps/models). When unset or unreachable, the app uses its baselines. */
+  modelUrl: process.env.MODEL_URL?.replace(/\/+$/, "") || undefined,
+  modelTimeoutMs: Number(process.env.MODEL_TIMEOUT_MS ?? 5000),
 };

@@ -52,13 +52,18 @@ export default function Capacity() {
   const H = 220;
   const todayVol = view.orders.reduce((s, o) => s + o.volumeM3, 0);
   const avgDay = cols.filter((c) => c.kind === "actual").reduce((s, c) => s + c.total / c.opDays, 0) / cols.filter((c) => c.kind === "actual").length;
+  const forecastModel = seed.predictions?.task2a.source === "model" ? (seed.predictions.task2a.model ?? "connected") : null;
 
   return (
     <>
       <PageHeader
         title="Capacity outlook"
         sub={`Next ${future.length} weeks · ${depot} · weekly order volume vs practical fleet capacity`}
-        chips={<Pill tone="info" icon={Info} lg>Forecast: baseline · Datathon 2A model plugs in here</Pill>}
+        chips={
+          forecastModel
+            ? <Pill tone="success" icon={Info} lg>Forecast: Datathon 2A model · {forecastModel}</Pill>
+            : <Pill tone="info" icon={Info} lg>Forecast: baseline · Datathon 2A model plugs in here</Pill>
+        }
         actions={<Seg value={fleet} onChange={setFleet} options={[{ value: "today", label: `Fleet today (${data.total})` }, { value: "full", label: "Full fleet" }]} />}
       />
       <div className="grid gap-4 p-5 lg:p-7">
@@ -137,7 +142,10 @@ export default function Capacity() {
             ))}
             <div className="rounded-[10px] bg-subtle p-3 text-xs text-ink-2">
               <b className="block text-[11px] uppercase tracking-wide text-muted">Integration point</b>
-              Weekly volumes come from <code>GET /forecast?depot&amp;weeks</code> (Datathon Task 2A: <code>pred_total_volume_m3</code>, <code>pred_chilled_volume_m3</code>). Today this page uses a transparent baseline: mean of the last six weeks × operating days × festival uplift.
+              Forecast weeks come from <code>GET /api/forecast?depot&amp;weeks</code> (Datathon Task 2A: <code>pred_total_volume_m3</code>, <code>pred_chilled_volume_m3</code>).{" "}
+              {forecastModel
+                ? "They are the model's predictions."
+                : "No model is connected, so this page uses a transparent baseline: mean of the last six weeks × operating days × festival uplift."}
             </div>
           </Card>
         </div>

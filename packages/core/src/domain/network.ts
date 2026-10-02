@@ -1,5 +1,6 @@
 import type { Brand, CalendarDay, DistrictTravel, DockType, Network, Order, Outlet, ServiceAllowance, Vehicle, VehicleStatus } from "./types";
 import type { EvalContext } from "../planner/evaluate";
+import type { Predictions } from "../predictions";
 
 export interface SeedData {
   meta: {
@@ -23,17 +24,25 @@ export interface SeedData {
     outcome: string; reason: string; decidedBy: string; storeNotified: boolean;
   }[];
   weeklyVolume: { depot: string; brand: Brand; week: string; totalM3: number; chilledM3: number; kind: "actual" | "forecast" }[];
+  /** Datathon model outputs (served by the API). Absent in the bundled seed: baselines apply. */
+  predictions?: Predictions;
 }
 
-export function buildNetwork(seed: Pick<SeedData, "outlets" | "vehicles" | "districtTravel" | "serviceAllowance" | "roadConditions">): Network {
+export function buildNetwork(
+  seed: Pick<SeedData, "outlets" | "vehicles" | "districtTravel" | "serviceAllowance" | "roadConditions" | "predictions">,
+): Network {
   const allowance = new Map(seed.serviceAllowance.map((a) => [`${a.brand}|${a.dockType}`, a.minutes]));
   const roads = new Map(seed.roadConditions.map((r) => [r.district, r.disruptionIndex]));
+  const byOrder = seed.predictions?.task1.byOrder ?? {};
+  const allowanceFor = (brand: Brand, dock: DockType) => allowance.get(`${brand}|${dock}`) ?? 20;
   return {
     outlets: new Map(seed.outlets.map((o) => [o.id, o])),
     vehicles: new Map(seed.vehicles.map((v) => [v.id, v])),
     travel: new Map(seed.districtTravel.map((d) => [d.district, d])),
-    allowance: (brand: Brand, dock: DockType) => allowance.get(`${brand}|${dock}`) ?? 20,
+    allowance: allowanceFor,
     disruption: (district: string) => roads.get(district) ?? 100,
+    serviceMin: (orderId: string, brand: Brand, dock: DockType) => byOrder[orderId]?.serviceMin ?? allowanceFor(brand, dock),
+    lateProb: (orderId: string) => byOrder[orderId]?.lateProb,
   };
 }
 

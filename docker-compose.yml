@@ -3,6 +3,8 @@
 #   api    Waypoint API: migrations + first-run seed, auth, business rules, audit log  (:4000)
 #   web    operations app for dispatchers, loaders, drivers and store managers         (:3000)
 #   admin  admin console                                                               (:3001)
+# Optional Datathon models (apps/models): `docker compose --profile models up --build` with
+# MODEL_URL=http://models:8000 in .env. Without them the app uses its built-in baselines.
 services:
   db:
     image: postgres:17-alpine
@@ -23,6 +25,7 @@ services:
       DATABASE_URL: postgres://waypoint:${POSTGRES_PASSWORD:-waypoint}@db:5432/waypoint
       ADMIN_URL: http://localhost:${ADMIN_PORT:-3001}
       SESSION_HOURS: ${SESSION_HOURS:-12}
+      MODEL_URL: ${MODEL_URL:-}
     depends_on:
       db: { condition: service_healthy }
     ports: ["${API_PORT:-4000}:4000"]
@@ -38,6 +41,14 @@ services:
     build: { context: ., target: admin, args: { API_URL: http://api:4000 } }
     depends_on: [api]
     ports: ["${ADMIN_PORT:-3001}:3001"]
+    restart: unless-stopped
+
+  models:
+    profiles: [models]
+    build: { context: ./apps/models }
+    environment:
+      MODEL_NAME: ${MODEL_NAME:-datathon}
+    volumes: ["./apps/models/artifacts:/app/artifacts:ro"]
     restart: unless-stopped
 
 volumes:
