@@ -15,9 +15,12 @@
     "seed:ensure": "node scripts/ensure-seed.mjs",
     "seed:data": "npm run seed -w @waypoint/core",
     "db:generate": "npm run db:generate -w @waypoint/api",
-    "db:reset": "npm run db:reset -w @waypoint/api"
+    "db:reset": "npm run db:reset -w @waypoint/api",
+    "e2e": "playwright test",
+    "check:fresh": "scripts/fresh-clone-check.sh"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "concurrently": "^10.0.5"
   },
   "engines": {

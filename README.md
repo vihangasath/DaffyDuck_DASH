@@ -54,6 +54,10 @@ cp .env.example .env && docker compose up --build
 
 `npm run typecheck` and `npm run lint` check all workspaces. All three commands pass on a fresh clone.
 
+**Walkthrough smoke tests (Playwright):** with the stack running (`npm run dev` or Docker), `npm run e2e` drives the judge walkthrough below in four browser tabs, then runs the driver app on a throttled phone connection, a stalled connection and a real network cut. It resets the demo day first and passes on either seed. Use `PW_CHANNEL=chrome npm run e2e` to run it in your installed Chrome instead of downloading Playwright's browser (`npx playwright install chromium`).
+
+**Fresh-clone check:** `npm run check:fresh` does what a judge does. It clones the committed code (no `data/`), runs `docker compose up --build` on spare ports (3100/3101/4100), runs the e2e suite against it on the synthetic seed, and tears it down. Run it after every merge. The demo script is in [`docs/DEMO.md`](docs/DEMO.md).
+
 ## Accounts
 
 Credentials are issued by HR in Waypoint People, from the person's folder in the **Staff directory**. Every login belongs to one staff record, and its role and workplace come from that record: a driver (dispatch assigns the vehicle), a branch, or a depot. After signing in, each person lands straight on their own screens. HR officers use Waypoint People; the operations app sends them there.
@@ -91,7 +95,7 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 5. **Dispatcher: publish.** Click **Publish to loaders**. The loader lists, driver runs and store notices are created. Deferred outlets get a notice with the reason.
 6. **Loader: load in reverse order.** In a new tab, sign in as `loader` and open **VEH011**. The checklist runs from the last stop (deepest in the truck) to the first. Tick every line except one, then **Flag shortfall / damage** → enter the quantity actually loaded (less than planned) → **Send & release**.
 7. **Dispatcher: see the exception.** **Live tracking** now lists *VEH011 · released with shortfall*. Choosing *Hold vehicle* instead would give the dispatcher Release / Re-pick / Balance tomorrow buttons.
-8. **Driver: deliver & dark mode.** In a new tab, sign in as `driver` (phone width is best). Tap the theme toggle in the header or in **More** to test dark mode for dawn/night shifts—the Leaflet map tiles, signature pad strokes, and checklists adapt automatically to reduce cab glare. Tap **Arrived**, then **Deliver**. The POD starts from what was actually loaded; sign with your finger, enter the receiver's name and tap **Complete delivery**.
+8. **Driver: deliver & dark mode.** In a new tab, sign in as `driver` (phone width is best). Tap the theme toggle in the header or in **More** to test dark mode for dawn/night shifts—the Leaflet map tiles, signature pad strokes, and checklists adapt automatically to reduce cab glare. Tap **Arrived** (it opens the stop: what to unload and how to reach the dock), then **Start delivery & POD**. The POD starts from what was actually loaded; sign with your finger, enter the receiver's name and tap **Complete delivery**.
 9. **Driver: dead zone.** Go to **More → No signal** (a simulated dead zone for this tab only). Deliver the next stop: it's saved on the phone, the outbox shows *Queued*, and a reload still shows the whole run.
 10. **Dispatcher: change the run while the driver is offline.** In the dispatcher tab, select one of VEH011's later stops and choose **Defer order**. After ~2 minutes, Live tracking shows VEH011 as *No signal*.
 11. **Driver: reconnect.** Turn **No signal** off. The queued records sync with their original times, and the driver sees *"Your run was changed by dispatch — Removed: …"*.
@@ -134,6 +138,7 @@ The competition terms forbid publishing the datasets or their derivatives. `data
 ## More
 
 - Plan and screen map: [`docs/PLAN.md`](docs/PLAN.md)
+- Demo script (the cross-role story): [`docs/DEMO.md`](docs/DEMO.md)
 - API endpoints, data model and Datathon hooks: [`docs/INTEGRATION.md`](docs/INTEGRATION.md)
 - Architecture and data model: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - AI tool disclosure: [`docs/AI-DISCLOSURE.md`](docs/AI-DISCLOSURE.md)

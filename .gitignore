@@ -18,3 +18,7 @@ packages/core/src/seed.json
 # Local editor and backup directories
 .claude/
 .design-backup*
+
+# Playwright output
+e2e/.report/
+e2e/.results/
