@@ -5,7 +5,7 @@ import { PageHeader, useDepot } from "@/components/dispatcher-shell";
 import { Button, Card, Empty, IconBubble, Meter, Pill, Spinner, btnClass, cx, type Tone } from "@/components/ui";
 import { api, type DispatchException } from "@/lib/api";
 import { outletName, seed } from "@waypoint/core/reference";
-import { fmtMin, toMin } from "@waypoint/core/domain/time";
+import { fmtMin } from "@waypoint/core/domain/time";
 import { useAct, useDepotView, useNow } from "@/lib/hooks";
 import { useSession } from "@/lib/session";
 import { evaluateVehicle } from "@waypoint/core/planner/evaluate";
@@ -40,9 +40,8 @@ export default function Live() {
       const sync = db.driverSync[vid];
       const silentMin = sync ? (now - Date.parse(sync.lastSyncAt)) / 60000 : null;
       const released = load?.status === "released";
-      const outlet = next ? ctx.net.outlets.get(next.outletId)! : null;
-      // Baseline late risk until the Datathon Task 1 model is connected: closeness of ETA to window close.
-      const risk = next && outlet ? Math.max(0, Math.min(0.95, (next.arrive - (toMin(outlet.windowClose) - 40)) / 40)) : 0;
+      // Task 1 pred_late_prob when the model is connected, else the ETA-vs-window baseline.
+      const risk = next?.lateRisk ?? 0;
       return { vid, ev, cur, done, next, load, released, silentMin, risk, deadZone: DEAD_ZONE_MIN[cur.trip.district] };
     });
   }, [view, now]);
@@ -109,7 +108,11 @@ export default function Live() {
               </tbody>
             </table>
           </Card>
-          <p className="text-xs text-muted">Late risk is a baseline (ETA vs window close). It will be replaced by the Datathon Task 1 lateness model via <code>pred_late_prob</code>.</p>
+          <p className="text-xs text-muted">
+            {seed.predictions?.task1.source === "model"
+              ? <>Late risk and ETAs come from the Datathon Task 1 model ({seed.predictions.task1.model ?? "connected"}): <code>pred_late_prob</code> and <code>pred_service_min</code>.</>
+              : <>Late risk is a baseline (ETA vs window close). It will be replaced by the Datathon Task 1 lateness model via <code>pred_late_prob</code>.</>}
+          </p>
         </div>
 
         <aside className="grid content-start gap-3">

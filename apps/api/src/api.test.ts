@@ -1,5 +1,7 @@
 // End-to-end through HTTP against an in-memory Postgres (PGlite): the judge walkthrough, plus the
 // guarantees that matter — role checks, idempotent driver sync, audit trail, and state that survives a restart.
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db as OpsDb, LoginResult, Snapshot } from "@waypoint/core/contract";
 import { orderState } from "@waypoint/core/views";
@@ -8,6 +10,7 @@ import { Service } from "./service.ts";
 import { createApp } from "./app.ts";
 import { boot } from "./boot.ts";
 import type { Database } from "./db/client.ts";
+import { env } from "./env.ts";
 
 let app: ReturnType<typeof createApp>;
 let database: Database;
@@ -181,6 +184,67 @@ describe("walkthrough", () => {
     const current = (await snapshot()).db;
     expect(orderState(current, id).status).toBe("delivered");
     expect(current.plans.Peliyagoda!.deferred.some((d) => d.orderId === id)).toBe(true);
+  });
+});
+
+describe("Datathon models", () => {
+  type Status = { configured: boolean; task1: { source: string; model?: string; orders: number }; task2a: { source: string } };
+  type Forecast = { source: string; rows: { brand: string; pred_total_volume_m3: number; pred_chilled_volume_m3: number }[] };
+
+  it("serves the baselines while no model service is configured", async () => {
+    expect((await call<Status>("GET", "/api/models", undefined, "dispatcher")).json).toMatchObject({ configured: false, task1: { source: "baseline" }, task2a: { source: "baseline" } });
+    expect((await call("GET", "/api/models", undefined, "driver")).status).toBe(403);
+    const f = (await call<Forecast>("GET", "/api/forecast?depot=Kandy&weeks=2", undefined, "dispatcher")).json;
+    expect(f.source).toBe("baseline");
+    expect(f.rows).toHaveLength(6); // 3 brands × 2 weeks
+  });
+
+  it("feeds a connected model's answers to the planner and the capacity forecast", async () => {
+    // A stand-in for apps/models: Task 1 answers, Task 2A has no model file yet (503) until `has2a`.
+    const seen: Record<string, Record<string, string | number>[]> = {};
+    let has2a = false;
+    const server = createServer((req, res) => {
+      let raw = "";
+      req.on("data", (c) => (raw += c));
+      req.on("end", () => {
+        const rows = (JSON.parse(raw) as { rows: Record<string, string | number>[] }).rows;
+        seen[req.url!] = rows;
+        const send = (status: number, body: unknown) => res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(body));
+        if (req.url === "/predict/task1")
+          return send(200, { model: "fake-v1", predictions: rows.map((r) => ({ delivery_id: r.delivery_id, pred_service_min: 25, pred_late_prob: 0.9 })) });
+        if (!has2a) return send(503, { error: "No task2a model yet." });
+        send(200, { model: "fake-v1", predictions: rows.map((r) => ({ row_id: r.row_id, pred_total_volume_m3: 123.4, pred_chilled_volume_m3: r.brand === "Fresh" ? 50 : 0 })) });
+      });
+    });
+    await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
+    env.modelUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    try {
+      const s = (await call<Status>("POST", "/api/models/refresh", undefined, "dispatcher")).json;
+      expect(s).toMatchObject({ configured: true, task1: { source: "model", model: "fake-v1" }, task2a: { source: "baseline" } });
+      // The model gets the Datathon test-file columns for every planned stop.
+      const row = seen["/predict/task1"][0];
+      expect(Object.keys(row)).toEqual(expect.arrayContaining(["delivery_id", "seq_in_route", "planned_arrival_time", "window_close_time", "from_point", "distance_km", "planned_travel_duration_min", "dow"]));
+      expect(s.task1.orders).toBe(seen["/predict/task1"].length);
+      expect(seen["/forecast/task2a"][0]).toMatchObject({ depot: expect.any(String), iso_year: expect.any(Number), iso_week: expect.any(Number) });
+      // Clients receive the predictions with the reference data; the shared planner uses them.
+      const id = String(row.delivery_id);
+      expect((await snapshot()).reference.predictions?.task1.byOrder[id]).toEqual({ serviceMin: 25, lateProb: 0.9 });
+      expect(net.lateProb(id)).toBe(0.9);
+      expect((await call<Forecast>("GET", "/api/forecast?depot=Kandy&weeks=1", undefined, "dispatcher")).json.source).toBe("baseline");
+
+      has2a = true;
+      await call("POST", "/api/models/refresh", undefined, "dispatcher");
+      const f = (await call<Forecast>("GET", "/api/forecast?depot=Kandy&weeks=1", undefined, "dispatcher")).json;
+      expect(f.source).toBe("model");
+      expect(f.rows.map((r) => [r.brand, r.pred_total_volume_m3, r.pred_chilled_volume_m3]).sort()).toEqual([["Fresh", 123.4, 50], ["Style", 123.4, 0], ["Tech", 123.4, 0]]);
+    } finally {
+      server.close();
+      env.modelUrl = undefined;
+    }
+    // Disconnecting the service returns every screen to the baselines.
+    await call("POST", "/api/models/refresh", undefined, "dispatcher");
+    expect((await call<Status>("GET", "/api/models", undefined, "dispatcher")).json).toMatchObject({ task1: { source: "baseline" }, task2a: { source: "baseline" } });
+    expect(net.lateProb(String(seen["/predict/task1"][0].delivery_id))).toBeUndefined();
   });
 });
 

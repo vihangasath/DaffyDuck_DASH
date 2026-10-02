@@ -13,6 +13,7 @@ flowchart LR
   API["apps/api (Hono)\nauth · roles · business rules · audit · live events"] --> CORE["packages/core\nplanner · ops rules · contract"]
   API --> DB[("Postgres\nembedded PGlite in dev,\nPostgres 17 in Docker")]
   WEB -. drag-over checks .-> CORE
+  API -. "MODEL_URL (optional)" .-> MOD["apps/models (Python)\nDatathon Task 1 + 2A models"]
 ```
 
 - **One writer.** Only the API opens the database. Both front ends proxy `/api/*` to it (Next.js rewrites), so the browser only ever talks to its own origin: no CORS, and each app keeps its own sign-in.
@@ -23,6 +24,7 @@ flowchart LR
 - **People are HR's, the network is dispatch's.** Waypoint People (`/api/people`, HR officers) keeps one staff record per employee and issues logins from it. Dispatchers own the network records (`/api/network`), including which driver runs which vehicle.
 - **Authorisation next to the rule.** Each operation checks the caller's role and scope, for example: a loader only at their dock, a driver only for their assigned vehicle, a store manager only for their branch (or their depot's branches for an area manager). The acting name comes from the session, never from the request body.
 - **Live updates.** The API publishes a `change` event over Server-Sent Events after every write, and every open screen refetches.
+- **Datathon models are optional.** The API asks the model service (`apps/models`) for Task 1 and Task 2A predictions at start-up and after every plan change, and serves them with the reference data. `@waypoint/core` uses them for handling times, ETAs and late risk, and Capacity outlook uses them for forecast weeks. With no service, or no model file for a task, that task stays on its baseline. See [`INTEGRATION.md → Datathon hooks`](INTEGRATION.md#datathon-hooks).
 - **Offline driver app.** Actions go to the IndexedDB outbox first. Sync is idempotent on the device's event UUID (`driver_events` table), and the cached run lets the app open with no signal.
 
 ## Data model

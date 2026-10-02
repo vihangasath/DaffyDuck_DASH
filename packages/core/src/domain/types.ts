@@ -107,6 +107,10 @@ export interface Network {
   allowance: (brand: Brand, dock: DockType) => number;
   /** Road disruption index for the plan date, 100 = normal (road_conditions). */
   disruption: (district: string) => number;
+  /** Expected handling minutes at the stop: the Task 1 model's pred_service_min, else the allowance. */
+  serviceMin: (orderId: string, brand: Brand, dock: DockType) => number;
+  /** The Task 1 model's pred_late_prob for the order, or undefined while no model is connected. */
+  lateProb: (orderId: string) => number | undefined;
 }
 
 export interface Trip {

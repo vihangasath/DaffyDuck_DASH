@@ -1,5 +1,6 @@
 import type { Network, Order, Trip, Vehicle } from "../domain/types";
 import { fmtMin, parseWindow, toMin } from "../domain/time";
+import { baselineLateRisk } from "../predictions";
 
 /** Operating windows and budgets from the brief (Task 2B / operating constraints). */
 export const FRESH_START = toMin("03:30");
@@ -36,6 +37,8 @@ export interface StopEta {
   start: number; // service start (after waiting for the window)
   leave: number;
   late: boolean;
+  /** Chance of arriving after the window closes: Task 1 pred_late_prob, else the ETA-based baseline. */
+  lateRisk: number;
 }
 
 export interface TripEval {
@@ -100,6 +103,10 @@ export function legMinutes(district: string, ctx: EvalContext) {
   return { index, outbound: Math.round(travel.depotToDistrictMin * factor), interStop: Math.round(travel.interStopMin * factor) };
 }
 
+/**
+ * Budget minutes as the brief defines them (Task 2B): handling uses the dispatcher's service allowance,
+ * never the Task 1 prediction, so the 270/480-minute budgets keep their stated meaning.
+ */
 export function tripMinutes(trip: Trip, ctx: EvalContext): number {
   const legs = legMinutes(trip.district, ctx);
   const handling = trip.orderIds.reduce((s, id) => {
@@ -148,12 +155,14 @@ export function evaluateTrip(trip: Trip, ctx: EvalContext, depart: number): Trip
     const [open, close] = outlet.mallWindow ? parseWindow(outlet.mallWindow) : [toMin(outlet.windowOpen), toMin(outlet.windowClose)];
     const arrive = t;
     const start = Math.max(arrive, open);
-    const leave = start + ctx.net.allowance(trip.brand, outlet.dockType);
+    // Expected handling time: the Task 1 model's pred_service_min when connected, else the allowance.
+    const leave = start + ctx.net.serviceMin(id, trip.brand, outlet.dockType);
     const late = arrive > close;
     if (late && outlet.mallWindow)
       v.push({ code: "MALL_WINDOW", message: `${o.outletId} mall bay closes ${outlet.mallWindow.split("-")[1]}; arrival would be later.` });
     else if (late) v.push({ code: "WINDOW", message: `${o.outletId} would arrive ${fmtMin(arrive)}, after its window closes at ${outlet.windowClose}.` });
-    stops.push({ orderId: id, outletId: o.outletId, seq: i, arrive, start, leave, late });
+    const lateRisk = ctx.net.lateProb(id) ?? baselineLateRisk(arrive, outlet);
+    stops.push({ orderId: id, outletId: o.outletId, seq: i, arrive, start, leave, late, lateRisk });
     t = leave;
   });
 

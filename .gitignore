@@ -11,6 +11,10 @@ next-env.d.ts
 # Keep them local (see README → Datasets). Decide with the team before committing seed.json.
 /data/
 packages/core/src/seed.json
+# Trained Datathon models are derivatives too (apps/models/artifacts/README.md).
+apps/models/artifacts/*
+!apps/models/artifacts/README.md
+__pycache__/
 
 # Embedded Postgres (PGlite) data for local development.
 .data/
@@ -18,3 +22,7 @@ packages/core/src/seed.json
 # Local editor and backup directories
 .claude/
 .design-backup*
+
+# Playwright output
+e2e/.report/
+e2e/.results/

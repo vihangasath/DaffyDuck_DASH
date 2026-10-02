@@ -1,0 +1,6 @@
+# Pin these to the versions the notebook trained with: joblib files only load reliably on the same versions.
+joblib
+pandas
+scikit-learn
+# lightgbm
+# xgboost

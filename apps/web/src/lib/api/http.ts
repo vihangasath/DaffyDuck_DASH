@@ -6,22 +6,36 @@ import { hydrate } from "@waypoint/core/reference";
 import { onSessionChange, readToken, writeSession } from "@/lib/session";
 import { isOnline, OfflineError } from "./network";
 
+// A phone on one bar of signal can hold a request open for minutes. Past this, give up and treat it
+// as no signal: the driver outbox keeps the record and the next flush retries it (same event id).
+const TIMEOUT_MS = 20_000;
+
 async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
   if (!isOnline()) throw new OfflineError();
   const token = readToken();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   let res: Response;
+  let json: T & { error?: string };
   try {
     res = await fetch(`/api${path}`, {
       method,
       headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: ctl.signal,
     });
+    // The proxy answers 5xx while the API is down: treat it like a dead zone, the driver outbox retries.
+    if (res.status === 502 || res.status === 503 || res.status === 504) throw new OfflineError();
+    // The body can stall too on a weak signal, so it stays under the same timer.
+    json = (await res.json().catch((e: unknown) => {
+      if (ctl.signal.aborted) throw e;
+      return {};
+    })) as T & { error?: string };
   } catch {
     throw new OfflineError();
+  } finally {
+    clearTimeout(timer);
   }
-  // The proxy answers 5xx while the API is down: treat it like a dead zone, the driver outbox retries.
-  if (res.status === 502 || res.status === 503 || res.status === 504) throw new OfflineError();
-  const json = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (res.status === 401) {
     writeSession(null);
     throw new Error(json.error ?? "Your session has ended. Please sign in again.");

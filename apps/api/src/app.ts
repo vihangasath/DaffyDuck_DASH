@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { onError, type Env } from "./http.ts";
 import { authRoutes } from "./routes/auth.ts";
 import { eventRoutes } from "./routes/events.ts";
+import { modelRoutes } from "./routes/models.ts";
 import { networkRoutes } from "./routes/network.ts";
 import { opsRoutes } from "./routes/ops.ts";
 import { peopleRoutes } from "./routes/people.ts";
@@ -21,6 +22,7 @@ export function createApp(svc: Service) {
   app.route("/api/people", peopleRoutes);
   app.route("/api/network", networkRoutes);
   app.route("/api/events", eventRoutes);
+  app.route("/api", modelRoutes);
   app.notFound((c) => c.json({ error: "Not found." }, 404));
   app.onError(onError);
   return app;

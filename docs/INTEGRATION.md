@@ -70,12 +70,34 @@ Used by the dispatch console's **Network records** screens in the operations app
 
 ## Datathon hooks
 
-| Model output | Where it plugs in | Replaces today |
+The trained models run in a separate Python service, `apps/models`. It is a placeholder until the model files are added to `apps/models/artifacts/` (see the README there). The API calls it when `MODEL_URL` is set, at start-up and after `closeOrdersAndPlan`, `replan`, `moveOrder` and `publishPlan`. It serves the answers in `reference.predictions` (`packages/core/src/predictions.ts`). If the service is unset, unreachable, or answers 503 for a task (no model file yet), that task keeps its baseline.
+
+| Model output | Where it plugs in | Baseline without the model |
 |---|---|---|
-| Task 1 `pred_service_min` | `evaluateTrip` handling time → ETAs, trip minutes | `service_allowance.csv` |
-| Task 1 `pred_late_prob` | late-risk badge on D4, driver next stop, store ETA | baseline: ETA vs window close |
-| Task 2A `pred_total_volume_m3`, `pred_chilled_volume_m3` | Capacity outlook (D5) | baseline: 6-week mean × operating days × festival uplift |
+| Task 1 `pred_service_min` | `net.serviceMin` → `evaluateTrip` stop leave times → every ETA: planner, loader, driver run and proof-of-delivery time, store arrival | `service_allowance.csv` |
+| Task 1 `pred_late_prob` | `net.lateProb` → `StopEta.lateRisk` → late-risk badges and alerts on dispatcher Live tracking | ETA vs window close (0 until 40 min before it closes, rising to 0.95) |
+| Task 2A `pred_total_volume_m3`, `pred_chilled_volume_m3` | Forecast rows of `weeklyVolume` → Capacity outlook and `GET /api/forecast` | 6-week mean × operating days × festival uplift |
 | Task 2B policy | `autoPlan` priority and pools | same rules; the notebook and the app share the policy |
+
+Trip **budget** minutes (270 Fresh, 480 Style and Tech) always use the service allowance, as the brief defines them. The Task 1 prediction moves ETAs, and so whether a stop is inside its window.
+
+**API (dispatchers):**
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/models` | `{ configured, url, lastError, task1: { source, model, updatedAt, orders }, task2a: { source, model, updatedAt } }`; `source` is `model` or `baseline` |
+| POST | `/api/models/refresh` | Asks the model service again now, e.g. after adding a model file |
+| GET | `/api/forecast?depot&weeks` | `{ source, model, rows: [{ depot, brand, week, pred_total_volume_m3, pred_chilled_volume_m3 }] }` |
+
+**Model service contract** (`apps/models/server.py`). Request rows use the Datathon test-file columns, so the notebook's preprocessing runs unchanged:
+
+| Endpoint | Request `{ rows }` | Response `{ model, predictions }` |
+|---|---|---|
+| `POST /predict/task1` | One row per planned stop: the `task1_test_inputs.csv` columns plus the stop's `route_legs_test.csv` leg (`from_point`, `distance_km`, `planned_depart_time`, `planned_travel_duration_min`, `monsoon`, `dow`) | `[{ delivery_id, pred_service_min, pred_late_prob }]` |
+| `POST /forecast/task2a` | `task2a_test_inputs.csv` columns: `row_id` (`depot\|brand\|week`), `depot`, `brand`, `iso_year`, `iso_week` | `[{ row_id, pred_total_volume_m3, pred_chilled_volume_m3 }]` |
+| `GET /health` | | `{ ok, model, loaded: { task1, task2a } }` |
+
+A task without its model file answers **503**, and the API keeps its baseline for that task.
 
 ## Data model
 
