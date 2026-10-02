@@ -8,7 +8,10 @@ COPY packages/ui/package.json packages/ui/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY apps/admin/package.json apps/admin/
-RUN npm ci
+# Venue Wi-Fi drops connections: retry each download, and keep the npm cache between builds
+# so a second `docker compose up --build` only fetches what failed.
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund --fetch-retries=6 --fetch-retry-mintimeout=5000 --fetch-retry-maxtimeout=120000
 
 FROM deps AS source
 COPY . .

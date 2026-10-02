@@ -159,9 +159,11 @@ export function DriverProvider({ vehicleId, children }: { vehicleId: string; chi
     const serverStops: Record<string, LocalStop> = base ? { ...base.stops } : db ? { ...db.stops } : {};
     const stops: Record<string, LocalStop> = { ...serverStops };
     for (const r of rows) {
-      if (r.status !== "queued") continue;
+      // The cached run can predate a record that has since synced (signal lost before the refetch),
+      // so offline the phone's own synced records apply too; online the server copy already has them.
+      if (r.status === "rejected" || (r.status === "synced" && !base)) continue;
       const e = r.event;
-      const s: LocalStop = { ...(stops[e.orderId] ?? {}), pending: true };
+      const s: LocalStop = { ...(stops[e.orderId] ?? {}), pending: r.status === "queued" };
       if (e.kind === "arrived") s.arrivedAt = e.at;
       if (e.kind === "delivered") Object.assign(s, { deliveredAt: e.at, pod: e.pod });
       if (e.kind === "problem") s.problem = e.problem;

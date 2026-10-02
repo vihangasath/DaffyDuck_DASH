@@ -20,7 +20,7 @@ export default function Pod() {
   const order = trip?.orders.find((o) => o.id === orderId);
   // Start from what was actually loaded at the dock (a flagged shortfall means fewer on the truck).
   const [qty, setQty] = useState<Record<string, number>>(() =>
-    Object.fromEntries((order ? linesFor(order) : []).map((l) => [l.skuId, Math.min(l.qty, d.loaded[`${order!.id}|${l.skuId}`] || l.qty)])),
+    Object.fromEntries((order ? linesFor(order) : []).map((l) => [l.skuId, Math.min(l.qty, d.loaded[`${order!.id}|${l.skuId}`] ?? l.qty)])),
   );
   const [photos, setPhotos] = useState<string[]>([]);
   // Camera photos are full-size blobs held in memory; release them when the driver leaves this screen.

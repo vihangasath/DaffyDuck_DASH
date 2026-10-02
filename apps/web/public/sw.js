@@ -1,6 +1,8 @@
 // Waypoint service worker: keeps the app shell available with no signal.
-// Navigations: network first, fall back to the cached page. Static assets: cache first.
-const CACHE = "waypoint-shell-v1";
+// Navigations: network first, but a slow network loses to the cached page after NAV_TIMEOUT_MS
+// (the fresh copy still lands in the cache for next time). Static assets: cache first.
+const CACHE = "waypoint-shell-v2";
+const NAV_TIMEOUT_MS = 4000;
 const SHELL = ["/", "/driver", "/driver/outbox", "/loader", "/store", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -20,15 +22,20 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
 
   if (req.mode === "navigate") {
+    const network = fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+      }
+      return res;
+    });
+    const cached = () => caches.match(req).then((hit) => hit || caches.match("/driver") || caches.match("/"));
+    // Only this exact page may stand in for a slow network; the /driver fallback is for no network at all.
+    const slow = new Promise((resolve) => setTimeout(resolve, NAV_TIMEOUT_MS)).then(() => caches.match(req));
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
-          return res;
-        })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match("/driver") || caches.match("/"))),
+      Promise.race([network, slow.then((hit) => hit || network)]).catch(() => cached()),
     );
+    event.waitUntil(network.catch(() => undefined));
     return;
   }
 
