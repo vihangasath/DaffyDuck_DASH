@@ -2,15 +2,15 @@
 
 Tech-Triathlon 2026. **DASH** is one system that connects **ordering → planning → loading → delivery → receipt** for Waypoint Fresh, Style and Tech. Every deferral is explainable, drivers keep working when the signal drops, and the driver app has a dark mode for dawn runs and night shifts.
 
-**Repository:** [https://github.com/vihangasath/IntelligentEnterprise-RootCode](https://github.com/vihangasath/IntelligentEnterprise-RootCode)
+**Repository:** [https://github.com/vihangasath/DaffyDuck_DASH](https://github.com/vihangasath/DaffyDuck_DASH)
 
-> **Status (1 Oct 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app (DASH)** for dispatchers, loaders, drivers (offline-first, with a dark mode for the cab) and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace.
+> **Status (2 Oct 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app (DASH)** for dispatchers, loaders, drivers (offline-first, with a dark mode for the cab) and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace. The Datathon models have a slot (`apps/models`) but haven't been added yet, so ETAs, late risk and the capacity forecast run on documented baselines (see [Datathon models](#datathon-models-optional)).
 
 ## Repository layout
 
 ```
 apps/api/        Waypoint API (Hono + Drizzle): database, migrations, auth, business rules, people (HR) and network endpoints, live events
-  src/db/          schema.ts (31 tables), seed.ts (first-run data), client.ts (embedded Postgres or a Postgres server)
+  src/db/          schema.ts (33 tables), seed.ts (first-run data), client.ts (embedded Postgres or a Postgres server)
   drizzle/         SQL migrations (applied on start-up)
 apps/web/        DASH operations app (Next.js 16): dispatcher (incl. network records: vehicles, branches, depots, products), loader, driver (offline-first with dark mode) and store screens
 apps/admin/      Waypoint People, the HR panel (Next.js 16): staff directory for every role, licence renewals, sign-in access, activity log
@@ -28,8 +28,8 @@ docs/            Plan, integration contract, architecture, AI disclosure
 **Local Setup (Node ≥ 22.18). Nothing else to install.**
 
 ```bash
-git clone https://github.com/vihangasath/IntelligentEnterprise-RootCode.git
-cd IntelligentEnterprise-RootCode
+git clone https://github.com/vihangasath/DaffyDuck_DASH.git
+cd DaffyDuck_DASH
 npm install && npm run dev
 ```
 
@@ -49,9 +49,25 @@ In development the API runs an **embedded Postgres** (PGlite), stored in `./.dat
 cp .env.example .env && docker compose up --build
 ```
 
+This starts `db`, `api`, `web` and `admin` with the same ports as above. The optional `models` service only starts with `--profile models` (see [Datathon models](#datathon-models-optional)).
+
+**Configuration.** Every setting has a default, so none is required. Docker reads them from `.env` (copy `.env.example`); `npm run dev` reads them from the shell.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `POSTGRES_PASSWORD` | `waypoint` | Postgres password shared by the `db` and `api` containers |
+| `WEB_PORT` · `ADMIN_PORT` · `API_PORT` | `3000` · `3001` · `4000` | Host ports in Docker (`API_PORT`/`PORT` is also the API's port in development) |
+| `SESSION_HOURS` | `12` | How long a sign-in lasts |
+| `DATABASE_URL` | unset → embedded PGlite | A Postgres server for the API. Docker sets it to the `db` container |
+| `PGLITE_DIR` | `./.data/pglite` | Where embedded Postgres keeps its files in development |
+| `ADMIN_URL` | `http://localhost:3001` | Where the operations app sends HR accounts that sign in there |
+| `API_URL` | `http://api:4000` | Build-time target of the web and admin `/api` proxy (Docker build argument) |
+| `MODEL_URL` | unset → baselines | The Datathon model service, e.g. `http://models:8000` in Docker |
+| `MODEL_TIMEOUT_MS` · `MODEL_NAME` | `5000` · `datathon` | How long the API waits for the model service · the model name shown on screen |
+
 **Tests:** `npm test` runs:
-- the planner tests: every Task 2B feasibility rule on the active seed (the shared peak day for the judged build, or the independent synthetic public fallback), refused manual moves and fairness;
-- the API tests: logins and role checks, what each role may read, the whole walkthrough over HTTP, idempotent driver sync (including refused records), the audit trail, and state that survives a restart.
+- the planner tests: every Task 2B feasibility rule on the active seed (the shared peak day for the judged build, or the independent synthetic public fallback), refused manual moves and fairness. They also check that model predictions move ETAs and late risk but never the brief's trip budgets, and that without a model everything matches the baselines;
+- the API tests: logins and role checks, what each role may read, the whole walkthrough over HTTP, idempotent driver sync (including refused records), the audit trail, state that survives a restart, and the model-service contract against a stand-in service (connected, task without a model file, disconnected).
 
 `npm run typecheck` and `npm run lint` check all workspaces. All three commands pass on a fresh clone.
 
@@ -101,7 +117,7 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 10. **Dispatcher: change the run while the driver is offline.** In the dispatcher tab, select one of VEH011's later stops and choose **Defer order**. After ~2 minutes, Live tracking shows VEH011 as *No signal*.
 11. **Driver: reconnect.** Turn **No signal** off. The queued records sync with their original times, and the driver sees *"Your run was changed by dispatch — Removed: …"*.
 12. **Store: confirm receipt.** Switch the store header to the outlet you delivered in step 8 (the driver's stop card shows its `OUT…` id; `OUT010 Mount Lavinia` on the shared dataset). The order shows **Delivered** and the shortfall notice. Click **Confirm receipt**, mark *Damaged* with a note and confirm. The dispatcher gets a *receipt issue* exception.
-13. **Plan ahead.** **Capacity outlook** shows the 10-week volume by brand against practical capacity, the refrigerated vehicles needed, and the ×2 peak-day factor. **Deferrals** shows each outlet's 14-day service strip and the audit log (CSV export).
+13. **Plan ahead.** **Capacity outlook** shows the 10-week volume by brand against practical capacity, the refrigerated vehicles needed, and the ×2 peak-day factor. The tag in the header says whether the forecast weeks come from the baseline or the Datathon Task 2A model. **Deferrals** shows each outlet's 14-day service strip and the audit log (CSV export).
 14. **HR: look after the people.** Open http://localhost:3001 (Waypoint People) and sign in as `admin`, the HR officer.
     - **Front desk** shows what needs HR today: driving licences due in the next 90 days, who is on leave and when they're back, and staff who can't sign in yet.
     - **Staff directory** holds one folder per employee in every job (drivers, loaders, dispatchers, store managers, HR). Pull a driver's folder and use **Issue login** on the Sign-in access card. The username and a generated password are ready to share. Sign in with them in the operations app: you land on the vehicle dispatch assigned.
