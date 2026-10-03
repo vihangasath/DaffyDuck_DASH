@@ -64,12 +64,11 @@ export async function sessionUserOf(db: Db, u: UserRow): Promise<SessionUser> {
     vehicleId,
     driverId: u.driverId ?? undefined,
     outletId: u.outletId ?? undefined,
-    outletScope: u.role === "store" ? ((u.outletScope as "outlet" | "depot" | null) ?? "outlet") : undefined,
   };
 }
 
 export const actorOf = (s: SessionUser): Actor => ({
-  userId: s.userId, name: s.name, role: s.role, depot: s.depot, vehicleId: s.vehicleId, outletId: s.outletId, outletScope: s.outletScope,
+  userId: s.userId, name: s.name, role: s.role, depot: s.depot, vehicleId: s.vehicleId, outletId: s.outletId,
 });
 
 export async function createSession(db: Db, userId: string, app: "web" | "admin", userAgent?: string) {

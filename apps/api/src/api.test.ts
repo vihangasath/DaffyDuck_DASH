@@ -27,6 +27,18 @@ async function call<T = unknown>(method: string, path: string, body?: unknown, w
   return { status: res.status, json: (await res.json()) as T };
 }
 const op = <T = unknown>(name: string, args: unknown, who: string) => call<T>("POST", `/api/ops/${name}`, args, who);
+
+/** Signs in as a branch's own store manager (the named demo `store` account manages OUT007). */
+async function storeOf(outletId: string): Promise<string> {
+  const who = outletId === "OUT007" ? "store" : `store-${outletId.toLowerCase()}`;
+  if (!tokens[who]) {
+    const r = await call<LoginResult>("POST", "/api/auth/login", { username: who, password: "waypoint", app: "web" });
+    expect(r.status, who).toBe(200);
+    tokens[who] = r.json.token;
+  }
+  return who;
+}
+const managerOf = async (orderId: string) => storeOf((await snapshot()).db.orders.find((o) => o.id === orderId)!.outletId);
 const snapshot = async (who = "dispatcher") => (await call<Snapshot>("GET", "/api/ops/snapshot", undefined, who)).json;
 
 beforeAll(async () => {
@@ -59,6 +71,23 @@ describe("auth", () => {
     expect((await call("GET", "/api/people/overview", undefined, "dispatcher")).status).toBe(403);
     expect((await call("GET", "/api/network/vehicles", undefined, "admin")).status).toBe(403);
     expect((await call("GET", "/api/ops/snapshot")).status).toBe(401);
+  });
+});
+
+describe("store managers", () => {
+  it("sign in to their own branch and nowhere else", async () => {
+    const me = (await call<{ role: string; outletId: string; title: string }>("GET", "/api/auth/me", undefined, await storeOf("OUT001"))).json;
+    expect(me).toMatchObject({ role: "store", outletId: "OUT001" });
+    expect((await op("placeOrder", { outletId: "OUT007", temp: "ambient", lines: [{ skuId: "F-RICE", qty: 1 }] }, await storeOf("OUT001"))).status).toBe(403);
+    const db = (await snapshot(await storeOf("OUT001"))).db;
+    expect(db.orders.filter((o) => o.lines).every((o) => o.outletId === "OUT001")).toBe(true);
+  });
+  it("Kandy has its own loader and driver", async () => {
+    for (const u of ["loader-kandy", "driver-kandy"]) {
+      const r = await call<LoginResult>("POST", "/api/auth/login", { username: u, password: "waypoint", app: "web" });
+      expect(r.status, u).toBe(200);
+      expect(r.json.user.depot).toBe("Kandy");
+    }
   });
 });
 
@@ -138,8 +167,10 @@ describe("walkthrough", () => {
     expect((await op("syncDriverEvents", { vehicleId: "VEH012", events: [] }, "driver")).status).toBe(403);
     expect((await snapshot()).db.stops[stop].deliveredAt).toBe("05:14");
     const receiptLines = lines.map((l) => ({ skuId: l.skuId, name: l.name, driverQty: l.delivered, receivedQty: l.delivered }));
-    expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines.map((l) => ({ ...l, driverQty: l.driverQty + 1 })), issues: [] }, "store")).status).toBe(400);
-    expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines, issues: [{ type: "Damaged", note: "One carton dented" }] }, "store")).status).toBe(200);
+    const manager = await storeOf(order.outletId);
+    if (order.outletId !== "OUT007") expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines, issues: [] }, "store")).status).toBe(403);
+    expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines.map((l) => ({ ...l, driverQty: l.driverQty + 1 })), issues: [] }, manager)).status).toBe(400);
+    expect((await op("confirmReceipt", { orderId: stop, lines: receiptLines, issues: [{ type: "Damaged", note: "One carton dented" }] }, manager)).status).toBe(200);
     expect((await snapshot()).db.receipts[stop].issues).toHaveLength(1);
   });
   it("asks the phone to keep a record queued until the loader releases the trip", async () => {
@@ -153,10 +184,10 @@ describe("walkthrough", () => {
   });
   it("gives each role only its own slice of the operational state", async () => {
     const all = (await snapshot()).db;
-    const store = (await snapshot("store")).db; // area manager: every Peliyagoda branch
+    const store = (await snapshot("store")).db; // OUT007's manager: that branch only
     expect(store.exceptions).toEqual([]);
-    expect(store.notices.every((n) => net.outlets.get(n.outletId)?.depot === "Peliyagoda")).toBe(true);
-    expect(store.orders.filter((o) => o.depot === "Kandy" && o.lines)).toEqual([]);
+    expect(store.notices.every((n) => n.outletId === "OUT007")).toBe(true);
+    expect(store.orders.filter((o) => o.lines).every((o) => o.outletId === "OUT007")).toBe(true);
     expect(store.plans.Peliyagoda!.trips).toEqual(all.plans.Peliyagoda!.trips); // ETAs need the whole trip
     const driver = (await snapshot("driver")).db;
     expect(driver.plans.Peliyagoda!.trips.every((t) => t.vehicleId === "VEH011")).toBe(true);
@@ -282,7 +313,7 @@ describe("proof in the field", () => {
     expect(d.orders.every((o) => /^\d{6}$/.test(o.confirmCode ?? ""))).toBe(true);
     expect((await snapshot("driver")).db.orders.some((o) => o.confirmCode)).toBe(false);
     expect((await snapshot("loader")).db.orders.some((o) => o.confirmCode)).toBe(false);
-    const store = (await snapshot("store")).db; // area manager: own = every Peliyagoda outlet
+    const store = (await snapshot("store")).db; // own = OUT007's orders; the rest only share its trucks
     expect(store.orders.filter((o) => o.lines).every((o) => o.confirmCode)).toBe(true);
     expect(store.orders.filter((o) => !o.lines).some((o) => o.confirmCode)).toBe(false);
   });
@@ -311,7 +342,7 @@ describe("proof in the field", () => {
     expect(img.status).toBe(200);
     expect(img.headers.get("content-type")).toBe("image/png");
     expect(new Uint8Array(await img.arrayBuffer())).toEqual(PNG);
-    expect((await get("photo-pod-0001", "store")).status).toBe(200);
+    expect((await get("photo-pod-0001", await managerOf(id))).status).toBe(200);
     expect((await get("photo-pod-0001", "loader")).status).toBe(404);
   });
 
@@ -347,7 +378,7 @@ describe("proof in the field", () => {
     const e = (await snapshot()).db.exceptions.find((x) => x.ref.shortfallId === f.json.id)!;
     expect(e.body).toContain("1 photo from the dock");
     expect((await get("photo-dock-0001", "dispatcher")).status).toBe(200);
-    expect((await get("photo-dock-0001", "store")).status).toBe(404);
+    expect((await get("photo-dock-0001", await managerOf(orderId))).status).toBe(404);
   });
 
   it("alerts dispatch to a long stop and tells the later stores they will be late", async () => {
@@ -367,7 +398,7 @@ describe("proof in the field", () => {
     expect(late.every((n) => n.lateMin! >= 5 && n.body.startsWith("We’re sorry, we’ll be about"))).toBe(true);
     expect((await watchOnce(svc)).late).toEqual([]); // no repeats until it slips another 15 min
     if (late.length) {
-      expect((await op("ackNotice", { id: late[0].id, response: "reduce" }, "store")).status).toBe(200);
+      expect((await op("ackNotice", { id: late[0].id, response: "reduce" }, await storeOf(late[0].outletId))).status).toBe(200);
       expect((await snapshot()).db.exceptions.find((e) => e.kind === "late_reply")).toMatchObject({ severity: "warning", ref: { orderId: late[0].orderId } });
     }
     // Leaving the stop answers the dwell alert.
@@ -398,10 +429,11 @@ describe("proof in the field", () => {
     const d = (await snapshot()).db;
     const id = all()[0];
     const pod = d.stops[id].pod!;
-    expect((await put("photo-rcpt-0001", "receipt", id, "store")).status).toBe(200);
+    const manager = await managerOf(id);
+    expect((await put("photo-rcpt-0001", "receipt", id, manager)).status).toBe(200);
     const lines = pod.lines.map((l, i) => ({ skuId: l.skuId, name: l.name, driverQty: l.delivered, receivedQty: i === 0 ? l.delivered - 1 : l.delivered, damagedQty: i === 0 ? 1 : 0 }));
-    expect((await op("confirmReceipt", { orderId: id, lines: lines.map((l) => ({ ...l, damagedQty: l.receivedQty + 1 })), issues: [] }, "store")).status).toBe(400);
-    expect((await op("confirmReceipt", { orderId: id, lines, issues: [{ type: "Count differs from driver" }], photoIds: ["photo-rcpt-0001"] }, "store")).status).toBe(200);
+    expect((await op("confirmReceipt", { orderId: id, lines: lines.map((l) => ({ ...l, damagedQty: l.receivedQty + 1 })), issues: [] }, manager)).status).toBe(400);
+    expect((await op("confirmReceipt", { orderId: id, lines, issues: [{ type: "Count differs from driver" }], photoIds: ["photo-rcpt-0001"] }, manager)).status).toBe(200);
     const after = (await snapshot()).db;
     expect(after.receipts[id].photoIds).toEqual(["photo-rcpt-0001"]);
     const e = after.exceptions.find((x) => x.kind === "receipt_issue" && x.ref.orderId === id)!;

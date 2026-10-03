@@ -85,8 +85,7 @@ export async function refreshSession(): Promise<void> {
     if (res.status === 401) return write(null);
     if (!res.ok) return;
     const user = (await res.json()) as SessionUser;
-    const keepOutlet = user.role === "store" && user.outletScope === "depot" && cur.user.outletId;
-    write({ token: cur.token, user: keepOutlet ? { ...user, outletId: cur.user.outletId } : user });
+    write({ token: cur.token, user });
   } catch {
     /* offline: keep the cached session so the driver app still opens */
   }

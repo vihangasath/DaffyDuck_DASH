@@ -2,7 +2,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Copy, FolderOpen, KeyRound, Plus, RefreshCw, Truck, X } from "lucide-react";
-import { APP_ROLE, JOB_LABEL, JOB_ROLES, type JobRole, type PeopleLookups, type StaffRow, type StaffStatus } from "@waypoint/core/people";
+import { JOB_LABEL, JOB_ROLES, type JobRole, type PeopleLookups, type StaffRow, type StaffStatus } from "@waypoint/core/people";
 import { toast } from "@waypoint/ui/toast";
 import { cx } from "@waypoint/ui/ui";
 import {
@@ -387,7 +387,7 @@ const LANDS: Record<JobRole, string> = {
   driver: "Driver app, on the vehicle dispatch assigned",
   loader: "Dock queue and load lists",
   dispatcher: "Dispatch console",
-  store_manager: "Store deliveries and ordering",
+  store_manager: "Their own branch: deliveries, codes, receipts and ordering",
   hr_officer: "Waypoint People",
 };
 
@@ -403,16 +403,13 @@ async function copy(text: string, what = "Copied") {
 function AccessCard({ s, self }: { s: StaffRow; self: boolean }) {
   const [username, setUsername] = useState(() => suggest(s.name));
   const [password, setPassword] = useState(generate);
-  const [scope, setScope] = useState<"outlet" | "depot">(s.login?.outletScope ?? "outlet");
   const [newPw, setNewPw] = useState("");
   const issue = usePeopleMutation(
-    () => api(`/people/staff/${s.id}/login`, { body: { username, password, outletScope: s.jobRole === "store_manager" ? scope : null } }),
+    () => api(`/people/staff/${s.id}/login`, { body: { username, password } }),
     `Login “${username}” issued. Share the password with ${s.name.split(" ")[0]} privately.`,
   );
   const toggle = usePeopleMutation((active: boolean) => api(`/people/logins/${s.login!.userId}`, { method: "PATCH", body: { active } }), (_, active) => (active ? "Sign-in turned back on" : "Sign-in turned off. They’ve been signed out everywhere."));
-  const rescope = usePeopleMutation((outletScope: "outlet" | "depot") => api(`/people/logins/${s.login!.userId}`, { method: "PATCH", body: { outletScope } }), "Branch access changed. They’ll sign in again.");
   const reset = usePeopleMutation((pw: string) => api(`/people/logins/${s.login!.userId}/password`, { body: { password: pw } }), "New password set and copied. They’ve been signed out everywhere.");
-  const role = APP_ROLE[s.jobRole];
 
   if (!s.login) {
     return (
@@ -431,11 +428,6 @@ function AccessCard({ s, self }: { s: StaffRow; self: boolean }) {
                   <Button type="button" kind="secondary" icon={Copy} onClick={() => copy(password)} aria-label="Copy password" className="w-10 px-0" />
                 </span>
               </Field>
-              {role === "store" && (
-                <Field label="Can see" className="sm:col-span-2">
-                  <Select value={scope} onChange={setScope} options={[{ value: "outlet", label: "Only their branch" }, { value: "depot", label: "Every branch their depot serves (area manager)" }]} />
-                </Field>
-              )}
             </div>
             <div><Button type="button" icon={KeyRound} busy={issue.isPending} disabled={!username || !password} onClick={() => issue.mutate(undefined)}>Issue login</Button></div>
           </div>
@@ -460,11 +452,6 @@ function AccessCard({ s, self }: { s: StaffRow; self: boolean }) {
           <Rocker label="Sign-in" checked={l.active} on="Can sign in" off="Turned off" disabled={self || toggle.isPending || (!l.active && s.status === "left")} onChange={(v) => v !== l.active && toggle.mutate(v)} />
           <span className="text-xs text-ink-2">{self ? "You can’t turn off your own access." : l.active ? "Turning off signs them out on every device at once." : s.status === "left" ? "They’ve left Waypoint." : "They can’t sign in until you turn it back on."}</span>
         </div>
-        {role === "store" && (
-          <Field label="Can see">
-            <Select value={l.outletScope ?? "outlet"} onChange={(v) => rescope.mutate(v)} options={[{ value: "outlet", label: "Only their branch" }, { value: "depot", label: "Every branch their depot serves (area manager)" }]} />
-          </Field>
-        )}
         <Field label="Set a new password" hint="Signs them out everywhere, then copies it for you to share.">
           <span className="flex gap-1.5">
             <TextInput typed value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="new password" aria-label="New password" />

@@ -9,7 +9,7 @@ import { useLoader } from "@/components/loader/loader-context";
 import { useSession } from "@/lib/session";
 import { fmtMin, fmtClock } from "@waypoint/core/domain/time";
 import { dockTrips, LOAD_LABEL } from "@waypoint/core/loading";
-import { outletName } from "@waypoint/core/reference";
+import { outletName, depotName } from "@waypoint/core/reference";
 
 const TONE: Record<string, Tone> = { not_started: "neutral", loading: "info", held: "danger", released: "success" };
 const SEEN = "waypoint-loader-seen-version";
@@ -70,8 +70,8 @@ export default function DockQueue() {
       )}
 
       {!plan || plan.status !== "published" ? (
-        <Empty icon={Box} title="No published plan yet">
-          Load lists appear here as soon as dispatch publishes tonight’s plan. They update live if the plan changes — no printed sheets.
+        <Empty icon={Box} title={`No plan for ${depotName(depot)} yet`}>
+          You load at the {depotName(depot)} dock. Its load lists appear here as soon as dispatch publishes that depot’s plan, and update live if it changes. A plan for the other depot goes to its own loaders.
         </Empty>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-3 p-4">

@@ -277,8 +277,6 @@ export interface SessionUser {
   vehicleId?: string;
   driverId?: string;
   outletId?: string;
-  /** Store managers: "outlet" = their own outlet only, "depot" = any outlet served by their depot. */
-  outletScope?: "outlet" | "depot";
 }
 
 export interface LoginResult {

@@ -129,3 +129,25 @@ A pass over the build as a judge would see it: the booklet's Hackathon requireme
 - **Docs.** An ER diagram and a "who can read what" table in [`ARCHITECTURE.md`](ARCHITECTURE.md); sync rules updated in [`INTEGRATION.md`](INTEGRATION.md). `.dockerignore` now keeps `.env`, docs and design files out of the image.
 - Tests: 15 planner + 19 API, passing on both seeds.
 - **Blue-only palette.** The DASH app no longer uses teal or green. Navy carries structure, cobalt carries actions, and success, info, chilled and the Fresh/Style/Tech brands are distinct blues (checked for 4.5:1 text contrast in light and dark). Danger stays red and warning amber. A new `on-primary` token gives blue fills dark text in driver dark mode, fixing white-on-cyan buttons. Waypoint People keeps its own office-green world.
+
+## 3 Oct: Field proof, loader phone app and a code cleanup
+- **Proof from the field.**
+  - **Photos.** Real photos from the loader (damage), the driver (proof of delivery, kept on the phone until there is signal) and the store (receipt). They are stored in the database and shown to dispatch.
+  - **Delivery codes.** A 6-digit code per order that only the store and dispatch can read. The driver enters it at the stop; the server checks it on sync and warns dispatch if it is wrong or missing.
+  - **Location.** The driver phone's location rides on the 20-second heartbeat, and dispatch sees each vehicle on a map.
+  - **Connectivity and sync.** A log of every drop-out, plus a sync check that every record on the phone reached the database (missing ones are re-sent).
+  - **Live watch.** Every 30 s the API raises dwell alerts and sends stores late notices.
+  - **Store screens.** An "arriving in X min" countdown, and itemised receipts with missing and damaged counts.
+  - **Deliveries page.** A dispatcher page with the code check, photos and receipt side by side.
+- **Cleanup.**
+  - Unused files, exports and images were removed.
+  - The driver and loader apps share their tab bar, switches and sign-out; the photo picker, time formatting and phone links each have one home.
+  - The dark theme tokens are defined once.
+  - The web-to-API contract no longer carries arguments the server ignored.
+  - A connectivity-log bug was fixed: a sync reply arriving after the phone lost signal was logged as "back online".
+
+## 4 Oct: Every depot and every branch has its own sign-in
+- **Loaders and drivers per depot.** A published Kandy plan showed nothing to the demo loader, because `loader` works at the Peliyagoda dock and each loader sees only their own depot. Kandy now has `loader-kandy` and `driver-kandy`, and a loader with no plan for their depot is told which dock they are waiting on.
+- **Store managers sign in to their own branch.** The area-manager scope and the branch switcher are gone (migration `0004` drops `users.outlet_scope`). Every branch's manager has a login, `store-` plus the branch id (`store-out010`); `store` stays OUT007. The new logins are issued once per database to the people HR already has on file, so existing Docker databases get them on the next start.
+- **Postgres.** The staff seed no longer runs parallel queries inside one transaction (a `pg` deprecation warning on first boot).
+- Tests: 22 core + 31 API + 5 end-to-end specs, passing on a fresh clone in Docker (synthetic seed).

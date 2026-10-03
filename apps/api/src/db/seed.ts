@@ -16,6 +16,7 @@ import * as t from "./schema.ts";
 import { hashPassword } from "../auth.ts";
 import { emptyOps, persist } from "../store.ts";
 import { seedStaff } from "./staff-seed.ts";
+import { ensureDemoLogins } from "./demo-logins.ts";
 
 export const dataset = seedJson as unknown as SeedData;
 
@@ -30,7 +31,6 @@ interface DemoAccount {
   role: Role;
   depotId: string;
   outletId?: string;
-  outletScope?: "outlet" | "depot";
   vehicleId?: string;
 }
 
@@ -40,7 +40,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   { username: "dispatcher", password: "waypoint", name: "Nimali Perera", role: "dispatcher", depotId: "Peliyagoda" },
   { username: "loader", password: "waypoint", name: "Kasun Jayasinghe", role: "loader", depotId: "Peliyagoda" },
   { username: "driver", password: "waypoint", name: "Ruwan Silva", role: "driver", depotId: "Peliyagoda", vehicleId: "VEH011" },
-  { username: "store", password: "waypoint", name: "Dilani Fernando", role: "store", depotId: "Peliyagoda", outletId: "OUT007", outletScope: "depot" },
+  { username: "store", password: "waypoint", name: "Dilani Fernando", role: "store", depotId: "Peliyagoda", outletId: "OUT007" },
 ];
 
 const driverIdFor = (vehicleId: string) => vehicleId.replace(/^VEH/, "DRV");
@@ -104,10 +104,11 @@ export async function seedDatabase(db: Db) {
     await tx.insert(t.users).values(
       DEMO_ACCOUNTS.map((a) => ({
         id: randomUUID(), username: a.username, passwordHash: passwords.get(a.username)!, displayName: a.name, role: a.role, depotId: a.depotId,
-        outletId: a.outletId ?? null, outletScope: a.outletScope ?? null, driverId: a.vehicleId ? driverIdFor(a.vehicleId) : null,
+        outletId: a.outletId ?? null, driverId: a.vehicleId ? driverIdFor(a.vehicleId) : null,
       })),
     );
     await seedStaff(tx);
+    await ensureDemoLogins(tx);
     const start = initialDb(data);
     await persist(tx, emptyOps(start.fleetStatus), start);
     await tx.insert(t.auditLog).values({ actor: "System", role: "system", action: "seed", summary: "Database created from the Tech-Triathlon 2026 dataset" });

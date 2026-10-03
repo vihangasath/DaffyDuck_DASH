@@ -32,11 +32,10 @@ interface Draft {
 }
 
 export async function seedStaff(tx: Tx, now = new Date()) {
-  const [drivers, users, outlets] = await Promise.all([
-    tx.select().from(t.drivers).orderBy(t.drivers.id),
-    tx.select().from(t.users).orderBy(t.users.createdAt),
-    tx.select().from(t.outlets).orderBy(t.outlets.id),
-  ]);
+  // One transaction is one connection: its queries run one after another.
+  const drivers = await tx.select().from(t.drivers).orderBy(t.drivers.id);
+  const users = await tx.select().from(t.users).orderBy(t.users.createdAt);
+  const outlets = await tx.select().from(t.outlets).orderBy(t.outlets.id);
   let n = 0;
   const person = (key: string, i: number) => {
     const h = hash(key);

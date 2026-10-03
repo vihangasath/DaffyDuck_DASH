@@ -208,7 +208,6 @@ export const users = pgTable(
     role: roleEnum().notNull(),
     depotId: text().references(() => depots.id),
     outletId: text().references(() => outlets.id),
-    outletScope: text(), // store managers: outlet | depot
     driverId: text()
       .unique()
       .references(() => drivers.id, { onDelete: "set null" }),

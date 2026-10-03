@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { chooseOutlet, ADMIN, apiGet, apiLogin, detectSeed, newRole, enterCode, resetDemoDay, sign, signIn, type Seed, warmUp } from "./helpers";
+import { storeTab, ADMIN, apiGet, apiLogin, detectSeed, newRole, enterCode, resetDemoDay, sign, signIn, type Seed, warmUp } from "./helpers";
 
 // The README's judge walkthrough, end to end, in four tabs (one per role) plus HR.
 // It is also the demo story: dispatcher publishes → loader flags a shortfall → driver completes a stop
@@ -169,9 +169,9 @@ test("judge walkthrough: four roles, one delivery day", async ({ browser }) => {
   await test.step("10 · store confirms receipt with an issue", async () => {
     const { outletOf } = await veh011Trips();
     const outlet = outletOf(delivered);
-    const p = store.page;
-    await p.goto("/store");
-    await chooseOutlet(p, outlet);
+    // The manager of the branch the driver delivered to.
+    const branch = await storeTab(browser, outlet);
+    const p = branch.page;
     await p.goto(`/store/receipt/${delivered}`);
     await expect(p.getByRole("heading", { name: "Confirm receipt" })).toBeVisible();
     // One unit of the first item arrived damaged (its second stepper counts damage).
@@ -179,6 +179,7 @@ test("judge walkthrough: four roles, one delivery day", async ({ browser }) => {
     await expect(p.getByText("1 damaged").first()).toBeVisible();
     await p.getByRole("button", { name: /^Confirm receipt/ }).click();
     await expect(p).toHaveURL(/\/store$/);
+    await branch.ctx.close();
   });
 
   await test.step("10b · dispatcher sees the code check and the itemised receipt", async () => {

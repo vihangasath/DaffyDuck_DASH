@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Store } from "lucide-react";
+import { LogOut, Store } from "lucide-react";
 import { RoleGuard } from "@/components/role-guard";
 import { cx } from "@/components/ui";
 import { DashLogo as Logo } from "@/components/logo";
-import { DEMO_DATE, net, outletName } from "@waypoint/core/reference";
+import { net, outletName } from "@waypoint/core/reference";
 import { useDb } from "@/lib/hooks";
-import { signOut, writeSession, type Session } from "@/lib/session";
+import { signOut, type Session } from "@/lib/session";
 
 export default function StoreLayout({ children }: LayoutProps<"/store">) {
   return <RoleGuard role="store">{(s) => <Shell s={s}>{children}</Shell>}</RoleGuard>;
@@ -20,12 +20,6 @@ function Shell({ s, children }: { s: Session; children: React.ReactNode }) {
   const outletId = s.outletId!;
   const o = net.outlets.get(outletId)!;
   const unread = db?.notices.filter((n) => n.outletId === outletId && (n.kind === "deferral" || n.kind === "late") && !n.acknowledged).length ?? 0;
-  // Regional managers ("depot" scope) can look at any branch their depot serves that has orders today.
-  const outlets =
-    s.outletScope === "depot"
-      ? [...new Set([outletId, ...(db?.orders ?? []).filter((x) => x.forDate === DEMO_DATE && net.outlets.get(x.outletId)?.depot === s.depot).map((x) => x.outletId)])].sort()
-      : [outletId];
-
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur">
@@ -39,28 +33,9 @@ function Shell({ s, children }: { s: Session; children: React.ReactNode }) {
               labelClassName="text-base sm:text-lg font-bold tracking-tight text-ink"
             />
           </Link>
-          {outlets.length > 1 ? (
-            <label className="relative flex items-center">
-              <span className="sr-only">Outlet</span>
-              <Store className="pointer-events-none absolute left-2.5 size-4 text-primary" />
-              <select
-                value={outletId}
-                onChange={(e) => writeSession({ ...s, outletId: e.target.value })}
-                className="max-w-64 appearance-none truncate rounded-lg border border-line-strong bg-surface py-2 pl-8 pr-8 text-sm font-semibold text-ink shadow-card transition-colors hover:border-ink-2/40 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15"
-              >
-                {outlets.map((id) => (
-                  <option key={id} value={id}>
-                    {id} · {net.outlets.get(id)?.brand} {outletName(id)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-ink-2" />
-            </label>
-          ) : (
-            <span className="flex items-center gap-2 rounded-lg bg-subtle px-3 py-2 text-sm font-semibold">
-              <Store className="size-4 text-primary" /> {outletId} · {o.brand} {outletName(outletId)}
-            </span>
-          )}
+          <span className="flex items-center gap-2 rounded-lg bg-subtle px-3 py-2 text-sm font-semibold">
+            <Store className="size-4 text-primary" /> {outletId} · {o.brand} {outletName(outletId)}
+          </span>
           <nav className="flex gap-1 rounded-[10px] bg-subtle p-[3px]" aria-label="Store">
             {[
               { href: "/store", label: "Deliveries", badge: unread },

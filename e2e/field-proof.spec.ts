@@ -1,5 +1,5 @@
 import { devices, expect, test } from "@playwright/test";
-import { chooseOutlet, WEB, apiGet, apiLogin, apiOp as op, enterCode, newRole, publishedDay, releaseVehicle, sign, signIn, warmUp } from "./helpers";
+import { storeTab, WEB, apiGet, apiLogin, apiOp as op, enterCode, newRole, publishedDay, releaseVehicle, sign, signIn, warmUp } from "./helpers";
 
 // Proof from the field, end to end: real photos from the dock and the doorstep, the store's delivery
 // code, the phone's location and connectivity log, the live watch (dwell alert + late notice) and the
@@ -35,7 +35,6 @@ test.beforeAll(async () => {
 
 test("photos, delivery codes, location, live watch and receipts reach dispatch", async ({ browser }) => {
   const dispatch = await newRole(browser);
-  const store = await newRole(browser);
   const loader = await newRole(browser, { phone: true });
   // The driver's phone has a location (as a browser would after the driver allows it).
   const driverCtx = await browser.newContext({ ...devices["Pixel 7"], baseURL: WEB, geolocation: { latitude: 6.9497, longitude: 79.9035, accuracy: 15 }, permissions: ["geolocation"] });
@@ -117,12 +116,12 @@ test("photos, delivery codes, location, live watch and receipts reach dispatch",
   const later = pending.slice(1);
 
   await test.step("4 · store sees its delivery code and the arrival countdown", async () => {
-    const p = store.page;
-    await signIn(p, "store", /\/store$/);
-    await chooseOutlet(p, outletOf(here));
+    const branch = await storeTab(browser, outletOf(here));
+    const p = branch.page;
     const code = s0.db.orders.find((o) => o.id === here)!.confirmCode!;
     await expect(p.getByLabel(`Delivery code ${code.split("").join(" ")}`)).toBeVisible();
     await expect(p.getByText(/Arriving in/).first()).toBeVisible();
+    await branch.ctx.close();
   });
 
   await test.step("5 · a long stop: dispatch is alerted and a later store is told it will be late", async () => {
@@ -139,13 +138,14 @@ test("photos, delivery codes, location, live watch and receipts reach dispatch",
     const s = await snap();
     const told = s.db.notices.find((n) => n.kind === "late" && later.includes(n.orderId ?? ""));
     expect(told, "a later store was told it will be late").toBeTruthy();
-    const p = store.page;
-    await chooseOutlet(p, told!.outletId);
+    const branch = await storeTab(browser, told!.outletId);
+    const p = branch.page;
     await expect(p.getByText(/We’re sorry, we’ll be about \d+ min late\. Is that OK\?/).first()).toBeVisible();
     await p.getByRole("button", { name: "Reduce the order" }).first().click();
     await expect(p.getByText(/Dispatch will call you/)).toBeVisible();
     await d.goto("/dispatcher/live");
     await expect(d.getByText(/asked to reduce the order/).first()).toBeVisible();
+    await branch.ctx.close();
   });
 
   await test.step("6 · the phone's dead zone shows up in dispatch's connectivity log", async () => {
@@ -167,8 +167,8 @@ test("photos, delivery codes, location, live watch and receipts reach dispatch",
   });
 
   await test.step("7 · store receipt with a damaged item and a photo reaches dispatch itemised", async () => {
-    const p = store.page;
-    await chooseOutlet(p, outletOf(delivered));
+    const branch = await storeTab(browser, outletOf(delivered));
+    const p = branch.page;
     await p.goto(`/store/receipt/${delivered}`);
     await expect(p.getByRole("heading", { name: "Confirm receipt" })).toBeVisible();
     // Driver's photo is on the receipt screen too.
@@ -181,8 +181,9 @@ test("photos, delivery codes, location, live watch and receipts reach dispatch",
     await d.goto("/dispatcher/live");
     await expect(d.getByText(/receipt: damaged/).first()).toBeVisible();
     await expect(d.getByText(/1 driver photo · 1 store photo/).first()).toBeVisible();
+    await branch.ctx.close();
   });
 
-  for (const r of [store, dispatch, loader]) await r.ctx.close();
+  for (const r of [dispatch, loader]) await r.ctx.close();
   await driverCtx.close();
 });

@@ -1,33 +1,42 @@
 # AI tool disclosure
 
-We used **Claude (Anthropic) through Claude Code** and **OpenAI Codex** as pair-programmers and design assistants. This page will be updated as the phases progress.
+We used **Claude (Anthropic) through Claude Code** and **OpenAI Codex** as pair-programmers and design assistants, from the brief on 25 Sep to this Hackathon submission on 4 Oct. The team conceived the product and directed every phase; the tools helped us draft and build it. This page covers the Designathon and Hackathon work. The Datathon models are not part of this submission and will be disclosed with that phase.
+
+## The team's ideas and direction
+
+The product ideas, the scope and every significant design decision came from the team. The AI tools turned our decisions into drafts that we then reviewed, corrected and sent back for changes. Our decisions, in the order we made them:
+
+- **Approach to the brief (25 Sep).** We chose the stack (Next.js and Postgres), the allocation approach (an auto-planner that dispatchers can override, so every deferral stays explainable), and to design and build together so the Hackathon follows the Designathon closely.
+- **A real system, not a mock (26 Sep).** We decided that every business record must live in a relational database, with a separate admin site on top. Sign-in uses credentials issued by an administrator, with no one-click demo accounts, and each role lands on its own workspace. We chose embedded Postgres for development and Postgres 17 in Docker.
+- **A look that stays recognisable (26 Sep).** We chose to evolve the existing identity rather than replace it, so the app stays mappable to our Figma file. The S-route logo mark became the signature motif.
+- **HR is its own department (27 Sep).** We decided the admin site belongs to HR, not logistics, and so became "Waypoint People": a staff directory for every role, licence renewals, and logins issued from a person's folder. Vehicles, branches, depots and products moved to the dispatcher's network records. We picked the personnel-file-cabinet visual direction from the options offered, specifically so it would not look like the logistics app.
+- **Product identity (29 Sep to 1 Oct).** We named the product DASH and kept the Waypoint names for the group, its brands and the HR panel. We also decided that the operations app uses blue only, with red and amber kept for alerts.
+- **Judge-ready delivery (1 to 2 Oct).** We kept the repository public with an independent synthetic seed, because the competition terms forbid publishing the datasets, and required that the README walkthrough works on both seeds. We asked for the fresh-clone, walkthrough, demo-story and slow-connection checks before judging. We also decided to handle deployment ourselves.
+- **A loader app (3 Oct).** We asked for the loader to have a phone app like the driver's, chose an installable web app inside `apps/web` over a native app, and removed the dispatcher's What-if page as too complicated.
+- **Proof from the field (3 Oct).** We chose which proof-of-delivery features to add: the store's delivery code, photos, the phone's location and a live watch, so that disputes do not depend on memory.
+- **Review and acceptance.** We reviewed and accepted the design direction, planning rules, fairness policy and demo scenario, and we decide what ships.
 
 ## AI-assisted work
 
-- **Understanding the brief and the domain.** Reading the challenge booklet, a first pass of domain research (dispatch systems such as Onfleet, OptimoRoute, Routific, Locus and FarEye; offline-first PWA patterns; the Sri Lankan festival and monsoon calendar), and drafting `docs/PLAN.md`.
-- **Designathon file.** Generating the Figma file (tokens, role screens, rationale text) through the Figma MCP from scripts in `design/figma-build/`. The team reviews and edits the output.
-- **Frontend build.** Scaffolding and most first-draft code for the Next.js app, the planning engine, the mock API, the offline driver outbox, the seed script and the tests.
-- **Visual refresh (26 Sep).** Evolving the UI within the existing navy + teal identity (shared UI kit, sign-in, all four roles) and the driver's run map.
+- **Understanding the brief and the domain (25 Sep).** Reading the challenge booklet, a first pass of domain research (dispatch systems such as Onfleet, OptimoRoute, Routific, Locus and FarEye; offline-first PWA patterns; the Sri Lankan festival and monsoon calendar), and drafting `docs/PLAN.md`. The booklet was read again on 4 Oct against the Hackathon requirements, with the PDF's text extracted locally on the team's machine.
+- **Designathon file (25 to 29 Sep).** Generating the Figma file (tokens, role screens, rationale text) through the Figma MCP from scripts in `design/figma-build/`, and the Figma sync scripts and screen captures in `design/figma-sync/`. The team reviews and edits the output.
+- **Frontend build.** Scaffolding and most first-draft code for the Next.js apps, the planning engine, the offline driver outbox, the seed script and the tests. The first browser-only mock API was replaced by the real API on 26 Sep.
 - **Backend and admin console (26 Sep).** Most first-draft code for the API service (`apps/api`: schema, migrations, seeding, auth and sessions, role checks, audit log, live events), the move of the business rules from the browser mock into `packages/core`, the admin console (`apps/admin`), and the API tests.
 - **Waypoint People, the HR panel (27 Sep).** Turning the admin console into a separate HR product: the `staff` table and its seed, the `/api/people` and `/api/network` routes (split from the old admin routes), moving vehicles, branches, depots, products and the demo reset into the dispatch console, and the new "personnel file cabinet" interface for `apps/admin`.
-- **Documentation.** First drafts of the README, the integration contract and the architecture notes.
+- **Road disruption and resilience (28 Sep).** Stretching trip legs by each district's road-disruption index, and hardening the demo walkthrough.
+- **DASH branding and driver dark mode (29 Sep).** Applying the DASH name and marks, the dark theme for the driver app, and the mobile sign-in.
 - **Hackathon backend hardening (30 Sep, Codex).** Reviewing the booklet against the existing stack; tightening order, plan, loading, driver-sync and receipt rules; extending the API walkthrough tests; and adding an independently generated public demo seed that keeps the private competition data out of the repository.
-- **Hackathon review (1 Oct, Claude Code).** Reviewing the build against the booklet and on a fresh clone. Fixes: each role now reads only its own slice of the operational state; the driver app shows records the server refused instead of retrying them forever; the synthetic public seed reproduces the peak day (refrigerated capacity binds); typechecking works on a fresh clone; restored Waypoint brand names after the DASH rename; the ER diagram in `ARCHITECTURE.md`.
-
-## Decisions made by the team
-
-- Scope and priorities: frontend first, then (26 Sep) a relational database for everything, a separate admin console, credentials issued by administrators, and embedded Postgres for local development; the stack; auto-plan + dispatcher override as the allocation approach.
-- (27 Sep) The admin panel belongs to the HR department, not logistics: people only, a staff directory for every role, HR officers as its users, and the name "Waypoint People". The team chose the personnel-file-cabinet visual direction from the options offered.
-- Review and acceptance of the design direction, planning rules, fairness policy and demo scenario.
-- *(Team: list here what you wrote or changed by hand, and how you verified the AI's output.)*
+- **Hackathon review (1 Oct, Claude Code).** Reviewing the build against the booklet and on a fresh clone. Fixes: each role now reads only its own slice of the operational state; the driver app shows records the server refused instead of retrying them forever; the synthetic public seed reproduces the peak day (refrigerated capacity binds); typechecking works on a fresh clone; restored Waypoint brand names after the DASH rename; the ER diagram in `ARCHITECTURE.md`. Applying the one-family blue palette across DASH and generating the app icons.
+- **Walkthrough, slow-network and fresh-clone checks (2 Oct, Claude Code).** The Playwright specs in `e2e/` (the judge walkthrough, a driver on a throttled, stalled and cut connection), `scripts/fresh-clone-check.sh`, the driver fixes those checks exposed (a proof of delivery refused after a full-line shortfall, a stale offline run, requests with no timeout), the placeholders for the Datathon model service (`apps/models`), and the README for the renamed repository.
+- **Loader phone app (3 Oct, Claude Code).** The loader's installable phone app: Queue, Flags and More tabs, the checklist saved on the phone first and replayed in order, and the dispatcher's at-risk tracking. We removed the What-if page from the dispatcher console.
+- **Field proof (3 Oct, Claude Code).** Delivery codes, photos from the loader, driver and store, the phone's location and connectivity log, the live watch (dwell alerts and late notices to stores), itemised receipts, the dispatcher's Deliveries page and fleet map, migration `0003_field_proof`, and the Playwright spec `e2e/field-proof.spec.ts`.
+- **Documentation.** First drafts of the README, the integration contract, the architecture notes and the changelog, and the update of the README walkthrough and this disclosure on 4 Oct.
 
 ## How outputs were checked
 
-- The planner is covered by automated tests that re-check every Task 2B feasibility rule on the real peak-day data (`npm test`).
-- The API is covered by tests that run the walkthrough over HTTP against a real (in-memory) Postgres: role checks, idempotent driver sync, the audit trail, and state that reloads identically from the tables.
-- Every screen was exercised end-to-end in a browser across all four roles, including the offline and conflict scenario.
+- The planner is covered by automated tests that re-check every Task 2B feasibility rule on the active seed (the shared peak day in the judged build, or the independent synthetic day in a public clone), plus the live projection used for ETAs and late risk (`npm test`: 22 core tests).
+- The API is covered by 29 tests that run the walkthrough over HTTP against a real (in-memory) Postgres: role checks, idempotent driver sync, the delivery code and photo rules, the audit trail, and state that reloads identically from the tables.
+- `npm run typecheck` and `npm run lint` pass for every workspace. On 4 Oct `npm test`, typecheck and lint all passed.
+- The Playwright suite (`npm run e2e`) drives the README's judge walkthrough in four browser tabs, then the field-proof flow and the driver and loader apps on slow, stalled and offline connections. `npm run check:fresh` runs `docker compose up` on a clean clone and the same suite against it.
+- The team ran the screens in a browser across all four roles, including the driver and loader at phone width and the offline and conflict scenarios.
 - The AI assistant read samples of the competition CSVs while building the seed script and planner (for example header rows and summary statistics). The datasets were not uploaded to any other service.
-
-The 30 Sep backend edits were syntax-checked with esbuild. The independent synthetic peak day passed the pure planner for both depots with zero feasibility violations. An isolated business-rules walkthrough covered ordering, loading, offline delivery reconciliation and receipt, plus refusal of held-load release and an out-of-run driver event.
-
-On 1 Oct the full suites (`npm test`, `npm run typecheck`, `npm run lint`) and both production builds were run on the private seed and again on a fresh clone with the synthetic seed. The role screens were checked in a browser, including the driver and loader at phone width.
