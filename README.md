@@ -4,7 +4,7 @@ Tech-Triathlon 2026. **DASH** is one system that connects **ordering → plannin
 
 **Repository:** [https://github.com/vihangasath/DaffyDuck_DASH](https://github.com/vihangasath/DaffyDuck_DASH)
 
-> **Status (2 Oct 2026):** Full stack. A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app (DASH)** for dispatchers, loaders, drivers (offline-first, with a dark mode for the cab) and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace. The Datathon models have a slot (`apps/models`) but haven't been added yet, so ETAs, late risk and the capacity forecast run on documented baselines (see [Datathon models](#datathon-models-optional)).
+> **Status (4 Oct 2026):** Full stack, with proof from the field (delivery codes, photos, phone location and a live watch on every run). A **Postgres database** stores every record: depots, branches, vehicles, drivers, products, user accounts, orders, plans, loading, deliveries, receipts and the audit log. An **API service** holds the business rules and checks role authorization. Two front ends sit on top: the **operations app (DASH)** for dispatchers, loaders, drivers (offline-first, with a dark mode for the cab) and stores, and **Waypoint People**, the HR department's panel. Everyone signs in with the credentials HR issued and lands on their own workspace. The Datathon models have a slot (`apps/models`) but haven't been added yet, so ETAs, late risk and the capacity forecast run on documented baselines (see [Datathon models](#datathon-models-optional)).
 
 ## Repository layout
 
@@ -49,7 +49,7 @@ In development the API runs an **embedded Postgres** (PGlite), stored in `./.dat
 cp .env.example .env && docker compose up --build
 ```
 
-This starts `db`, `api`, `web` and `admin` with the same ports as above. The optional `models` service only starts with `--profile models` (see [Datathon models](#datathon-models-optional)).
+This starts `db`, `api`, `web` and `admin` with the same ports as above. The optional `models` service only starts with `--profile models` (see [Datathon models](#datathon-models-optional)). An existing Docker database is upgraded in place on the next `up --build`: migrations run and any new demo logins are added, without resetting the day. The web build downloads its font from Google Fonts; on a slow connection that can time out, so just run the command again.
 
 **Configuration.** Every setting has a default, so none is required. Docker reads them from `.env` (copy `.env.example`); `npm run dev` reads them from the shell.
 
@@ -67,11 +67,12 @@ This starts `db`, `api`, `web` and `admin` with the same ports as above. The opt
 
 **Tests:** `npm test` runs:
 - the planner tests: every Task 2B feasibility rule on the active seed (the shared peak day for the judged build, or the independent synthetic public fallback), refused manual moves and fairness. They also check that model predictions move ETAs and late risk but never the brief's trip budgets, and that without a model everything matches the baselines;
-- the API tests: logins and role checks, what each role may read, the whole walkthrough over HTTP, idempotent driver sync (including refused records), the audit trail, state that survives a restart, and the model-service contract against a stand-in service (connected, task without a model file, disconnected).
+- the API tests: logins and role checks, store managers confined to their own branch, what each role may read, the whole walkthrough over HTTP, idempotent driver sync (including refused records), delivery codes, photo upload and access, dwell alerts and late notices, the phone's location, connectivity log and sync check, itemised receipts, the audit trail, state that survives a restart, and the model-service contract against a stand-in service (connected, task without a model file, disconnected);
+- the live-projection tests: countdowns from the dock release, a long stop pushing later stops back, and re-anchoring on a recorded delivery.
 
 `npm run typecheck` and `npm run lint` check all workspaces. All three commands pass on a fresh clone.
 
-**Walkthrough smoke tests (Playwright):** with the stack running (`npm run dev` or Docker), `npm run e2e` drives the judge walkthrough below in four browser tabs, then runs the driver app on a throttled phone connection, a stalled connection and a real network cut. It resets the demo day first and passes on either seed. Use `PW_CHANNEL=chrome npm run e2e` to run it in your installed Chrome instead of downloading Playwright's browser (`npx playwright install chromium`).
+**Walkthrough smoke tests (Playwright):** with the stack running (`npm run dev` or Docker), `npm run e2e` drives the judge walkthrough below in four browser tabs, runs the driver app on a throttled phone connection, a stalled connection and a real network cut, and checks the field proof end to end (photos from the dock, doorstep and store, delivery codes, the phone's location, the dwell alert and late notice, the connectivity log and the itemised receipt) with each store signed in as its own manager. It resets the demo day first and passes on either seed. Use `PW_CHANNEL=chrome npm run e2e` to run it in your installed Chrome instead of downloading Playwright's browser (`npx playwright install chromium`).
 
 **Fresh-clone check:** `npm run check:fresh` does what a judge does. It clones the committed code (no `data/`), runs `docker compose up --build` on spare ports (3100/3101/4100), runs the e2e suite against it on the synthetic seed, and tears it down. Run it after every merge. The demo script is in [`docs/DEMO.md`](docs/DEMO.md).
 
@@ -87,9 +88,14 @@ Seeded accounts (password **`waypoint`** for all; change them in Waypoint People
 | Operations app | `dispatcher` | Nimali Perera | Dispatch console, Peliyagoda DC (Kandy hub is one click away) |
 | Operations app | `loader` | Kasun Jayasinghe | Peliyagoda dock queue |
 | Operations app | `driver` | Ruwan Silva | Driver app on VEH011, his assigned vehicle (dispatch reassigns it under **Network records → Vehicles**) |
-| Operations app | `store` | Dilani Fernando | OUT007 Rajagiriya. An area-manager login, so she can switch to any Peliyagoda branch |
+| Operations app | `store` | Dilani Fernando | Store deliveries for her branch, OUT007 Rajagiriya |
+| Operations app | `store-out001` … | That branch's manager | Every branch's manager signs in to their own branch: `store-` plus the branch id in lower case (`store-out010` is OUT010 Mount Lavinia). The driver's stop card shows the `OUT…` id |
+| Operations app | `loader-kandy` | A Kandy hub loader | Kandy dock queue. Each loader sees only their own depot's plan, so a published Kandy plan shows here, not under `loader` |
+| Operations app | `driver-kandy` | A Kandy hub driver | Driver app on that driver's Kandy vehicle |
 
 Sign-ins are per browser tab in the operations app, so you can run each role in its own tab and watch changes appear live in the others.
+
+Loaders and drivers work at one depot and see only its plan: a published **Kandy hub** plan appears for `loader-kandy` and `driver-kandy`, not for `loader` and `driver` (Peliyagoda). Store managers see only their own branch; there is no branch switcher. HR can issue further logins from any person's folder in Waypoint People.
 
 **Demo day: Thu 18 Dec 2025.** It is one week before Christmas (festival ramp 0.3), not a payday, and outside the monsoon, so it matches peak-day scenario S1. Which data you see depends on the seed (see [Datasets and confidentiality](#datasets-and-confidentiality)); the walkthrough below works on both.
 
@@ -110,20 +116,28 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 3. **Dispatcher: understand the plan.** **Plan & allocate** marks refrigerated capacity as **Limiting**. Most orders are served (71 of 85 on the shared dataset) and every deferral has a reason. Every deferred card in the queue shows its priority breakdown: days since last served, chilled/perishable, window tightness (each shown even at +0), plus festival ramp and brand. Click one (e.g. `S1-075`) for why it was deferred, a suggested fix, and what happens if it's deferred again.
 4. **Dispatcher: try to break a rule.** Drag a chilled stop onto a dry-box trip. The drop target turns red with the rule ("*… is not refrigerated*") and the move is refused. Drag a stop onto a valid trip and it lands. Every move is re-validated.
 5. **Dispatcher: publish.** Click **Publish to loaders**. The loader lists, driver runs and store notices are created. Deferred outlets get a notice with the reason.
-6. **Loader: load in reverse order.** In a new tab, sign in as `loader` (phone width is best: it's a phone app with **Queue · Flags · More** tabs, installable from the browser) and open **VEH011**. The checklist runs from the last stop (deepest in the truck) to the first. Tick every line except one, then **Flag shortfall** → enter the quantity actually loaded (less than planned) → **Send & release**.
+6. **Loader: load in reverse order.** In a new tab, sign in as `loader` (phone width is best: it's a phone app with **Queue · Flags · More** tabs, installable from the browser) and open **VEH011**. The checklist runs from the last stop (deepest in the truck) to the first. Tick every line except one, then **Flag shortfall** → enter the quantity actually loaded (less than planned) → **Send & release**. (To see a photo reach dispatch, choose the *Damaged* tab on the flag screen and add one with **Add photo of the item**.)
 7. **Dispatcher: see the exception.** **Live tracking** now lists *VEH011 · released with shortfall*. The vehicle table puts exceptions first: held vehicles, then trips at risk of missing a window (worst first, judged on every stop still to come, not just the next one), then vehicles with no signal. Choosing *Hold vehicle* instead would give the dispatcher Release / Re-pick / Balance tomorrow buttons.
-8. **Driver: deliver & dark mode.** In a new tab, sign in as `driver` (phone width is best). Tap the theme toggle in the header or in **More** to test dark mode for dawn/night shifts—the Leaflet map tiles, signature pad strokes, and checklists adapt automatically to reduce cab glare. Tap **Arrived** (it opens the stop: what to unload and how to reach the dock), then **Start delivery & POD**. The POD starts from what was actually loaded; sign with your finger, enter the receiver's name and tap **Complete delivery**.
-9. **Driver: dead zone.** Go to **More → No signal** (a simulated dead zone for this tab only). Deliver the next stop: it's saved on the phone, the outbox shows *Queued*, and a reload still shows the whole run.
+8. **Driver: deliver with proof & dark mode.** In a new tab, sign in as `driver` (phone width is best). Allow location if the browser asks: the phone then shares its position with dispatch. Tap the theme toggle in the header or in **More** to test dark mode for dawn/night shifts—the Leaflet map tiles, signature pad strokes, and checklists adapt automatically to reduce cab glare. Tap **Arrived** (it opens the stop: what to unload and how to reach the dock; note the `OUT…` id on the card), then **Start delivery & POD**. The POD starts from what was actually loaded and needs three things:
+    - **The store's delivery code.** Every order has a 6-digit code that only the store and dispatch can see. In a new tab, sign in as that branch's manager (`store-` plus the stop's `OUT…` id, e.g. `store-out010`): **Deliveries** shows a *Delivery code* card on its order. Type the code into the driver's POD: it says *Code matches*. A wrong code is refused (a few tries are allowed). If the receiver has no code, tap **Receiver has no code** and give a reason: the delivery still completes, but dispatch gets a warning to follow up.
+    - **A signature and the receiver's name.** Sign with your finger and enter the name.
+    - **Photos (optional).** **Add delivery photo** uses the phone's camera, or a file picker on a desktop. The photo stays on the phone with the delivery and uploads when there is signal.
+
+    Then tap **Complete delivery**.
+9. **Driver: dead zone.** Go to **More → No signal** (a simulated dead zone for this tab only). Deliver the next stop the same way: the phone can't check the code, so it says *No signal: the code is checked when this syncs*. The stop is saved on the phone, the outbox shows *Queued*, and a reload still shows the whole run. The server checks the code when the record syncs.
 10. **Dispatcher: change the run while the driver is offline.** In the dispatcher tab, select one of VEH011's later stops and choose **Defer order**. After ~2 minutes, Live tracking shows VEH011 as *No signal*.
-11. **Driver: reconnect.** Turn **No signal** off. The queued records sync with their original times, and the driver sees *"Your run was changed by dispatch — Removed: …"*.
-12. **Store: confirm receipt.** Switch the store header to the outlet you delivered in step 8 (the driver's stop card shows its `OUT…` id; `OUT010 Mount Lavinia` on the shared dataset). The order shows **Delivered** and the shortfall notice. Click **Confirm receipt**, mark *Damaged* with a note and confirm. The dispatcher gets a *receipt issue* exception.
-13. **Plan ahead.** **Capacity outlook** shows the 10-week volume by brand against practical capacity, the refrigerated vehicles needed, and the ×2 peak-day factor. The tag in the header says whether the forecast weeks come from the baseline or the Datathon Task 2A model. **Deferrals** shows each outlet's 14-day service strip and the audit log (CSV export).
-14. **HR: look after the people.** Open http://localhost:3001 (Waypoint People) and sign in as `admin`, the HR officer.
+11. **Driver: reconnect.** Turn **No signal** off. The queued records sync with their original times, and the driver sees *"Your run was changed by dispatch — Removed: …"*. A code that didn't match when the server checked it would raise a *delivery code didn't match* warning for dispatch.
+12. **Store: confirm receipt.** Use the tab of the branch you delivered to in step 8 (signed in as its manager, e.g. `store-out010` for `OUT010 Mount Lavinia` on the shared dataset). The order shows **Delivered** and the shortfall notice. Click **Confirm receipt**. Under **Check what arrived**, each item shows how many the driver delivered: lower the first stepper for items that did not arrive, and use the *Damaged* stepper for items that arrived damaged. Add a note, optionally add photos for dispatch, and confirm. The dispatcher gets a *receipt issue* exception.
+13. **Dispatcher: see the evidence.** Back in the dispatcher tab:
+    - **Live tracking** shows the phones' positions on a map (VEH011 appears once the driver has shared a location) and, on the exception card, the proof for that stop: whether the code matched, the signature, the driver's photos and the store's receipt with what was missing or damaged.
+    - **Deliveries** lists every stop reached, with its code check and photos. Filter by *Needs a look* or *Awaiting receipt*, and open a row for the store's code, the driver's proof and the store's receipt side by side.
+14. **Plan ahead.** **Capacity outlook** shows the 10-week volume by brand against practical capacity, the refrigerated vehicles needed, and the ×2 peak-day factor. The tag in the header says whether the forecast weeks come from the baseline or the Datathon Task 2A model. **Deferrals** shows each outlet's 14-day service strip and the audit log (CSV export).
+15. **HR: look after the people.** Open http://localhost:3001 (Waypoint People) and sign in as `admin`, the HR officer.
     - **Front desk** shows what needs HR today: driving licences due in the next 90 days, who is on leave and when they're back, and staff who can't sign in yet.
     - **Staff directory** holds one folder per employee in every job (drivers, loaders, dispatchers, store managers, HR). Pull a driver's folder and use **Issue login** on the Sign-in access card. The username and a generated password are ready to share. Sign in with them in the operations app: you land on the vehicle dispatch assigned.
     - **Renewals** files every driving licence under the month it runs out. **Activity log** is HR's logbook of record changes, logins and sign-ins.
-    - Staff beyond the five demo accounts (loaders, dispatchers, store managers, a second HR officer) are **synthetic demo records**.
-15. **Dispatch: keep the network true.** In the dispatcher tab, **Network records** holds vehicles (and which driver runs each), branches, depots, products and the demo-day reset.
+    - Staff beyond the named demo accounts (loaders, dispatchers, store managers, a second HR officer) are **synthetic demo records**. Every branch's manager, one Kandy loader and one Kandy driver already have a login (see [Accounts](#accounts)).
+16. **Dispatch: keep the network true.** In the dispatcher tab, **Network records** holds vehicles (and which driver runs each), branches, depots, products and the demo-day reset.
 
 ## How the planner decides (short version)
 
@@ -131,6 +145,7 @@ To restore the start of the day, sign in as `dispatcher` and use **Network recor
 - **Order of allocation:** scarce vehicles first (chilled van-only → reefer vans, chilled → reefers, ambient van-only → vans, then the rest). Within each group, **outlets skipped yesterday go first**. Then the engine repeatedly fills the trip that serves the most priority per vehicle-minute.
 - **Priority score (shown in the UI):** skipped yesterday +30 · chilled +20 · days since served · Fresh daily +10 · festival ramp · tight or mall window.
 - **Road conditions:** each district's disruption index for the plan date (`road_conditions.csv`, 100 = normal) stretches its travel legs by 100 ÷ index. Dock handling time is not affected. Trips with an index below 95 show the stretch on the plan board. In the route-leg history, actual vs planned leg times follow this ratio closely.
+- **Live watch:** every 30 seconds the API compares each run with its plan. A driver who stays at a stop longer than its expected handling time plus 10 minutes raises a *dwell* alert for dispatch. A store whose stop is projected 5 or more minutes past its window gets a *late* notice with the new time, and can answer that it still works or ask dispatch for a smaller drop. Projections move only on real driver records, so a dead zone never makes a vehicle look late by itself.
 - **Deferral reasons** come from the rule that actually blocked every candidate vehicle. On the shared dataset's demo day the auto-plan defers 14 orders: 13 chilled orders (refrigerated capacity and Fresh windows run out; S1-016 is deferred because of the road disruption stretch) and one Style order (40.7 m³, larger than any available vehicle, so it can never be served whole).
 
 ## Datathon models (optional)
@@ -150,8 +165,10 @@ Where each prediction is used, and the request format, are in [`docs/INTEGRATION
 - The demo date is **18 Dec 2025 (pre-Christmas)** instead of the Figma's Nov 2026 Deepavali example. The calendar data ends in June 2026, and this date matches scenario S1.
 - Districts, outlets and vehicles use the **real dataset values** (e.g. Galle, Matara, Puttalam; VEH011), replacing the Figma placeholders. Outlet display names are fictional neighbourhoods assigned deterministically.
 - **Delivery windows are a hard rule** in the app (the Figma showed late arrivals as warnings). Second Fresh trips must still reach stores before their windows close.
-- The live map is a **schematic district network**, not a street map. No map API key is needed and it works offline.
-- Demo convenience not in the design: the per-tab *No signal* switch. The branch switcher is only offered to area-manager store logins.
+- The driver's run map and the dispatcher's fleet map use **OpenStreetMap tiles** (no API key). Offline, the driver's pins still show and the map says the tiles are unavailable.
+- **Field proof (3 Oct), added after the Designathon:** a 6-digit delivery code per order that the store reads out and the driver enters, photos from the loader, driver and store, the driver phone's location and connectivity log, the live watch (dwell alerts and late notices), itemised receipts (missing and damaged counts), and a dispatcher **Deliveries** page.
+- Demo convenience not in the design: the per-tab *No signal* switch.
+- **Store managers sign in to their own branch (4 Oct):** there is no branch switcher; each branch's manager has their own login.
 - The product is now called **DASH** (the Designathon file used "Waypoint Delivery Planning"). Waypoint Group, its brands (Waypoint Fresh, Style and Tech) and the HR panel (Waypoint People) keep their names.
 - **Blue-only palette (1 Oct):** the Designathon file's teal actions and green success/Fresh colours are replaced by one blue family (cobalt actions, deep-blue success, glacier-blue chilled, azure/ultramarine/midnight brands). Only alerts keep red and amber.
 - **DASH branding & visual identity:** Operations app rebranded to DASH with high-resolution brand marks (`DASH.png` / `DASH W.png`), balanced 50/50 desktop sign-in split, and responsive white brand marks on dark surfaces.

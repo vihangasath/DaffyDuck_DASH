@@ -16,7 +16,7 @@ The cross-role loop is DASH's main differentiator, so we show it before judges g
    | A | `dispatcher` | Today | wide |
    | B | `loader` | Dock queue | **phone** (DevTools device mode) |
    | C | `driver` | Run | **phone** (DevTools device mode, Pixel 7) |
-   | D | `store` | Deliveries | narrow |
+   | D | `store` (for step 7, the stop's own branch: `store-out…`) | Deliveries | narrow |
 
    Sessions are per tab, so one browser is enough.
 5. In the driver window, open **More** once. That screen holds the *No signal* switch.
@@ -31,11 +31,12 @@ The cross-role loop is DASH's main differentiator, so we show it before judges g
 | 4 | Dispatcher | **Publish to loaders** | Window B fills with trips; window D's order moves to *Planned*. |
 | 5 | Loader | Open **VEH011**. Tick every line but the last, then **Flag shortfall → Send & release** | "The loader has a phone app too. The load list runs last stop first; ticks are saved on the phone, so a dead spot in the cold store loses nothing. One line is short, so we flag it." |
 | 6 | Dispatcher | **Live tracking** | "Dispatch sees *released with shortfall* straight away, and the trips at risk of missing a window sit at the top." |
-| 7 | Driver | **Arrived** → **Start delivery & POD**, sign, receiver name, **Complete delivery** | "The POD starts from what was actually loaded, not what was planned." |
-| 8 | Driver | **More → No signal**, then deliver the next stop | "Kadugannawa pass, no signal. The stop is saved on the phone. See *Offline · 2 queued*." |
+| 7 | Driver | **Arrived** → **Start delivery & POD**. Read the 6-digit code from window D (signed in as the stop's branch manager, `store-` plus its `OUT…` id; **Deliveries** shows the *Delivery code*) and type it in. Sign, receiver name, **Complete delivery** | "The POD starts from what was actually loaded, not what was planned. The store reads out a code only when the goods are in front of them." |
+| 8 | Driver | **More → No signal**, then deliver the next stop the same way | "Kadugannawa pass, no signal. The stop is saved on the phone and the code is checked when it syncs. See *Offline · 2 queued*." |
 | 9 | Dispatcher | **Plan & allocate**: click one of VEH011's later stops → **Defer order** | "Meanwhile dispatch changes the run." |
 | 10 | Driver | **No signal** off | "Back in coverage. The queued stop syncs with its original time, and the driver sees *Your run was changed by dispatch*." |
-| 11 | Store | Switch to the outlet from step 7 → **Confirm receipt** | "The receipt closes the loop. Any issue goes back to dispatch as an exception." |
+| 11 | Store | Switch to the outlet from step 7 → **Confirm receipt**, mark one item damaged | "The receipt closes the loop. Any issue goes back to dispatch as an exception." |
+| 12 | Dispatcher | **Live tracking** / **Deliveries**, open the stop | "Code matched, signature, photos and the store's count, side by side." |
 
 Close on HR (Waypoint People, :3001, `admin`) only if there's time.
 

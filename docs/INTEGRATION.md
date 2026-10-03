@@ -47,8 +47,8 @@ Waypoint People, the HR panel. Every write is audited with role `hr`.
 | GET | `/api/people/overview` | Headcount, who's in post by depot and job, licences due within 90 days (real calendar), who's on leave, active staff with no login, new starters, sign-in counts, recent people and access activity |
 | GET | `/api/people/lookups` | Depots, and branches for store managers |
 | GET · POST · PATCH | `/api/people/staff` · `/:id` | The staff directory: one record per employee in every job. A driver's record also creates and updates the operational `drivers` row (licence, status). A record can't change to or from driver. "Left" turns off the login and ends its sessions; a driver who leaves or changes depot gives their vehicle back to dispatch. HR can't remove their own access or the last HR login |
-| POST | `/api/people/staff/:id/login` | Issues a login for a staff record. The role and workplace come from the record (driver → driver, store manager → store with branch scope, HR officer → `admin`) |
-| PATCH | `/api/people/logins/:userId` | `{ active?, outletScope? }`. Turning access off, or changing scope, signs them out everywhere |
+| POST | `/api/people/staff/:id/login` | Issues a login for a staff record. The role and workplace come from the record (driver → driver, store manager → store for their own branch, HR officer → `admin`) |
+| PATCH | `/api/people/logins/:userId` | `{ active }`. Turning access off signs them out everywhere |
 | POST | `/api/people/logins/:userId/password` | Sets a new password and revokes all of that user's sessions |
 | GET | `/api/people/activity` | The HR log: staff, driver, login and sign-in entries. `?limit&before&q&area=people\|access\|signin` |
 

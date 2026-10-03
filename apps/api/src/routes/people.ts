@@ -43,8 +43,8 @@ const Staff = z.object({
 type StaffIn = z.infer<typeof Staff>;
 
 const Username = z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,32}$/, "3–32 letters, digits, dots, dashes or underscores");
-const NewLogin = z.object({ username: Username, password: z.string().min(1).max(200), outletScope: opt(z.enum(["outlet", "depot"])) });
-const LoginPatch = z.object({ active: z.boolean().optional(), outletScope: opt(z.enum(["outlet", "depot"])) });
+const NewLogin = z.object({ username: Username, password: z.string().min(1).max(200) });
+const LoginPatch = z.object({ active: z.boolean() });
 
 function need<T>(v: T | undefined | null, what: string): T {
   if (v == null) throw new OpError(404, `${what} not found.`);
@@ -78,7 +78,7 @@ async function loadStaff(db: Env["Variables"]["svc"]["db"]): Promise<StaffRow[]>
       login: u
         ? {
             userId: u.id, username: u.username, active: u.active, lastLoginAt: iso(u.lastLoginAt) ?? null,
-            sessions: Number(sessions.find((x) => x.userId === u.id)?.n ?? 0), outletScope: (u.outletScope as "outlet" | "depot" | null) ?? null,
+            sessions: Number(sessions.find((x) => x.userId === u.id)?.n ?? 0),
           }
         : null,
     };
@@ -233,7 +233,7 @@ peopleRoutes.patch("/staff/:id", async (c) => {
       if (leaving || (u.role === "admin" && role !== "admin")) await guardAccess(tx, me, u.id, u.role === "admin");
       const next = {
         displayName: s.name, role, depotId: s.depotId, outletId: s.outletId,
-        outletScope: role === "store" ? (u.outletScope ?? "outlet") : null, driverId: cur.driverId,
+        driverId: cur.driverId,
         active: leaving ? false : u.active, updatedAt: now(),
       };
       await tx.update(t.users).set(next).where(eq(t.users.id, u.id));
@@ -264,7 +264,7 @@ peopleRoutes.post("/staff/:id/login", async (c) => {
       const userId = randomUUID();
       await tx.insert(t.users).values({
         id: userId, username: x.username, passwordHash: hash, displayName: s.name, role, depotId: s.depotId, outletId: s.outletId,
-        outletScope: role === "store" ? (x.outletScope ?? "outlet") : null, driverId: s.driverId, staffId: s.id, active: true,
+        driverId: s.driverId, staffId: s.id, active: true,
       });
       return userId;
     },
@@ -277,7 +277,7 @@ peopleRoutes.patch("/logins/:userId", async (c) => {
   const x = await body(c, LoginPatch);
   const me = c.var.auth.user.userId;
   await c.var.svc.master(
-    () => ({ ...who(c), action: "user.update", entity: "user", entityId: userId, summary: x.active === false ? "Turned off sign-in access and signed the account out everywhere" : x.active ? "Turned sign-in access back on" : "Changed which branches a store manager sees", detail: x }),
+    () => ({ ...who(c), action: "user.update", entity: "user", entityId: userId, summary: x.active ? "Turned sign-in access back on" : "Turned off sign-in access and signed the account out everywhere", detail: x }),
     async (tx) => {
       const [u] = await tx.select().from(t.users).where(eq(t.users.id, userId));
       need(u, "Login");
@@ -286,12 +286,8 @@ peopleRoutes.patch("/logins/:userId", async (c) => {
         const [s] = await tx.select().from(t.staff).where(eq(t.staff.id, u.staffId));
         if (s?.status === "left") throw new OpError(409, `${s.name} has left Waypoint. Change their record first if they’ve come back.`);
       }
-      await tx.update(t.users).set({
-        ...(x.active !== undefined ? { active: x.active } : {}),
-        ...(x.outletScope !== undefined && u.role === "store" ? { outletScope: x.outletScope ?? "outlet" } : {}),
-        updatedAt: now(),
-      }).where(eq(t.users.id, userId));
-      if (x.active === false || (x.outletScope !== undefined && x.outletScope !== u.outletScope)) await revokeUserSessions(tx as never, userId);
+      await tx.update(t.users).set({ active: x.active, updatedAt: now() }).where(eq(t.users.id, userId));
+      if (!x.active) await revokeUserSessions(tx as never, userId);
     },
   );
   return c.json({ ok: true });

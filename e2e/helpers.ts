@@ -101,15 +101,14 @@ export async function enterCode(page: Page, orderId: string) {
   await expect(page.getByText(/Code matches|the code is checked when this syncs/)).toBeVisible({ timeout: 30_000 });
 }
 
-/** Area managers pick a branch from the header once the day's orders have loaded; single-branch accounts have no picker. */
-export async function chooseOutlet(page: Page, outletId: string) {
-  const picker = page.getByRole("combobox", { name: "Outlet" });
-  try {
-    await picker.waitFor({ timeout: 15_000 });
-  } catch {
-    return;
-  }
-  await picker.selectOption(outletId);
+/** A branch's own store manager: the named demo `store` account manages OUT007, the others are `store-out012` and so on. */
+export const storeUser = (outletId: string) => (outletId === "OUT007" ? "store" : `store-${outletId.toLowerCase()}`);
+
+/** The store app in a fresh tab, signed in as that branch's manager. */
+export async function storeTab(browser: Browser, outletId: string) {
+  const tab = await newRole(browser);
+  await signIn(tab.page, storeUser(outletId), /\/store$/);
+  return tab;
 }
 
 /** Draws a signature stroke on the POD canvas. */

@@ -29,6 +29,13 @@
       "when": 1791037352560,
       "tag": "0003_field_proof",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791058532936,
+      "tag": "0004_store_own_branch",
+      "breakpoints": true
     }
   ]
 }

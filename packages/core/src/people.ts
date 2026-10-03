@@ -29,7 +29,6 @@ export interface StaffLogin {
   active: boolean;
   lastLoginAt: string | null;
   sessions: number;
-  outletScope: "outlet" | "depot" | null;
 }
 
 export interface StaffRow {

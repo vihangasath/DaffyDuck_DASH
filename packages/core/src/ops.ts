@@ -20,8 +20,8 @@ export interface Actor {
   role: Role;
   depot: Depot;
   vehicleId?: string;
+  /** Store managers: the one branch they manage. */
   outletId?: string;
-  outletScope?: "outlet" | "depot";
 }
 
 /** A refusal the API returns as-is: `status` is the HTTP status, `message` is shown to the user. */
@@ -50,9 +50,7 @@ function needDepot(a: Actor, depot: Depot) {
 }
 function needOutlet(a: Actor, outletId: string) {
   if (a.role !== "store") return;
-  const o = net.outlets.get(outletId);
-  const ok = a.outletScope === "depot" ? o?.depot === a.depot : a.outletId === outletId;
-  if (!ok) throw new OpError(403, "That outlet isn’t on your account.");
+  if (a.outletId !== outletId) throw new OpError(403, "That outlet isn’t on your account.");
 }
 function must<T>(v: T | undefined | null, what: string): T {
   if (v == null) throw new OpError(404, `${what} not found.`);
@@ -703,15 +701,8 @@ export function visibleTo(db: Db, a: Actor): Db {
     };
   }
 
-  // Store managers: their outlet (or their depot's outlets for an area manager).
-  const mine = (outletId: string) => {
-    try {
-      needOutlet(a, outletId);
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  // Store managers: their own branch.
+  const mine = (outletId: string) => outletId === a.outletId;
   const own = new Set(db.orders.filter((o) => mine(o.outletId)).map((o) => o.id));
   const plans = Object.fromEntries(Object.entries(db.plans).map(([d, p]) => [d, p && { ...p, deferred: p.deferred.filter((x) => own.has(x.orderId)) }])) as Db["plans"];
   // Every trip of a vehicle that carries one of my orders: the arrival countdown depends on the stops

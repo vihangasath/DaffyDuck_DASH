@@ -48,7 +48,7 @@ function Access() {
       ),
     },
     { key: "user", header: "Username", sort: (s) => s.login?.username ?? "~", cell: (s) => (s.login ? <Typed>{s.login.username}</Typed> : <span className="flex items-center gap-1.5 text-stamp-leave"><KeyRound className="size-3.5" /> No login</span>) },
-    { key: "where", header: "Works at", sort: (s) => s.outletName ?? s.depotId, cell: (s) => <span className="text-ink-2">{s.jobRole === "store_manager" ? (s.outletName ?? "—") : depotLabel(s.depotId)}{s.login?.outletScope === "depot" && " · all depot branches"}</span> },
+    { key: "where", header: "Works at", sort: (s) => s.outletName ?? s.depotId, cell: (s) => <span className="text-ink-2">{s.jobRole === "store_manager" ? (s.outletName ?? "—") : depotLabel(s.depotId)}</span> },
     { key: "last", header: "Last sign-in", sort: (s) => s.login?.lastLoginAt ?? "", cell: (s) => (s.login ? <span>{fmtWhen(s.login.lastLoginAt)}{s.login.sessions > 0 && <span className="text-success"> · signed in</span>}</span> : <span className="text-muted">—</span>) },
     {
       key: "state", header: "Sign-in", sort: (s) => (!s.login ? 2 : s.login.active ? 0 : 1),
