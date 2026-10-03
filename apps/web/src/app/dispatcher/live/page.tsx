@@ -41,9 +41,23 @@ export default function Live() {
       const silentMin = sync ? (now - Date.parse(sync.lastSyncAt)) / 60000 : null;
       const released = load?.status === "released";
       // Task 1 pred_late_prob when the model is connected, else the ETA-vs-window baseline.
-      const risk = next?.lateRisk ?? 0;
-      return { vid, ev, cur, done, next, load, released, silentMin, risk, deadZone: DEAD_ZONE_MIN[cur.trip.district] };
-    });
+      // A trip is as late-risk as its worst stop still to come, not just the next one.
+      const pending = cur.stops.filter((s) => !db.stops[s.orderId]?.deliveredAt && !db.stops[s.orderId]?.problem);
+      const riskStop = pending.reduce<(typeof pending)[number] | undefined>((w, s) => (!w || s.lateRisk > w.lateRisk ? s : w), undefined);
+      const risk = riskStop?.lateRisk ?? 0;
+      const deadZone = DEAD_ZONE_MIN[cur.trip.district];
+      const silent = released && !!next && silentMin != null && silentMin > 2;
+      // Exceptions first: held at the dock, then late risk (worst first), then lost signal, then the rest.
+      const rank =
+        load?.status === "held" ? 0
+        : risk >= 0.5 ? 1
+        : silent && !(deadZone != null && silentMin! < deadZone) ? 2
+        : risk > 0.2 ? 3
+        : silent ? 4
+        : !next ? 7
+        : released ? 5 : 6;
+      return { vid, ev, cur, done, next, load, released, silentMin, risk, riskStop, deadZone, rank };
+    }).sort((a, b) => a.rank - b.rank || b.risk - a.risk || a.vid.localeCompare(b.vid));
   }, [view, now]);
 
   if (!view) return <Spinner />;
@@ -58,7 +72,14 @@ export default function Live() {
 
   const offline = rows.filter((r) => r.released && r.next && r.silentMin != null && r.silentMin > 2);
   const exceptions = db.exceptions.filter((e) => e.depot === depot && !e.resolved);
-  const lateRisk = rows.filter((r) => r.released && r.risk >= 0.5);
+  const lateRisk = rows.filter((r) => r.risk >= 0.5 && r.riskStop);
+  const SEVERITY = { danger: 0, warning: 2, info: 3 } as const;
+  // One urgency-ordered list for the sidebar: danger exceptions and silent-too-long vehicles, then late risk, then the rest.
+  const alerts = [
+    ...exceptions.map((e) => ({ key: e.id, urgency: SEVERITY[e.severity], at: e.at, kind: "exception" as const, e })),
+    ...offline.map((r) => ({ key: `off-${r.vid}`, urgency: r.deadZone != null && r.silentMin! < r.deadZone ? 3 : 0, at: "", kind: "offline" as const, r })),
+    ...lateRisk.map((r) => ({ key: `late-${r.vid}`, urgency: 1, at: "", kind: "late" as const, r })),
+  ].sort((a, b) => a.urgency - b.urgency || (a.kind === "late" && b.kind === "late" ? b.r.risk - a.r.risk : 0) || b.at.localeCompare(a.at));
 
   return (
     <>
@@ -67,7 +88,7 @@ export default function Live() {
         sub={`${rows.length} vehicles · ${rows.filter((r) => r.released).length} released · plan v${plan.version}`}
         chips={
           <>
-            <Pill tone={exceptions.length + offline.length ? "danger" : "success"} icon={AlertTriangle} lg>{exceptions.length + offline.length} exceptions</Pill>
+            <Pill tone={alerts.length ? "danger" : "success"} icon={AlertTriangle} lg>{alerts.length} exception{alerts.length === 1 ? "" : "s"}</Pill>
             <Pill tone="success" dot lg>{rows.filter((r) => r.released && r.silentMin != null && r.silentMin <= 2).length} live</Pill>
           </>
         }
@@ -83,17 +104,25 @@ export default function Live() {
               <tbody>
                 {rows.map((r) => {
                   const o = r.next ? seed.outlets.find((x) => x.id === r.next!.outletId)! : null;
+                  const at = r.riskStop && r.riskStop.orderId !== r.next?.orderId && r.risk > 0.2 ? r.riskStop : null;
+                  const atOutlet = at ? seed.outlets.find((x) => x.id === at.outletId)! : null;
                   return (
-                    <tr key={r.vid} className="border-t border-line transition-colors hover:bg-canvas">
+                    <tr key={r.vid} className={cx("border-t border-line transition-colors hover:bg-canvas", r.rank <= 1 && "bg-danger-soft/40")}>
                       <td className="px-4 py-2.5 font-semibold">{r.vid}</td>
                       <td className="px-2 py-2.5 text-ink-2">T{r.cur.trip.tripNo} · {r.cur.trip.brand} {r.cur.trip.district}</td>
                       <td className="px-2 py-2.5"><div className="flex items-center gap-2"><Meter pct={(r.done / r.cur.stops.length) * 100} className="w-16" /><span className="text-xs font-semibold">{r.done}/{r.cur.stops.length}</span></div></td>
                       <td className="px-2 py-2.5 text-ink-2">{r.next ? `${outletName(r.next.outletId)}` : "Returning to depot"}</td>
                       <td className="px-2 py-2.5">
                         {r.next && o ? (
-                          <Pill tone={r.risk >= 0.5 ? "danger" : r.risk > 0.2 ? "warning" : "success"}>
-                            {fmtMin(r.next.arrive)} · closes {o.windowClose}{r.risk > 0.2 ? ` · late risk ${Math.round(r.risk * 100)}%` : ""}
-                          </Pill>
+                          at && atOutlet ? (
+                            <Pill tone={r.risk >= 0.5 ? "danger" : "warning"}>
+                              Stop {at.seq + 1} {outletName(at.outletId)} {fmtMin(at.arrive)} · closes {atOutlet.windowClose} · late risk {Math.round(r.risk * 100)}%
+                            </Pill>
+                          ) : (
+                            <Pill tone={r.risk >= 0.5 ? "danger" : r.risk > 0.2 ? "warning" : "success"}>
+                              {fmtMin(r.next.arrive)} · closes {o.windowClose}{r.risk > 0.2 ? ` · late risk ${Math.round(r.risk * 100)}%` : ""}
+                            </Pill>
+                          )
                         ) : <Pill>Done</Pill>}
                       </td>
                       <td className="px-4 py-2.5">
@@ -117,10 +146,19 @@ export default function Live() {
 
         <aside className="grid content-start gap-3">
           <h2 className="flex items-center gap-2 font-bold">Exceptions <span className="text-xs font-medium text-muted">sorted by urgency</span></h2>
-          {offline.map((r) => {
+          {alerts.map((a) => {
+            if (a.kind === "exception") return <ExceptionCard key={a.key} e={a.e} busy={busy} by={session?.name ?? "Dispatcher"} run={run} shortfall={db.shortfalls.find((s) => s.id === a.e.ref.shortfallId)} />;
+            const r = a.r;
+            if (a.kind === "late")
+              return (
+                <Card key={a.key} className="grid gap-1.5 border-danger/40 p-3.5">
+                  <div className="flex items-center gap-2"><IconBubble icon={AlertTriangle} tone="danger" /><b className="text-sm">{outletName(r.riskStop!.outletId)} · late risk {Math.round(r.risk * 100)}%</b></div>
+                  <p className="text-xs text-ink-2">{r.vid} stop {r.riskStop!.seq + 1}: ETA {fmtMin(r.riskStop!.arrive)} is close to the window close.{r.released ? " Consider notifying the store." : " Still at the dock: a move or an earlier departure can save it."}</p>
+                </Card>
+              );
             const expected = r.deadZone != null && r.silentMin! < r.deadZone;
             return (
-              <Card key={`off-${r.vid}`} className={cx("grid gap-2 p-3.5", expected ? "" : "border-danger/60 ring-2 ring-danger/20")}>
+              <Card key={a.key} className={cx("grid gap-2 p-3.5", expected ? "" : "border-danger/60 ring-2 ring-danger/20")}>
                 <div className="flex items-center gap-2">
                   <IconBubble icon={WifiOff} tone={expected ? "info" : "danger"} />
                   <b className="flex-1 text-sm">{r.vid} · no signal</b>
@@ -135,16 +173,7 @@ export default function Live() {
               </Card>
             );
           })}
-          {exceptions.map((e) => (
-            <ExceptionCard key={e.id} e={e} busy={busy} by={session?.name ?? "Dispatcher"} run={run} shortfall={db.shortfalls.find((s) => s.id === e.ref.shortfallId)} />
-          ))}
-          {lateRisk.map((r) => (
-            <Card key={`late-${r.vid}`} className="grid gap-1.5 p-3.5">
-              <div className="flex items-center gap-2"><IconBubble icon={AlertTriangle} tone="warning" /><b className="text-sm">{outletName(r.next!.outletId)} · late risk {Math.round(r.risk * 100)}%</b></div>
-              <p className="text-xs text-ink-2">{r.vid} ETA {fmtMin(r.next!.arrive)} is close to the window close. Consider notifying the store.</p>
-            </Card>
-          ))}
-          {!offline.length && !exceptions.length && !lateRisk.length && (
+          {!alerts.length && (
             <Card className="flex items-center gap-2 p-4 text-sm text-ink-2"><CheckCircle2 className="size-5 text-success" /> No exceptions right now.</Card>
           )}
         </aside>

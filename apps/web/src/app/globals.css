@@ -94,7 +94,6 @@
 
 /* Driver and Dark Theme */
 .driver-dark,
-[data-driver-theme="dark"],
 .dark,
 [data-theme="dark"] {
   --color-canvas: #090e17;

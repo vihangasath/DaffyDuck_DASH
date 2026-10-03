@@ -46,11 +46,16 @@ async function request<T>(method: "GET" | "POST", path: string, body?: unknown):
 
 const op = <T>(name: string, args: unknown) => request<T>("POST", `/ops/${name}`, args);
 
+let lastReference: Snapshot["reference"] | null = null;
+/** Master data from the latest snapshot, so an offline app can keep it with its cached state. */
+export const latestReference = () => lastReference;
+
 export const httpApi: WaypointApi = {
   async snapshot(): Promise<Db> {
     const s = await request<Snapshot>("GET", "/ops/snapshot");
     // Master data (branches, vehicles, products…) comes from the database: re-hydrate before any screen reads it.
     hydrate(s.reference);
+    lastReference = s.reference;
     return s.db;
   },
   placeOrder: ({ outletId, temp, lines }) => op("placeOrder", { outletId, temp, lines }),

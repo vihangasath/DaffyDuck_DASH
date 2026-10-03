@@ -14,7 +14,7 @@ import { useAct, useDepotView } from "@/lib/hooks";
 import { useSession } from "@/lib/session";
 import { moveOrder, planMetrics, suggestFor, type MoveTarget } from "@waypoint/core/planner/allocate";
 import { evaluateVehicle, FRESH_BUDGET_MIN, DAY_BUDGET_MIN, type EvalContext, type TripEval } from "@waypoint/core/planner/evaluate";
-import { consequence, priority } from "@waypoint/core/planner/priority";
+import { consequence, explain } from "@waypoint/core/planner/priority";
 
 type DropId = `trip:${string}` | `new:${string}` | "defer";
 const targetOf = (id: DropId, by: string): MoveTarget =>
@@ -45,7 +45,7 @@ export default function PlanPage() {
     const evals = new Map(vehicles.map((v) => [v.id, evaluateVehicle(v.id, plan.trips, ctx)]));
     const tripEval = new Map<string, TripEval>();
     evals.forEach((e) => e.trips.forEach((t) => tripEval.set(t.trip.id, t)));
-    const scores = new Map(orders.map((o) => [o.id, priority(o, net, festivalRamp)]));
+    const scores = new Map(orders.map((o) => [o.id, explain(o, net, festivalRamp)]));
     return { vehicles, evals, tripEval, scores, metrics: planMetrics(plan, orders, ctx) };
   }, [view, depot]);
 
@@ -212,7 +212,7 @@ function Metric({ label, value, unit, sub, pct, limiting, tone, className }: { l
   );
 }
 
-function Queue({ plan, orders, scores, selected, onSelect, dragging, served }: { plan: Plan; orders: Order[]; scores: Map<string, ReturnType<typeof priority>>; selected: string | null; onSelect: (id: string) => void; dragging: boolean; served: number }) {
+function Queue({ plan, orders, scores, selected, onSelect, dragging, served }: { plan: Plan; orders: Order[]; scores: Map<string, Score>; selected: string | null; onSelect: (id: string) => void; dragging: boolean; served: number }) {
   const [tab, setTab] = useState<"deferred" | "all">("deferred");
   const [q, setQ] = useState("");
   const { setNodeRef, isOver } = useDroppable({ id: "defer" });
@@ -243,16 +243,17 @@ function Queue({ plan, orders, scores, selected, onSelect, dragging, served }: {
       <div className="grid gap-1.5 overflow-y-auto border-t border-line p-2">
         {list.length === 0 && <p className="p-4 text-center text-sm text-ink-2">{tab === "deferred" ? `Nothing deferred — all ${served} orders are served.` : "No matching orders."}</p>}
         {list.map((o) => (
-          <QueueCard key={o.id} order={o} score={scores.get(o.id)!.total} deferral={plan.deferred.find((d) => d.orderId === o.id)} selected={selected === o.id} onSelect={onSelect} />
+          <QueueCard key={o.id} order={o} score={scores.get(o.id)!} deferral={plan.deferred.find((d) => d.orderId === o.id)} selected={selected === o.id} onSelect={onSelect} />
         ))}
       </div>
     </Card>
   );
 }
 
-function QueueCard({ order: o, score, deferral, selected, onSelect }: { order: Order; score: number; deferral?: Plan["deferred"][number]; selected: boolean; onSelect: (id: string) => void }) {
+function QueueCard({ order: o, score: s, deferral, selected, onSelect }: { order: Order; score: Score; deferral?: Plan["deferred"][number]; selected: boolean; onSelect: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: o.id });
   const out = net.outlets.get(o.outletId)!;
+  const score = s.total;
   return (
     <div
       ref={setNodeRef}
@@ -279,7 +280,23 @@ function QueueCard({ order: o, score, deferral, selected, onSelect }: { order: O
           {o.deferredYesterday && <Pill tone="danger" icon={AlertTriangle}>Skipped yesterday</Pill>}
         </div>
       )}
+      {deferral && <ScoreChips score={s} />}
     </div>
+  );
+}
+
+type Score = ReturnType<typeof explain>;
+
+/** Why this order scored what it did, on the card itself: every deferral is explained without a click. */
+function ScoreChips({ score }: { score: Score }) {
+  return (
+    <ul aria-label={`Priority ${score.total}: ${score.parts.map((p) => `${p.label} +${p.points}`).join(", ")}`} className="flex flex-wrap gap-x-2 gap-y-0.5 border-t border-line pt-1.5 text-[11px] text-ink-2">
+      {score.parts.map((p) => (
+        <li key={p.label} className={cx("whitespace-nowrap tabular-nums", p.points === 0 && "text-muted")}>
+          {p.short} <b className={p.points ? "text-ink" : "font-semibold"}>+{p.points}</b>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -393,7 +410,7 @@ const REASONS: { code: DeferralCode; label: string }[] = [
   { code: "MANUAL", label: "Other (explain)" },
 ];
 
-function Detail({ orderId, plan, ctx, score, tripEval, onClose, move, busy, by }: { orderId: string; plan: Plan; ctx: EvalContext; score: ReturnType<typeof priority>; tripEval: Map<string, TripEval>; onClose: () => void; move: (id: string, t: MoveTarget, ok?: string) => Promise<unknown>; busy: boolean; by: string }) {
+function Detail({ orderId, plan, ctx, score, tripEval, onClose, move, busy, by }: { orderId: string; plan: Plan; ctx: EvalContext; score: Score; tripEval: Map<string, TripEval>; onClose: () => void; move: (id: string, t: MoveTarget, ok?: string) => Promise<unknown>; busy: boolean; by: string }) {
   const o = ctx.orders.get(orderId)!;
   const out = net.outlets.get(o.outletId)!;
   const deferral = plan.deferred.find((d) => d.orderId === orderId);
@@ -451,7 +468,7 @@ function Detail({ orderId, plan, ctx, score, tripEval, onClose, move, busy, by }
           <span className={cx("ml-auto text-[28px] font-bold leading-none tracking-tight tabular-nums", score.total > 60 ? "text-danger" : "text-ink")}>{score.total}</span>
         </div>
         {score.parts.map((p) => (
-          <div key={p.label} className="flex items-center gap-2 text-xs text-ink-2">
+          <div key={p.label} className={cx("flex items-center gap-2 text-xs", p.points ? "text-ink-2" : "text-muted")}>
             <span className="flex-1">{p.label}</span>
             <span className="w-14"><Meter pct={p.points * 3} tone="danger" className="h-1" /></span>
             <span className="w-7 text-right font-semibold text-ink">+{p.points}</span>

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ADMIN, apiGet, apiLogin, detectSeed, newRole, resetDemoDay, sign, signIn, type Seed } from "./helpers";
+import { ADMIN, apiGet, apiLogin, detectSeed, newRole, resetDemoDay, sign, signIn, type Seed, warmUp } from "./helpers";
 
 // The README's judge walkthrough, end to end, in four tabs (one per role) plus HR.
 // It is also the demo story: dispatcher publishes → loader flags a shortfall → driver completes a stop
@@ -32,9 +32,12 @@ async function deliverNextStop(driver: Page) {
 }
 
 test.describe.configure({ mode: "serial" });
+// Eleven steps in five tabs; a dev server compiling pages on first visit needs ~3 min.
+test.setTimeout(300_000);
 
 let seed: Seed;
 test.beforeAll(async () => {
+  await warmUp();
   await resetDemoDay();
   seed = await detectSeed();
   if (process.env.EXPECT_SEED) expect(seed, "seed loaded by this stack").toBe(process.env.EXPECT_SEED);
@@ -44,7 +47,7 @@ test.beforeAll(async () => {
 test("judge walkthrough: four roles, one delivery day", async ({ browser }) => {
   const store = await newRole(browser);
   const dispatch = await newRole(browser);
-  const loader = await newRole(browser);
+  const loader = await newRole(browser, { phone: true });
   const driver = await newRole(browser, { phone: true });
 
   await test.step("1 · store places a chilled order", async () => {
@@ -81,7 +84,7 @@ test("judge walkthrough: four roles, one delivery day", async ({ browser }) => {
   await test.step(`4 · loader loads ${VEHICLE} and flags a shortfall`, async () => {
     const p = loader.page;
     await signIn(p, "loader", /\/loader$/);
-    await p.getByRole("link", { name: new RegExp(VEHICLE) }).first().click();
+    await p.getByRole("link", { name: new RegExp(`^${VEHICLE} trip 1,`) }).click();
     await expect(p.getByText("Load last stop first")).toBeVisible();
     const marks = p.getByRole("button", { name: /^Mark .+ loaded$/ });
     const n = await marks.count();
@@ -92,9 +95,9 @@ test("judge walkthrough: four roles, one delivery day", async ({ browser }) => {
       await marks.first().click();
       await expect(ticked).toHaveCount(i + 1);
     }
-    await expect(p.getByRole("button", { name: "Release vehicle (1 line left)" })).toBeVisible();
+    await expect(p.getByRole("button", { name: "1 line left" })).toBeVisible();
     await p.getByRole("link", { name: /Flag shortfall/ }).click();
-    await expect(p.getByRole("heading", { name: "Flag an issue" })).toBeVisible();
+    await expect(p.getByRole("heading", { name: "Flag an issue" })).toBeVisible({ timeout: 60_000 });
     await expect(p.getByRole("button", { name: "Send & release" })).toBeEnabled();
     await p.getByRole("button", { name: "Send & release" }).click();
     await expect(p).toHaveURL(/\/loader$/);
