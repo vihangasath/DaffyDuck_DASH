@@ -5,12 +5,12 @@ flowchart LR
   subgraph Browser
     WEB["apps/web (Next.js 16)\nDispatcher · Loader · Driver · Store"]
     ADM["apps/admin (Next.js 16)\nWaypoint People (HR)"]
-    DEX["Driver phone\nIndexedDB outbox + cached run"]
+    DEX["Driver phone\nIndexedDB outbox, cached run,\nphotos, connectivity log, location"]
   end
   WEB -- "/api/* (proxied)" --> API
   ADM -- "/api/* (proxied)" --> API
   WEB <--> DEX
-  API["apps/api (Hono)\nauth · roles · business rules · audit · live events"] --> CORE["packages/core\nplanner · ops rules · contract"]
+  API["apps/api (Hono)\nauth · roles · business rules · audit · live events\nphotos · live watch every 30 s"] --> CORE["packages/core\nplanner · ops rules · contract"]
   API --> DB[("Postgres\nembedded PGlite in dev,\nPostgres 17 in Docker")]
   WEB -. drag-over checks .-> CORE
   API -. "MODEL_URL (optional)" .-> MOD["apps/models (Python)\nDatathon Task 1 + 2A models"]
@@ -25,11 +25,13 @@ flowchart LR
 - **Authorisation next to the rule.** Each operation checks the caller's role and scope, for example: a loader only at their dock, a driver only for their assigned vehicle, a store manager only for their own branch. The acting name comes from the session, never from the request body.
 - **Live updates.** The API publishes a `change` event over Server-Sent Events after every write, and every open screen refetches.
 - **Datathon models are optional.** The API asks the model service (`apps/models`) for Task 1 and Task 2A predictions at start-up and after every plan change, and serves them with the reference data. `@waypoint/core` uses them for handling times, ETAs and late risk, and Capacity outlook uses them for forecast weeks. With no service, or no model file for a task, that task stays on its baseline. See [`INTEGRATION.md → Datathon hooks`](INTEGRATION.md#datathon-hooks).
-- **Offline driver app.** Actions go to the IndexedDB outbox first. Sync is idempotent on the device's event UUID (`driver_events` table), and the cached run lets the app open with no signal.
+- **Offline driver app.** Actions go to the IndexedDB outbox first. Sync is idempotent on the device's event UUID (`driver_events` table), and the cached run lets the app open with no signal. Delivery photos wait on the phone and upload before the records that list them. Each sync also carries the phone's location, its offline/online changes and a check that every record it holds reached the database; anything missing is sent again.
+- **Live watch.** Every 30 seconds the API projects each released run from the latest driver record (`packages/core/src/live.ts`). It raises a dwell alert when a driver stays at a stop past its expected handling time plus 10 minutes, and tells a store when its stop is projected 5+ minutes past the window. The same projection gives the store its "arriving in X min" countdown.
+- **Proof of delivery.** Each order has a 6-digit delivery code that only the ordering store and dispatch can read; the server checks the code the driver entered when the record syncs. Photos (dock, doorstep, receipt) are stored in the database and served only to roles allowed to see that order.
 
 ## Data model
 
-The main tables and how they connect (33 tables in all; the full column list is in `apps/api/src/db/schema.ts`, and the table groups are listed in [`INTEGRATION.md → Data model`](INTEGRATION.md#data-model)). Solid lines are foreign keys. Dashed lines link by id without a constraint, on purpose: a load list, its shortfalls and the raw device log must outlive later plan edits (a truck that has left keeps its load even if dispatch moves a stop).
+The main tables and how they connect (35 tables in all; the full column list is in `apps/api/src/db/schema.ts`, and the table groups are listed in [`INTEGRATION.md → Data model`](INTEGRATION.md#data-model)). Solid lines are foreign keys. Dashed lines link by id without a constraint, on purpose: a load list, its shortfalls and the raw device log must outlive later plan edits (a truck that has left keeps its load even if dispatch moves a stop).
 
 ```mermaid
 erDiagram
@@ -62,7 +64,10 @@ erDiagram
   orders ||--o| stop_records : "arrival, POD, problem"
   stop_records ||..o{ driver_events : "idempotent device records"
   orders ||--o| receipts : "store confirmation"
-  outlets ||--o{ notices : "deferral, ETA, delivered"
+  orders ||--o{ photos : "dock, doorstep, receipt"
+  vehicles ||--o| driver_sync : "last seen, position, sync check"
+  vehicles ||--o{ driver_connectivity : "offline / online log"
+  outlets ||--o{ notices : "deferral, late, delivered"
   depots ||--o{ exceptions : "dispatcher alerts"
   outlets ||--o{ deferral_log : "fairness history"
 
@@ -75,6 +80,7 @@ erDiagram
     float weight_kg
     float volume_m3
     text for_date "date or next-run"
+    text confirm_code "6-digit delivery code"
   }
   plans {
     text depot_id PK
@@ -100,6 +106,12 @@ erDiagram
     text vehicle_id
     text order_id
     jsonb payload
+  }
+  photos {
+    text id PK "made on the phone"
+    text kind "shortfall | pod | receipt"
+    text order_id FK
+    bytea data
   }
 ```
 
