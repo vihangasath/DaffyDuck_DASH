@@ -54,6 +54,8 @@ export async function newRole(browser: Browser, opts: { phone?: boolean } = {}):
 export async function signIn(page: Page, username: string, landing: RegExp, base = WEB) {
   const hr = base === ADMIN;
   await page.goto(base + (hr ? "/login" : "/"));
+  // Typing before React has hydrated the form gets wiped when it does.
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   // Waypoint People keeps its filing-cabinet wording.
@@ -71,4 +73,18 @@ export async function sign(page: Page) {
   await page.mouse.down();
   for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + box.width * (0.2 + i * 0.06), box.y + box.height * (0.6 - Math.sin(i / 2) * 0.3));
   await page.mouse.up();
+}
+
+/**
+ * A dev server compiles each route on its first visit, which can take longer than a step's timeout.
+ * Request every screen once up front (instant against a production build).
+ */
+export async function warmUp() {
+  const routes = [
+    "/", "/store", "/store/order", "/store/receipt/x", "/dispatcher", "/dispatcher/plan", "/dispatcher/live",
+    "/loader", "/loader/x", "/loader/x/flag", "/loader/flags", "/loader/more",
+    "/driver", "/driver/more", "/driver/outbox", "/driver/stop/x", "/driver/stop/x/pod",
+  ];
+  for (const r of routes) await fetch(WEB + r).catch(() => undefined);
+  for (const r of ["/login", "/"]) await fetch(ADMIN + r).catch(() => undefined);
 }

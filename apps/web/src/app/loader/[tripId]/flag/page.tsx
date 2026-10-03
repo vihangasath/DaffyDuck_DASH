@@ -2,18 +2,20 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Camera, Check, Snowflake } from "lucide-react";
-import { Button, Card, Seg, Spinner, Stepper, cx } from "@/components/ui";
+import { Camera, Check, Snowflake, WifiOff } from "lucide-react";
+import { AppBar, Button, Card, Seg, Spinner, Stepper, cx } from "@/components/ui";
+import { LoaderSync } from "@/components/loader/bits";
+import { useLoader } from "@/components/loader/loader-context";
 import { api, type Shortfall } from "@/lib/api";
 import { outletName } from "@waypoint/core/reference";
 import { linesFor } from "@waypoint/core/domain/catalog";
-import { useAct, useDb } from "@/lib/hooks";
+import { useAct } from "@/lib/hooks";
 import { dockTrips } from "@waypoint/core/loading";
 import { useSession } from "@/lib/session";
 
 export default function FlagShortfall() {
   const { tripId } = useParams<{ tripId: string }>();
-  const { data: db } = useDb();
+  const { db, connected, drain } = useLoader();
   const [session] = useSession();
   const router = useRouter();
   const { run, busy } = useAct();
@@ -41,7 +43,11 @@ export default function FlagShortfall() {
   const qty = loaded ?? sel.load?.loaded ?? 0;
 
   const send = async () => {
-    const ok = await run(() =>
+    // The ticks on this phone come first: the server checks the release against them.
+    const ok = await run(async () => {
+      if (!(await drain())) throw new Error("Some ticks haven’t reached the server yet. Try again when you have signal.");
+      return true;
+    }) && await run(() =>
       api.flagShortfall({
         tripId, vehicleId: t.te.vehicle.id, orderId: sel.order.id, outletId: sel.order.outletId, skuId: sel.line.skuId, name: sel.line.name,
         planned: sel.line.qty, loaded: qty, kind, decision, photo, by: session?.name ?? "Loader",
@@ -54,14 +60,8 @@ export default function FlagShortfall() {
   };
 
   return (
-    <div className="mx-auto max-w-lg pb-10">
-      <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3.5">
-        <Link href={`/loader/${tripId}`} aria-label="Back" className="-ml-1.5 flex size-10 items-center justify-center rounded-xl transition-colors hover:bg-subtle"><ArrowLeft className="size-6" /></Link>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">Flag an issue</h1>
-          <p className="text-[13px] text-ink-2">{t.te.vehicle.id} · Trip {t.te.trip.tripNo} · before departure</p>
-        </div>
-      </header>
+    <>
+      <AppBar back={`/loader/${tripId}`} title="Flag an issue" sub={`${t.te.vehicle.id} · Trip ${t.te.trip.tripNo} · before departure`} right={<LoaderSync />} />
       <div className="grid gap-4 p-4">
         <label className="grid min-w-0 gap-1.5 text-sm font-semibold text-ink-2">
           Item
@@ -104,10 +104,11 @@ export default function FlagShortfall() {
             </button>
           ))}
         </div>
-        <Button big icon={Check} busy={busy} disabled={qty >= sel.line.qty && kind === "missing"} onClick={send}>
+        {!connected && <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-warning"><WifiOff className="size-4" /> Needs signal: dispatch and the store are told straight away.</p>}
+        <Button big icon={Check} busy={busy} disabled={(qty >= sel.line.qty && kind === "missing") || !connected} onClick={send}>
           {decision === "release" ? "Send & release" : "Send & hold vehicle"}
         </Button>
       </div>
-    </div>
+    </>
   );
 }

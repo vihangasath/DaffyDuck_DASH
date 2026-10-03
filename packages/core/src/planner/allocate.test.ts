@@ -3,6 +3,7 @@ import seedJson from "../seed.json";
 import { buildContext, buildNetwork, type SeedData } from "../domain/network";
 import { autoPlan, moveOrder, planMetrics, suggestFor, validatePlan } from "./allocate";
 import { FRESH_BUDGET_MIN, DAY_BUDGET_MIN, tripMinutes } from "./evaluate";
+import { explain, priority } from "./priority";
 
 const seed = seedJson as unknown as SeedData;
 const net = buildNetwork(seed);
@@ -107,5 +108,20 @@ describe("manual moves", () => {
   it("does not skip an outlet two runs in a row when a vehicle can reach it", () => {
     const again = plan.deferred.filter((d) => ctx.orders.get(d.orderId)!.deferredYesterday && d.code !== "OVERSIZE");
     for (const d of again) expect(suggestFor(plan, d.orderId, ctx, ramp)?.kind).not.toBe("newTrip");
+  });
+});
+
+describe("explainable deferrals", () => {
+  it("every order shows days since served, perishability and window tightness, summing to its score", () => {
+    for (const o of seed.orders) {
+      const e = explain(o, net, ramp);
+      expect(e.parts.filter((p) => p.core).map((p) => p.short)).toEqual([
+        `${o.daysSinceLastServed}d since served`,
+        o.temp === "chilled" ? "Chilled" : "Dry",
+        expect.stringMatching(/window$/i),
+      ]);
+      expect(e.parts.reduce((s, p) => s + p.points, 0)).toBe(e.total);
+      expect(e.total).toBe(priority(o, net, ramp).total);
+    }
   });
 });

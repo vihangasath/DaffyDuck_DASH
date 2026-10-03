@@ -31,6 +31,43 @@ export function priority(order: Order, net: Network, festivalRamp: number): Scor
   return { total: parts.reduce((s, p) => s + p.points, 0), parts };
 }
 
+export interface ExplainedPart extends ScorePart {
+  /** Short form for compact chips, e.g. "Chilled". */
+  short: string;
+  /** One of the three factors every order is judged on; shown even at +0. */
+  core: boolean;
+}
+
+/**
+ * The score as the dispatcher sees it: days since served, perishability and window tightness always
+ * come first (at +0 when they don't apply), then whatever else added points. Same total as `priority`.
+ */
+export function explain(order: Order, net: Network, festivalRamp: number): { total: number; parts: ExplainedPart[] } {
+  const s = priority(order, net, festivalRamp);
+  const outlet = net.outlets.get(order.outletId)!;
+  const take = (test: (label: string) => boolean) => {
+    const i = s.parts.findIndex((p) => test(p.label));
+    return i < 0 ? undefined : s.parts.splice(i, 1)[0];
+  };
+  const days = take((l) => l.startsWith("Days since served"));
+  const chilled = take((l) => l === "Chilled / perishable");
+  const window = take((l) => l === "Tight delivery window" || l === "Fixed mall window");
+  const d = order.daysSinceLastServed;
+  const core: ExplainedPart[] = [
+    { label: `Days since served (${d})`, short: `${d}d since served`, points: days?.points ?? 0, core: true },
+    { label: chilled ? "Chilled / perishable" : "Dry goods (not perishable)", short: chilled ? "Chilled" : "Dry", points: chilled?.points ?? 0, core: true },
+    {
+      label: window?.label ?? `Window ${outlet.windowOpen}–${outlet.windowClose} (wide)`,
+      short: outlet.mallWindow ? "Mall window" : window ? "Tight window" : "Wide window",
+      points: window?.points ?? 0,
+      core: true,
+    },
+  ];
+  const SHORT: Record<string, string> = { "Deferred yesterday": "Skipped yesterday", "Fresh daily replenishment": "Fresh daily", "Tech high-value order": "Tech value" };
+  const rest = s.parts.map((p) => ({ ...p, short: SHORT[p.label] ?? (p.label.startsWith("Festival ramp") ? "Festival" : p.label), core: false }));
+  return { total: s.total, parts: [...rest.filter((p) => p.label === "Deferred yesterday"), ...core, ...rest.filter((p) => p.label !== "Deferred yesterday")] };
+}
+
 /** What happens if this order is deferred again — shown next to every deferral. */
 export function consequence(order: Order): string {
   const bits: string[] = [];

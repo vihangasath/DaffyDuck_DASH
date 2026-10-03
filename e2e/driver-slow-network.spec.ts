@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { API, apiGet, apiLogin, newRole, resetDemoDay, sign, signIn } from "./helpers";
+import { API, apiGet, apiLogin, newRole, resetDemoDay, sign, signIn, warmUp } from "./helpers";
 
 // Offline-first is a core claim, so this checks it the way a live demo will stress it:
 // a driver phone on a throttled mobile connection, a connection that stalls mid-request, and a real
@@ -57,7 +57,10 @@ const deliveredOnServer = async (orderId: string) => {
 
 test.describe.configure({ mode: "serial" });
 test.setTimeout(360_000);
-test.beforeAll(vehicleReleased);
+test.beforeAll(async () => {
+  await warmUp();
+  await vehicleReleased();
+});
 
 test("driver app on a slow, stalling, then dropped connection", async ({ browser }) => {
   const { ctx, page: p } = await newRole(browser, { phone: true });

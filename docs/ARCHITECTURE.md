@@ -29,7 +29,7 @@ flowchart LR
 
 ## Data model
 
-The main tables and how they connect (31 tables in all; the full column list is in `apps/api/src/db/schema.ts`, and the table groups are listed in [`INTEGRATION.md → Data model`](INTEGRATION.md#data-model)). Solid lines are foreign keys. Dashed lines link by id without a constraint, on purpose: a load list, its shortfalls and the raw device log must outlive later plan edits (a truck that has left keeps its load even if dispatch moves a stop).
+The main tables and how they connect (33 tables in all; the full column list is in `apps/api/src/db/schema.ts`, and the table groups are listed in [`INTEGRATION.md → Data model`](INTEGRATION.md#data-model)). Solid lines are foreign keys. Dashed lines link by id without a constraint, on purpose: a load list, its shortfalls and the raw device log must outlive later plan edits (a truck that has left keeps its load even if dispatch moves a stop).
 
 ```mermaid
 erDiagram

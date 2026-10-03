@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Route, Truck, Upload } from "lucide-react";
-import { useEffect } from "react";
 import { DriverProvider, useDriver } from "@/components/driver/driver-context";
 import { RoleGuard } from "@/components/role-guard";
 import { Empty, cx } from "@/components/ui";
 import { signOut } from "@/lib/session";
 import { useDriverTheme } from "@/lib/driver-theme";
+import { useApplyAppTheme } from "@/lib/app-theme";
+import { useKeepPageOffline } from "@/lib/offline/keep-page";
 
 export default function DriverLayout({ children }: LayoutProps<"/driver">) {
   return (
@@ -27,27 +28,9 @@ export default function DriverLayout({ children }: LayoutProps<"/driver">) {
 
 function DriverLayoutShell({ children }: { children: React.ReactNode }) {
   const { isDark } = useDriverTheme();
+  useKeepPageOffline();
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (isDark) {
-      root.classList.add("driver-dark");
-      root.setAttribute("data-driver-theme", "dark");
-    } else {
-      root.classList.remove("driver-dark");
-      root.setAttribute("data-driver-theme", "light");
-    }
-    const meta = document.querySelector('meta[name="theme-color"]');
-    const prevColor = meta?.getAttribute("content");
-    if (meta) {
-      meta.setAttribute("content", isDark ? "#090e17" : "#102447");
-    }
-    return () => {
-      root.classList.remove("driver-dark");
-      root.removeAttribute("data-driver-theme");
-      if (meta && prevColor) meta.setAttribute("content", prevColor);
-    };
-  }, [isDark]);
+  useApplyAppTheme(isDark, "driver-dark");
 
   return (
     <div className={cx("mx-auto flex min-h-dvh max-w-md flex-col bg-canvas shadow-sm transition-colors duration-200", isDark && "driver-dark")}>
