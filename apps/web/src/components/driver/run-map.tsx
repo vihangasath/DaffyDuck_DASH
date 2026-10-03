@@ -10,7 +10,7 @@ import { DEPOT_LATLNG, outletLatLng, type LatLng } from "@waypoint/core/domain/g
 import { fmtMin } from "@waypoint/core/domain/time";
 import type { Depot } from "@waypoint/core/domain/types";
 
-export interface MapStop {
+interface MapStop {
   orderId: string;
   outletId: string;
   arrive: number;

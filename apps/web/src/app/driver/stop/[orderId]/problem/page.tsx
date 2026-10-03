@@ -1,14 +1,15 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { AlertTriangle, Phone, Thermometer, MapPinOff } from "lucide-react";
+import { AlertTriangle, Phone, Thermometer } from "lucide-react";
 import { useDriver } from "@/components/driver/driver-context";
-import { DriverSync, OfflineBanner } from "@/components/driver/bits";
-import { AppBar, Button, btnClass, cx, Empty } from "@/components/ui";
+import { DriverSync, NotInRun, OfflineBanner } from "@/components/driver/bits";
+import { AppBar, Button, btnClass, cx } from "@/components/ui";
 import { toast } from "@/components/toast";
 import { outletName } from "@waypoint/core/reference";
 import { newId } from "@/lib/offline/outbox";
 import { demoStamp } from "@waypoint/core/views";
+import { CALL } from "@/lib/contacts";
 
 const REASONS = ["Store closed / no receiver", "Access blocked (parking, mall bay)", "Refused — temperature or quality", "Vehicle problem", "Other"];
 
@@ -65,21 +66,10 @@ export default function Problem() {
         >
           Report to dispatcher
         </Button>
-        <a href="tel:+94112000001" className={cx(btnClass("secondary"), "min-h-12 rounded-xl text-base")}>
+        <a href={CALL.dispatch} className={cx(btnClass("secondary"), "min-h-12 rounded-xl text-base")}>
           <Phone className="size-5" /> Call dispatcher
         </a>
       </div>
-    </>
-  );
-}
-
-function NotInRun() {
-  return (
-    <>
-      <AppBar title="Stop not in your run" back="/driver" />
-      <Empty icon={MapPinOff} title="This stop isn’t on your run">
-        Dispatch may have moved it to another vehicle. Your current stops are on the Run tab.
-      </Empty>
     </>
   );
 }

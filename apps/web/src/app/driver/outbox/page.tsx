@@ -1,10 +1,11 @@
 "use client";
-import { AlertTriangle, Check, ClipboardCheck, Clock, MapPin, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { AlertTriangle, Camera, Check, ClipboardCheck, Clock, MapPin, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useDriver } from "@/components/driver/driver-context";
 import { DriverSync } from "@/components/driver/bits";
 import { AppBar, Button, Card, Pill, cx } from "@/components/ui";
 import { outletName } from "@waypoint/core/reference";
 import type { OutboxRow } from "@/lib/offline/outbox";
+import { fmtClock } from "@waypoint/core/domain/time";
 
 const ICON = { arrived: MapPin, delivered: ClipboardCheck, problem: AlertTriangle };
 
@@ -36,7 +37,9 @@ export default function Outbox() {
           </div>
         )}
         <Group title={`Waiting · ${queued.length}`} rows={queued} empty="Nothing waiting to send." />
+        <Photos />
         <Group title={`Synced · ${synced.length}`} rows={synced.slice(0, 20)} empty="No records yet today." />
+        <Signal />
         <p className="text-xs text-muted">Each record carries its own ID, so a retry can never create a duplicate. Times shown are when it happened, not when it synced.</p>
         <Button big kind="secondary" icon={RefreshCw} busy={d.syncing} disabled={!d.online} onClick={() => d.flush()}>
           Sync now
@@ -74,6 +77,46 @@ function Group({ title, rows, empty }: { title: string; rows: OutboxRow[]; empty
           </div>
         );
       })}
+    </Card>
+  );
+}
+
+/** Delivery photos: they upload separately from the records, so the driver can see they arrived too. */
+function Photos() {
+  const { photos, trips } = useDriver();
+  if (!photos.length) return null;
+  const waiting = photos.filter((p) => p.status === "queued");
+  const refused = photos.filter((p) => p.status === "rejected");
+  return (
+    <Card className="grid gap-1.5 p-3.5">
+      <h2 className="flex items-center gap-2 text-sm font-bold"><Camera className="size-4" /> Photos</h2>
+      <p className="text-sm text-ink-2">
+        {photos.length - waiting.length - refused.length} of {photos.length} uploaded{waiting.length ? ` · ${waiting.length} waiting for signal` : ""}
+      </p>
+      {refused.map((p) => (
+        <p key={p.id} className="text-xs font-semibold text-danger">{outletName(orderOutlet(p.orderId, trips))}: {p.rejectedReason}</p>
+      ))}
+    </Card>
+  );
+}
+
+/** When this phone lost and found the server: the same log dispatch sees. */
+function Signal() {
+  const { netlog } = useDriver();
+  if (!netlog.length) return null;
+  return (
+    <Card className="overflow-hidden">
+      <h2 className="border-b border-line px-3.5 py-3 text-sm font-bold">Signal today</h2>
+      <ol className="grid gap-0.5 px-3.5 py-2.5 text-sm">
+        {netlog.slice(0, 12).map((n) => (
+          <li key={n.id} className="flex items-center gap-2">
+            {n.state === "offline" ? <WifiOff className="size-4 text-warning" /> : <Wifi className="size-4 text-info" />}
+            <span className="w-12 tabular-nums text-ink-2">{fmtClock(n.at)}</span>
+            <span className="flex-1">{n.state === "offline" ? "Lost connection" : "Back online"}</span>
+            {!n.sent && <span className="text-xs text-muted">not sent yet</span>}
+          </li>
+        ))}
+      </ol>
     </Card>
   );
 }

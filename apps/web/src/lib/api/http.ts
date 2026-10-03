@@ -9,19 +9,25 @@ import { isOnline, OfflineError } from "./network";
 // A phone on one bar of signal can hold a request open for minutes. Past this, give up and treat it
 // as no signal: the driver outbox keeps the record and the next flush retries it (same event id).
 const TIMEOUT_MS = 20_000;
+/** A photo is ~200 KB: on a weak signal give it longer before calling it a dead zone. */
+const UPLOAD_TIMEOUT_MS = 60_000;
 
-async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+async function request<T>(method: "GET" | "POST" | "PUT", path: string, body?: unknown): Promise<T> {
   if (!isOnline()) throw new OfflineError();
   const token = readToken();
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+  const raw = body instanceof Blob;
+  const timer = setTimeout(() => ctl.abort(), raw ? UPLOAD_TIMEOUT_MS : TIMEOUT_MS);
   let res: Response;
   let json: T & { error?: string };
   try {
     res = await fetch(`/api${path}`, {
       method,
-      headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: {
+        ...(raw ? { "content-type": body.type || "image/jpeg" } : body !== undefined ? { "content-type": "application/json" } : {}),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: raw ? body : body === undefined ? undefined : JSON.stringify(body),
       signal: ctl.signal,
     });
     // The proxy answers 5xx while the API is down: treat it like a dead zone, the driver outbox retries.
@@ -61,21 +67,34 @@ export const httpApi: WaypointApi = {
   placeOrder: ({ outletId, temp, lines }) => op("placeOrder", { outletId, temp, lines }),
   closeOrdersAndPlan: (depot) => op("closeOrdersAndPlan", { depot }),
   replan: (depot) => op("replan", { depot }),
-  moveOrder: (depot, orderId, target) => {
-    const t = "defer" in target ? { defer: true as const, code: target.code, note: target.note } : target;
-    return op("moveOrder", { depot, orderId, target: t });
-  },
+  moveOrder: (depot, orderId, target) => op("moveOrder", { depot, orderId, target }),
   publishPlan: (depot) => op("publishPlan", { depot }),
   setVehicleStatus: (vehicleId, status) => op("setVehicleStatus", { vehicleId, status }),
   setLoadLine: (tripId, key, loaded) => op("setLoadLine", { tripId, key, loaded }),
-  flagShortfall: ({ tripId, orderId, skuId, loaded, kind, decision, photo }) => op("flagShortfall", { tripId, orderId, skuId, loaded, kind, decision, photo }),
+  flagShortfall: (input) => op("flagShortfall", input),
   releaseTrip: (tripId) => op("releaseTrip", { tripId }),
   resolveShortfall: (id, resolution) => op("resolveShortfall", { id, resolution }),
-  syncDriverEvents: (vehicleId, events) => op("syncDriverEvents", { vehicleId, events }),
+  syncDriverEvents: (vehicleId, events, extras) => op("syncDriverEvents", { vehicleId, events, ...extras }),
+  checkCode: (orderId, code) => op("checkCode", { orderId, code }),
+  uploadPhoto: (id, kind, orderId, image) => request("PUT", `/photos/${encodeURIComponent(id)}?kind=${kind}&orderId=${encodeURIComponent(orderId)}`, image),
   ackNotice: (id, response) => op("ackNotice", { id, response }),
-  confirmReceipt: ({ orderId, lines, issues }) => op("confirmReceipt", { orderId, lines, issues }),
+  confirmReceipt: (receipt) => op("confirmReceipt", receipt),
   resolveException: (id) => op("resolveException", { id }),
 };
+
+/** A stored photo as a blob (images need the bearer token, so they can't be a plain <img src>). */
+export async function fetchPhoto(id: string): Promise<Blob> {
+  if (!isOnline()) throw new OfflineError();
+  const token = readToken();
+  let res: Response;
+  try {
+    res = await fetch(`/api/photos/${encodeURIComponent(id)}`, { headers: token ? { authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new OfflineError();
+  }
+  if (!res.ok) throw new Error(res.status === 404 ? "Not uploaded yet" : `Photo unavailable (${res.status})`);
+  return res.blob();
+}
 
 /**
  * Live updates: the API pushes "change" whenever any user changes anything; the caller refetches.

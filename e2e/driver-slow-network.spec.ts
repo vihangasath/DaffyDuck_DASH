@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { API, apiGet, apiLogin, newRole, resetDemoDay, sign, signIn, warmUp } from "./helpers";
+import { apiGet, apiLogin, enterCode, newRole, publishedDay, releaseVehicle, sign, signIn, warmUp } from "./helpers";
 
 // Offline-first is a core claim, so this checks it the way a live demo will stress it:
 // a driver phone on a throttled mobile connection, a connection that stalls mid-request, and a real
@@ -7,25 +7,6 @@ import { API, apiGet, apiLogin, newRole, resetDemoDay, sign, signIn, warmUp } fr
 
 const VEHICLE = "VEH011";
 
-async function op(token: string, name: string, args: unknown) {
-  const res = await fetch(`${API}/api/ops/${name}`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(args) });
-  if (!res.ok) throw new Error(`${name}: ${res.status} ${await res.text()}`);
-  return res.json();
-}
-
-/** Dispatcher publishes and the loader releases every VEH011 trip, through the API: this spec is about the driver. */
-async function vehicleReleased() {
-  await resetDemoDay();
-  const d = await apiLogin("dispatcher");
-  await op(d, "closeOrdersAndPlan", { depot: "Peliyagoda" });
-  await op(d, "publishPlan", { depot: "Peliyagoda" });
-  const s = await apiGet<{ db: { plans: Record<string, { trips: { id: string; vehicleId: string }[] }>; loads: Record<string, { lines: Record<string, { planned: number }> }> } }>(d, "/ops/snapshot");
-  const l = await apiLogin("loader");
-  for (const t of s.db.plans.Peliyagoda.trips.filter((t) => t.vehicleId === VEHICLE)) {
-    for (const [key, line] of Object.entries(s.db.loads[t.id].lines)) await op(l, "setLoadLine", { tripId: t.id, key, loaded: line.planned });
-    await op(l, "releaseTrip", { tripId: t.id });
-  }
-}
 
 /** Chrome DevTools throttling, close to DevTools' "Slow 3G" preset: 400 ms RTT, ~50 KB/s each way. */
 async function throttle(ctx: BrowserContext, page: Page, on: boolean) {
@@ -42,6 +23,7 @@ async function deliverNextStop(p: Page) {
   await p.getByRole("button", { name: "Start delivery & POD" }).click();
   await expect(p).toHaveURL(/\/pod$/, { timeout: 30_000 });
   const orderId = decodeURIComponent(p.url().split("/stop/")[1].split("/")[0]);
+  await enterCode(p, orderId);
   await sign(p);
   await p.getByPlaceholder("Name of the person signing").fill("K. Silva");
   await p.getByRole("button", { name: "Complete delivery" }).click();
@@ -59,7 +41,9 @@ test.describe.configure({ mode: "serial" });
 test.setTimeout(360_000);
 test.beforeAll(async () => {
   await warmUp();
-  await vehicleReleased();
+  // Dispatcher publishes and the loader releases every VEH011 trip, through the API: this spec is about the driver.
+  await publishedDay();
+  await releaseVehicle(VEHICLE);
 });
 
 test("driver app on a slow, stalling, then dropped connection", async ({ browser }) => {

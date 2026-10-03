@@ -38,7 +38,7 @@ export function modelStatus() {
  * One row per planned stop: the task1_test_inputs.csv columns joined with the stop's route_legs_test.csv
  * leg, so the notebook's preprocessing runs unchanged on live plans.
  */
-export function task1Rows(ops: OpsDb) {
+function task1Rows(ops: OpsDb) {
   const day = seed.calendar.find((c) => c.date === DEMO_DATE);
   const ctx = contextFor(ops.orders, ops.fleetStatus);
   const rows: Record<string, string | number>[] = [];
@@ -87,7 +87,7 @@ export function task1Rows(ops: OpsDb) {
 }
 
 /** One row per depot, brand and forecast week: the task2a_test_inputs.csv columns. */
-export function task2aRows() {
+function task2aRows() {
   const pairs = new Set(seed.weeklyVolume.filter((w) => w.kind === "forecast").map((w) => `${w.depot}|${w.brand}|${w.week}`));
   return [...pairs].map((row_id) => {
     const [depot, brand, week] = row_id.split("|");

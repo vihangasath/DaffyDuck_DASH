@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ADMIN, apiGet, apiLogin, detectSeed, newRole, resetDemoDay, sign, signIn, type Seed, warmUp } from "./helpers";
+import { chooseOutlet, ADMIN, apiGet, apiLogin, detectSeed, newRole, enterCode, resetDemoDay, sign, signIn, type Seed, warmUp } from "./helpers";
 
 // The README's judge walkthrough, end to end, in four tabs (one per role) plus HR.
 // It is also the demo story: dispatcher publishes → loader flags a shortfall → driver completes a stop
@@ -24,6 +24,7 @@ async function deliverNextStop(driver: Page) {
   await driver.getByRole("button", { name: "Start delivery & POD" }).click();
   await expect(driver).toHaveURL(/\/pod$/, { timeout: 30_000 });
   const orderId = decodeURIComponent(driver.url().split("/stop/")[1].split("/")[0]);
+  await enterCode(driver, orderId);
   await sign(driver);
   await driver.getByPlaceholder("Name of the person signing").fill("S. Perera");
   await driver.getByRole("button", { name: "Complete delivery" }).click();
@@ -170,12 +171,24 @@ test("judge walkthrough: four roles, one delivery day", async ({ browser }) => {
     const outlet = outletOf(delivered);
     const p = store.page;
     await p.goto("/store");
-    const branch = p.getByRole("combobox", { name: "Outlet" });
-    if (await branch.isVisible()) await branch.selectOption(outlet);
+    await chooseOutlet(p, outlet);
     await p.goto(`/store/receipt/${delivered}`);
     await expect(p.getByRole("heading", { name: "Confirm receipt" })).toBeVisible();
+    // One unit of the first item arrived damaged (its second stepper counts damage).
+    await p.getByRole("button", { name: "Increase" }).nth(1).click();
+    await expect(p.getByText("1 damaged").first()).toBeVisible();
     await p.getByRole("button", { name: /^Confirm receipt/ }).click();
     await expect(p).toHaveURL(/\/store$/);
+  });
+
+  await test.step("10b · dispatcher sees the code check and the itemised receipt", async () => {
+    const p = dispatch.page;
+    await p.goto("/dispatcher/live");
+    await expect(p.getByText(/receipt: damaged/).first()).toBeVisible({ timeout: 30_000 });
+    await expect(p.getByText(/Damaged: 1 ×/).first()).toBeVisible();
+    await p.goto(`/dispatcher/deliveries?order=${encodeURIComponent(delivered)}`);
+    await expect(p.getByRole("dialog")).toContainText("Store receipt");
+    await expect(p.getByRole("dialog").getByText(/^Code \d{6} ✓$/)).toBeVisible();
   });
 
   await test.step("11 · HR signs in to Waypoint People", async () => {

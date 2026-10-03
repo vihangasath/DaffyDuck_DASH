@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, ChevronRight, Snowflake } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, ChevronRight, Snowflake } from "lucide-react";
 import { AppBar, Empty, Pill, Spinner, cx, type Tone } from "@/components/ui";
 import { LoaderSync } from "@/components/loader/bits";
 import { useLoader } from "@/components/loader/loader-context";
@@ -40,6 +40,7 @@ export default function Flags() {
                   <p className="flex items-center gap-1.5 text-sm text-ink-2">
                     {chilled && <Snowflake className="size-3.5 text-chilled" />}
                     {KIND[s.kind]} · {s.loaded} of {s.planned} loaded · {outletName(s.outletId)}
+                    {s.photoIds?.length ? <span className="flex items-center gap-0.5 text-xs"><Camera className="size-3.5" /> {s.photoIds.length}</span> : null}
                   </p>
                   <p className="flex items-center text-xs text-muted">
                     <span className="flex-1">{st.note}{s.resolvedBy ? ` (${s.resolvedBy})` : ""}</span>

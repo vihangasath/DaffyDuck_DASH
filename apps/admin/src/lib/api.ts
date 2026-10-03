@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@waypoint/ui/toast";
 import { clearSession, readToken } from "./session";
 
-export class ApiError extends Error {
+class ApiError extends Error {
   constructor(
     public status: number,
     message: string,

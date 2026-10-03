@@ -49,7 +49,7 @@ export function writeSession(user: Session | null) {
   write(user && cur ? { ...cur, user } : null);
 }
 
-export type SignInResult = { ok: true; user: Session } | { ok: false; error: string; adminUrl?: string };
+type SignInResult = { ok: true; user: Session } | { ok: false; error: string; adminUrl?: string };
 
 export async function signIn(username: string, password: string): Promise<SignInResult> {
   try {

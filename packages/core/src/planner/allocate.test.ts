@@ -56,7 +56,6 @@ for (const depot of ["Peliyagoda", "Kandy"] as const) {
 
     it("reports metrics", () => {
       const m = planMetrics(plan, orders, ctx);
-      console.log(depot, JSON.stringify({ served: m.served, deferred: m.deferred, reefer: m.reeferPressure.toFixed(2), binding: m.bindingConstraint, codes: plan.deferred.map((d) => d.code) }));
       expect(m.served + m.deferred).toBe(orders.length);
     });
   });

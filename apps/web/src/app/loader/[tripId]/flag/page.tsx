@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Camera, Check, Snowflake, WifiOff } from "lucide-react";
+import { Check, Snowflake, WifiOff } from "lucide-react";
 import { AppBar, Button, Card, Seg, Spinner, Stepper, cx } from "@/components/ui";
 import { LoaderSync } from "@/components/loader/bits";
 import { useLoader } from "@/components/loader/loader-context";
@@ -12,6 +12,10 @@ import { linesFor } from "@waypoint/core/domain/catalog";
 import { useAct } from "@/lib/hooks";
 import { dockTrips } from "@waypoint/core/loading";
 import { useSession } from "@/lib/session";
+import { uploadPhotos } from "@/lib/photos";
+import { PhotoPicker, usePhotoDrafts } from "@/components/photo-picker";
+
+const MAX_PHOTOS = 3;
 
 export default function FlagShortfall() {
   const { tripId } = useParams<{ tripId: string }>();
@@ -34,7 +38,7 @@ export default function FlagShortfall() {
   const [key, setKey] = useState<string | null>(null);
   const [kind, setKind] = useState<Shortfall["kind"]>("missing");
   const [loaded, setLoaded] = useState<number | null>(null);
-  const [photo, setPhoto] = useState(false);
+  const drafts = usePhotoDrafts();
   const [decision, setDecision] = useState<Shortfall["decision"]>("release");
 
   if (!db) return <Spinner />;
@@ -44,18 +48,18 @@ export default function FlagShortfall() {
 
   const send = async () => {
     // The ticks on this phone come first: the server checks the release against them.
+    // Photos upload first, then the flag lists them.
+    let photoIds: string[] = [];
     const ok = await run(async () => {
       if (!(await drain())) throw new Error("Some ticks haven’t reached the server yet. Try again when you have signal.");
+      photoIds = await uploadPhotos("shortfall", sel.order.id, drafts.photos);
       return true;
     }) && await run(() =>
-      api.flagShortfall({
-        tripId, vehicleId: t.te.vehicle.id, orderId: sel.order.id, outletId: sel.order.outletId, skuId: sel.line.skuId, name: sel.line.name,
-        planned: sel.line.qty, loaded: qty, kind, decision, photo, by: session?.name ?? "Loader",
-      }),
+      api.flagShortfall({ tripId, orderId: sel.order.id, skuId: sel.line.skuId, loaded: qty, kind, decision, photo: photoIds.length > 0, photoIds }),
       decision === "hold" ? "Dispatcher alerted — vehicle held" : "Shortfall recorded — store informed",
     );
     if (!ok) return;
-    const released = decision === "release" && (await run(() => api.releaseTrip(tripId, session?.name ?? "Loader").then(() => true)));
+    const released = decision === "release" && (await run(() => api.releaseTrip(tripId).then(() => true)));
     router.push(released ? "/loader" : `/loader/${tripId}`);
   };
 
@@ -88,10 +92,10 @@ export default function FlagShortfall() {
           <span className="font-medium">Quantity actually loaded</span>
           <Stepper big value={qty} max={sel.line.qty} onChange={setLoaded} />
         </Card>
-        <label className={cx("flex w-fit cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 text-sm font-semibold transition-colors", photo ? "border-success/50 bg-success-soft text-success" : "border-line-strong text-primary hover:border-primary hover:bg-primary-soft")}>
-          {photo ? <Check className="size-5" /> : <Camera className="size-5" />} {photo ? "Photo attached" : "Add photo (optional)"}
-          <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => setPhoto((p) => p || !!e.target.files?.length)} />
-        </label>
+        <div className="grid gap-1.5">
+          <span className="text-sm font-semibold text-ink-2">Photos {kind === "damaged" ? "(dispatch sees them with the flag)" : "(optional)"}</span>
+          <PhotoPicker drafts={drafts} max={MAX_PHOTOS} inputLabel="Add photo of the item" alt="Photo" moreLabel="Another" />
+        </div>
         <div role="radiogroup" className="grid gap-2">
           <span className="text-sm font-semibold text-ink-2">Then</span>
           {([

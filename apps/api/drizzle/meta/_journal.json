@@ -22,6 +22,13 @@
       "when": 1790488293285,
       "tag": "0002_staff_synthetic",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791037352560,
+      "tag": "0003_field_proof",
+      "breakpoints": true
     }
   ]
 }

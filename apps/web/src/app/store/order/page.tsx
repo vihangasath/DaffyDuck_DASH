@@ -20,7 +20,6 @@ export default function NewOrderPage() {
 
 function NewOrder({ outletId }: { outletId: string }) {
   const { data: db } = useDb();
-  const [session] = useSession();
   const { run, busy } = useAct();
   const outlet = net.outlets.get(outletId)!;
   const [temp, setTemp] = useState<Temp>(outlet.brand === "Fresh" ? "chilled" : "ambient");
@@ -123,7 +122,7 @@ function NewOrder({ outletId }: { outletId: string }) {
           disabled={!lines.length}
           busy={busy}
           onClick={async () => {
-            const o = await run(() => api.placeOrder({ outletId, date: DEMO_DATE, temp: outlet.brand === "Fresh" ? temp : "ambient", lines: lines.map((x) => ({ skuId: x.i.id, qty: x.q })), by: session?.name ?? "Store" }));
+            const o = await run(() => api.placeOrder({ outletId, temp: outlet.brand === "Fresh" ? temp : "ambient", lines: lines.map((x) => ({ skuId: x.i.id, qty: x.q })) }));
             if (o) setDone(o);
           }}
         >

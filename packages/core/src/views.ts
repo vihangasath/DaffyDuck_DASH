@@ -1,7 +1,7 @@
-// Derived, role-specific views over the server state. With a real backend these become endpoints
-// (see docs/INTEGRATION.md); here they are pure functions over the mock Db.
+// Derived, role-specific views over the operational state: pure functions, used by the screens
+// and by the API (the live watch, visibility rules).
 import type { Db } from "./contract";
-import { contextFor, DEMO_DATE, net, outletName, seed } from "./reference";
+import { contextFor, net, outletName, seed } from "./reference";
 import type { Depot, Order, Plan } from "./domain/types";
 import { evaluateVehicle, type TripEval } from "./planner/evaluate";
 
@@ -71,8 +71,6 @@ export function demoStamp(plannedMin: number, orderId: string, extra = 0): strin
   const m = Math.round(plannedMin + jitter + extra);
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
-
-export const isDemoDate = (d?: string) => d === DEMO_DATE;
 
 export const mapsUrl = (outletId: string) => {
   const o = net.outlets.get(outletId)!;

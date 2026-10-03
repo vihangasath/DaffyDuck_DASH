@@ -1,16 +1,16 @@
 "use client";
-import { CloudOff, RefreshCw, X } from "lucide-react";
+import { CloudOff, MapPinOff, RefreshCw, X } from "lucide-react";
 import Link from "next/link";
-import { Button, SyncPill } from "@/components/ui";
+import { AppBar, Button, Empty, SyncPill } from "@/components/ui";
 import { useNow } from "@/lib/hooks";
 import { useDriver } from "./driver-context";
-import { DriverThemeToggle } from "./theme-toggle";
+import { ThemeToggle } from "@/components/theme-controls";
 
 export function DriverSync() {
   const d = useDriver();
   return (
     <div className="flex items-center gap-2">
-      <DriverThemeToggle />
+      <ThemeToggle app="driver" />
       <Link href="/driver/outbox" aria-label="Sync status">
         <SyncPill state={!d.online ? "off" : d.syncing || d.queued ? "sync" : "ok"} queued={d.queued} />
       </Link>
@@ -48,5 +48,17 @@ export function RunChangeBanner() {
       <p className="text-xs text-ink-2">Anything you already recorded keeps its original time.</p>
       <Button big icon={X} onClick={d.ackChange}>OK, update my run</Button>
     </div>
+  );
+}
+
+/** A stop screen opened for an order that is no longer on this vehicle's run. */
+export function NotInRun() {
+  return (
+    <>
+      <AppBar title="Stop not in your run" back="/driver" />
+      <Empty icon={MapPinOff} title="This stop isn’t on your run">
+        Dispatch may have moved it to another vehicle. Your current stops are on the Run tab.
+      </Empty>
+    </>
   );
 }

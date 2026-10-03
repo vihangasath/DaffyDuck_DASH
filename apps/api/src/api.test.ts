@@ -3,7 +3,7 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { Db as OpsDb, LoginResult, Snapshot } from "@waypoint/core/contract";
+import type { Db as OpsDb, LoginResult, PhotoMeta, Snapshot, SyncResult } from "@waypoint/core/contract";
 import { orderState } from "@waypoint/core/views";
 import { net } from "@waypoint/core/reference";
 import { Service } from "./service.ts";
@@ -11,8 +11,10 @@ import { createApp } from "./app.ts";
 import { boot } from "./boot.ts";
 import type { Database } from "./db/client.ts";
 import { env } from "./env.ts";
+import { watchOnce } from "./monitor.ts";
 
 let app: ReturnType<typeof createApp>;
+let svc: Service;
 let database: Database;
 const tokens: Record<string, string> = {};
 
@@ -30,6 +32,7 @@ const snapshot = async (who = "dispatcher") => (await call<Snapshot>("GET", "/ap
 beforeAll(async () => {
   const b = await boot({ dir: "memory://" });
   database = b.database;
+  svc = b.svc;
   app = createApp(b.svc);
   for (const [u, appName] of [["admin", "admin"], ["dispatcher", "web"], ["loader", "web"], ["driver", "web"], ["store", "web"]] as const) {
     const r = await call<LoginResult>("POST", "/api/auth/login", { username: u, password: "waypoint", app: appName });
@@ -245,6 +248,168 @@ describe("Datathon models", () => {
     await call("POST", "/api/models/refresh", undefined, "dispatcher");
     expect((await call<Status>("GET", "/api/models", undefined, "dispatcher")).json).toMatchObject({ task1: { source: "baseline" }, task2a: { source: "baseline" } });
     expect(net.lateProb(String(seen["/predict/task1"][0].delivery_id))).toBeUndefined();
+  });
+});
+
+describe("proof in the field", () => {
+  const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
+  const put = async (id: string, kind: string, orderId: string, who: string, type = "image/png") => {
+    const res = await app.request(`/api/photos/${id}?kind=${kind}&orderId=${encodeURIComponent(orderId)}`, { method: "PUT", headers: { "content-type": type, authorization: `Bearer ${tokens[who]}` }, body: PNG });
+    return { status: res.status, json: (await res.json()) as PhotoMeta & { error?: string } };
+  };
+  const get = (id: string, who: string) => app.request(`/api/photos/${id}`, { headers: { authorization: `Bearer ${tokens[who]}` } });
+  const iso = (minsAgo = 0) => new Date(Date.now() - minsAgo * 60_000).toISOString();
+  let trips: { id: string; orderIds: string[] }[] = [];
+  const all = () => trips.flatMap((t) => t.orderIds);
+  const podLines = (d: OpsDb, id: string) => d.orders.find((o) => o.id === id)!.lines!.map((l) => ({ skuId: l.skuId, name: l.name, planned: l.qty, delivered: l.qty }));
+
+  beforeAll(async () => {
+    // A clean, published day with every VEH011 trip loaded and on the road.
+    expect((await call("POST", "/api/network/reset", {}, "dispatcher")).status).toBe(200);
+    expect((await op("closeOrdersAndPlan", { depot: "Peliyagoda" }, "dispatcher")).status).toBe(200);
+    expect((await op("publishPlan", { depot: "Peliyagoda" }, "dispatcher")).status).toBe(200);
+    const d = (await snapshot()).db;
+    trips = d.plans.Peliyagoda!.trips.filter((t) => t.vehicleId === "VEH011");
+    for (const t of trips) {
+      for (const [key, l] of Object.entries(d.loads[t.id].lines)) await op("setLoadLine", { tripId: t.id, key, loaded: l.planned }, "loader");
+      expect((await op("releaseTrip", { tripId: t.id }, "loader")).status).toBe(200);
+    }
+    expect(all().length).toBeGreaterThan(1);
+  });
+
+  it("gives every order a delivery code only the dispatcher and the ordering store can read", async () => {
+    const d = (await snapshot()).db;
+    expect(d.orders.every((o) => /^\d{6}$/.test(o.confirmCode ?? ""))).toBe(true);
+    expect((await snapshot("driver")).db.orders.some((o) => o.confirmCode)).toBe(false);
+    expect((await snapshot("loader")).db.orders.some((o) => o.confirmCode)).toBe(false);
+    const store = (await snapshot("store")).db; // area manager: own = every Peliyagoda outlet
+    expect(store.orders.filter((o) => o.lines).every((o) => o.confirmCode)).toBe(true);
+    expect(store.orders.filter((o) => !o.lines).some((o) => o.confirmCode)).toBe(false);
+  });
+
+  it("checks a code at the stop, with a limit on wrong guesses", async () => {
+    const id = all()[0];
+    const code = (await snapshot()).db.orders.find((o) => o.id === id)!.confirmCode!;
+    const wrong = code === "000000" ? "111111" : "000000";
+    expect((await call<{ ok: boolean; attemptsLeft: number }>("POST", "/api/ops/checkCode", { orderId: id, code: wrong }, "driver")).json).toEqual({ ok: false, attemptsLeft: 4 });
+    expect((await call<{ ok: boolean }>("POST", "/api/ops/checkCode", { orderId: id, code }, "driver")).json.ok).toBe(true);
+    expect((await call("POST", "/api/ops/checkCode", { orderId: id, code }, "store")).status).toBe(403);
+    const other = (await snapshot()).db.plans.Peliyagoda!.trips.find((t) => t.vehicleId !== "VEH011")!.orderIds[0];
+    expect((await call("POST", "/api/ops/checkCode", { orderId: other, code }, "driver")).status).toBe(403);
+  });
+
+  it("stores delivery photos and serves them to dispatch and the store, not to other roles", async () => {
+    const id = all()[0];
+    const up = await put("photo-pod-0001", "pod", id, "driver");
+    expect(up.status).toBe(200);
+    expect(up.json).toMatchObject({ id: "photo-pod-0001", kind: "pod", orderId: id, vehicleId: "VEH011", bytes: PNG.length });
+    expect((await put("photo-pod-0001", "pod", id, "driver")).json.at).toBe(up.json.at); // idempotent retry
+    expect((await put("photo-pod-0002", "pod", id, "driver", "text/plain")).status).toBe(415);
+    const other = (await snapshot()).db.plans.Peliyagoda!.trips.find((t) => t.vehicleId !== "VEH011")!.orderIds[0];
+    expect((await put("photo-pod-0003", "pod", other, "driver")).status).toBe(403);
+    const img = await get("photo-pod-0001", "dispatcher");
+    expect(img.status).toBe(200);
+    expect(img.headers.get("content-type")).toBe("image/png");
+    expect(new Uint8Array(await img.arrayBuffer())).toEqual(PNG);
+    expect((await get("photo-pod-0001", "store")).status).toBe(200);
+    expect((await get("photo-pod-0001", "loader")).status).toBe(404);
+  });
+
+  it("records the delivery code and photos with the POD and flags a wrong code", async () => {
+    const d = (await snapshot()).db;
+    const [good, bad] = all();
+    const code = d.orders.find((o) => o.id === good)!.confirmCode!;
+    const r = await op<SyncResult>("syncDriverEvents", {
+      vehicleId: "VEH011", events: [
+        { id: "fp-a1", vehicleId: "VEH011", kind: "arrived", orderId: good, at: "05:00", recordedAt: iso(20) },
+        { id: "fp-d1", vehicleId: "VEH011", kind: "delivered", orderId: good, at: "05:12", recordedAt: iso(10), pod: { receivedBy: "Chamari", signed: true, photos: 1, photoIds: ["photo-pod-0001"], lines: podLines(d, good), code } },
+        { id: "fp-a2", vehicleId: "VEH011", kind: "arrived", orderId: bad, at: "05:30", recordedAt: iso(5) },
+        { id: "fp-d2", vehicleId: "VEH011", kind: "delivered", orderId: bad, at: "05:40", recordedAt: iso(1), pod: { receivedBy: "Someone", signed: true, photos: 0, lines: podLines(d, bad), code: code === "123456" ? "654321" : "123456" } },
+      ],
+    }, "driver");
+    expect(r.json.accepted).toHaveLength(4);
+    const after = (await snapshot()).db;
+    expect(after.stops[good].pod).toMatchObject({ code, codeOk: true, photoIds: ["photo-pod-0001"], photos: 1 });
+    expect(after.stops[bad].pod?.codeOk).toBe(false);
+    expect(after.exceptions.filter((e) => e.kind === "pod_code").map((e) => e.ref.orderId)).toEqual([bad]);
+    expect((await snapshot("driver")).db.stops[good].pod?.codeOk).toBeUndefined();
+  });
+
+  it("keeps the loader's damage photo with the shortfall", async () => {
+    const d = (await snapshot("loader")).db;
+    const trip = d.plans.Peliyagoda!.trips.find((t) => t.vehicleId !== "VEH011" && d.loads[t.id].status !== "released")!;
+    const [key, line] = Object.entries(d.loads[trip.id].lines)[0];
+    const [orderId, skuId] = key.split("|");
+    expect((await put("photo-dock-0001", "shortfall", orderId, "loader")).status).toBe(200);
+    expect((await op("flagShortfall", { tripId: trip.id, orderId, skuId, loaded: 0, kind: "damaged", decision: "hold", photo: true, photoIds: ["photo-nope-0001"] }, "loader")).status).toBe(400);
+    const f = await op<{ id: string; photoIds: string[] }>("flagShortfall", { tripId: trip.id, orderId, skuId, loaded: Math.max(0, line.planned - 1), kind: "damaged", decision: "hold", photo: true, photoIds: ["photo-dock-0001"] }, "loader");
+    expect(f.json.photoIds).toEqual(["photo-dock-0001"]);
+    const e = (await snapshot()).db.exceptions.find((x) => x.ref.shortfallId === f.json.id)!;
+    expect(e.body).toContain("1 photo from the dock");
+    expect((await get("photo-dock-0001", "dispatcher")).status).toBe(200);
+    expect((await get("photo-dock-0001", "store")).status).toBe(404);
+  });
+
+  it("alerts dispatch to a long stop and tells the later stores they will be late", async () => {
+    const pending = all().filter((id) => !svc.ops.stops[id]?.deliveredAt);
+    const here = pending[0];
+    expect((await op<SyncResult>("syncDriverEvents", { vehicleId: "VEH011", events: [{ id: "fp-a3", vehicleId: "VEH011", kind: "arrived", orderId: here, at: "06:00", recordedAt: iso(240) }] }, "driver")).json.accepted).toEqual(["fp-a3"]);
+    const r = await watchOnce(svc);
+    expect(r.dwell).toEqual([here]);
+    const d = (await snapshot()).db;
+    const dwell = d.exceptions.find((e) => e.kind === "dwell")!;
+    expect(dwell.ref).toMatchObject({ orderId: here, vehicleId: "VEH011" });
+    expect(dwell.resolved).toBeFalsy();
+    // Four hours at one stop pushes later stops past their windows (a wide afternoon window may still hold).
+    expect(r.late.length).toBeGreaterThan(0);
+    expect(r.late.every((id) => pending.slice(1).includes(id))).toBe(true);
+    const late = d.notices.filter((n) => n.kind === "late");
+    expect(late.every((n) => n.lateMin! >= 5 && n.body.startsWith("We’re sorry, we’ll be about"))).toBe(true);
+    expect((await watchOnce(svc)).late).toEqual([]); // no repeats until it slips another 15 min
+    if (late.length) {
+      expect((await op("ackNotice", { id: late[0].id, response: "reduce" }, "store")).status).toBe(200);
+      expect((await snapshot()).db.exceptions.find((e) => e.kind === "late_reply")).toMatchObject({ severity: "warning", ref: { orderId: late[0].orderId } });
+    }
+    // Leaving the stop answers the dwell alert.
+    await op("syncDriverEvents", { vehicleId: "VEH011", events: [{ id: "fp-p3", vehicleId: "VEH011", kind: "problem", orderId: here, at: "10:00", recordedAt: iso(0), problem: { reason: "Store closed" } }] }, "driver");
+    expect((await snapshot()).db.exceptions.find((e) => e.kind === "dwell")!.resolved).toBe(true);
+  });
+
+  it("keeps the phone's location, connectivity log and a check that every record reached the database", async () => {
+    const link = [{ id: "net-1", state: "offline", at: iso(30) }, { id: "net-2", state: "online", at: iso(12) }];
+    const r = await op<SyncResult>("syncDriverEvents", {
+      vehicleId: "VEH011", events: [],
+      position: { lat: 6.93, lng: 79.86, accuracyM: 18, at: iso(0) },
+      connectivity: link,
+      check: { syncedIds: ["fp-a1", "fp-d1", "ghost-1"], queued: 1, rejected: 0, oldestQueuedAt: iso(3) },
+    }, "driver");
+    expect(r.json.missing).toEqual(["ghost-1"]);
+    await op("syncDriverEvents", { vehicleId: "VEH011", events: [], connectivity: link, position: { lat: 6.94, lng: 79.87, accuracyM: 12, at: iso(0) } }, "driver");
+    const d = (await snapshot()).db;
+    expect(d.driverSync.VEH011.position).toMatchObject({ lat: 6.94, lng: 79.87, accuracyM: 12 });
+    expect(d.driverSync.VEH011.trail).toHaveLength(2);
+    expect(d.driverSync.VEH011.check).toMatchObject({ phoneSynced: 3, phoneQueued: 1, photosQueued: 0, missing: ["ghost-1"] });
+    expect(d.connectivity.filter((c) => c.vehicleId === "VEH011").map((c) => c.state)).toEqual(["online", "offline"]);
+    expect((await snapshot("store")).db.connectivity).toEqual([]);
+    expect((await snapshot("store")).db.driverSync).toEqual({});
+  });
+
+  it("sends dispatch an itemised receipt with the store's photos", async () => {
+    const d = (await snapshot()).db;
+    const id = all()[0];
+    const pod = d.stops[id].pod!;
+    expect((await put("photo-rcpt-0001", "receipt", id, "store")).status).toBe(200);
+    const lines = pod.lines.map((l, i) => ({ skuId: l.skuId, name: l.name, driverQty: l.delivered, receivedQty: i === 0 ? l.delivered - 1 : l.delivered, damagedQty: i === 0 ? 1 : 0 }));
+    expect((await op("confirmReceipt", { orderId: id, lines: lines.map((l) => ({ ...l, damagedQty: l.receivedQty + 1 })), issues: [] }, "store")).status).toBe(400);
+    expect((await op("confirmReceipt", { orderId: id, lines, issues: [{ type: "Count differs from driver" }], photoIds: ["photo-rcpt-0001"] }, "store")).status).toBe(200);
+    const after = (await snapshot()).db;
+    expect(after.receipts[id].photoIds).toEqual(["photo-rcpt-0001"]);
+    const e = after.exceptions.find((x) => x.kind === "receipt_issue" && x.ref.orderId === id)!;
+    expect(e.title).toContain("missing & damaged");
+    expect(e.body).toContain(`Missing: 1 × ${lines[0].name}`);
+    expect(e.body).toContain(`Damaged: 1 × ${lines[0].name}`);
+    expect(e.body).toContain("1 driver photo · 1 store photo");
+    expect((await get("photo-rcpt-0001", "driver")).status).toBe(404);
   });
 });
 

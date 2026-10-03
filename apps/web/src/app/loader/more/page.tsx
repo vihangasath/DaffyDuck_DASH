@@ -1,23 +1,19 @@
 "use client";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Download, LogOut, RefreshCw, Smartphone, Warehouse, WifiOff } from "lucide-react";
-import { AppBar, Button, Card, cx } from "@/components/ui";
+import { Download, RefreshCw, Smartphone, Warehouse } from "lucide-react";
+import { AppBar, Button, Card } from "@/components/ui";
 import { LoaderSync } from "@/components/loader/bits";
 import { ThemePicker, ThemeToggle } from "@/components/theme-controls";
 import { useLoader } from "@/components/loader/loader-context";
-import { setSimulatedOffline, simulatedOffline } from "@/lib/api/network";
-import { useOnline } from "@/lib/hooks";
-import { readSession, signOut } from "@/lib/session";
+import { SignOutButton, SimulateOffline } from "@/components/phone";
+import { readSession } from "@/lib/session";
+import { fmtClock } from "@waypoint/core/domain/time";
 
 /** Chrome/Android offers installation through this event; iOS uses Share → Add to Home Screen. */
 type InstallPrompt = Event & { prompt: () => Promise<void> };
 
 export default function More() {
   const d = useLoader();
-  const online = useOnline();
-  const router = useRouter();
-  const sim = !online && simulatedOffline();
   const s = readSession();
   const [install, setInstall] = useState<InstallPrompt | null>(null);
   const [installed] = useState(() => typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches);
@@ -29,7 +25,7 @@ export default function More() {
     window.addEventListener("beforeinstallprompt", on);
     return () => window.removeEventListener("beforeinstallprompt", on);
   }, []);
-  const saved = d.savedAt ? new Date(d.savedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : null;
+  const saved = d.savedAt ? fmtClock(d.savedAt) : null;
 
   return (
     <>
@@ -69,35 +65,11 @@ export default function More() {
           )}
         </Card>
 
-        <Card className="grid gap-3 p-4">
-          <div>
-            <h2 className="font-bold">Demo: simulate a dead spot</h2>
-            <p className="text-sm text-ink-2">Cuts this tab off from the server, like the back of the cold store. Keep ticking; it all sends when you switch it back.</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={sim}
-            onClick={() => setSimulatedOffline(!sim)}
-            className={cx("flex items-center justify-between rounded-xl border-2 p-3.5 text-left font-semibold transition-colors", sim ? "border-warning bg-warning-soft text-warning" : "border-line hover:border-line-strong")}
-          >
-            <span className="flex items-center gap-2"><WifiOff className="size-5" /> No signal</span>
-            <span className={cx("flex h-7 w-12 items-center rounded-full p-0.5 transition-colors", sim ? "bg-warning" : "bg-line-strong")}>
-              <span className={cx("size-6 rounded-full bg-white shadow-card transition-transform duration-200 ease-out", sim && "translate-x-5")} />
-            </span>
-          </button>
-        </Card>
+        <SimulateOffline title="Demo: simulate a dead spot">
+          Cuts this tab off from the server, like the back of the cold store. Keep ticking; it all sends when you switch it back.
+        </SimulateOffline>
 
-        <Button
-          big
-          kind="secondary"
-          icon={LogOut}
-          onClick={async () => {
-            await signOut();
-            router.replace("/");
-          }}
-        >
-          Sign out
-        </Button>
+        <SignOutButton />
       </div>
     </>
   );

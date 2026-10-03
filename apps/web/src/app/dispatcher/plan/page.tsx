@@ -12,13 +12,14 @@ import { fmtDate, fmtMin } from "@waypoint/core/domain/time";
 import type { DeferralCode, Order, Plan } from "@waypoint/core/domain/types";
 import { useAct, useDepotView } from "@/lib/hooks";
 import { useSession } from "@/lib/session";
-import { moveOrder, planMetrics, suggestFor, type MoveTarget } from "@waypoint/core/planner/allocate";
+import { moveOrder, planMetrics, suggestFor } from "@waypoint/core/planner/allocate";
+import type { MoveRequest } from "@/lib/api";
 import { evaluateVehicle, FRESH_BUDGET_MIN, DAY_BUDGET_MIN, type EvalContext, type TripEval } from "@waypoint/core/planner/evaluate";
 import { consequence, explain } from "@waypoint/core/planner/priority";
 
 type DropId = `trip:${string}` | `new:${string}` | "defer";
-const targetOf = (id: DropId, by: string): MoveTarget =>
-  id === "defer" ? { defer: true, by } : id.startsWith("trip:") ? { tripId: id.slice(5) } : { newTripOn: id.slice(4) };
+const targetOf = (id: DropId): MoveRequest =>
+  id === "defer" ? { defer: true } : id.startsWith("trip:") ? { tripId: id.slice(5) } : { newTripOn: id.slice(4) };
 
 const CODE_LABEL: Record<DeferralCode, string> = {
   REEFER_CAPACITY: "Reefer full", VAN_CAPACITY: "Vans full", FRESH_WINDOW: "Fresh window", DAY_BUDGET: "Day budget",
@@ -58,7 +59,7 @@ export default function PlanPage() {
         <PageHeader title="Plan & allocate" sub={`${fmtDate(DEMO_DATE)} · ${depot}`} />
         <Empty icon={CalendarClock} title={day.ordersClosed ? "No plan yet" : "Orders are still open"}>
           <p>Close today’s orders to generate a plan. The auto-plan respects every operating constraint and explains each deferral.</p>
-          <Button className="mt-4" icon={Wand2} busy={busy} onClick={() => run(() => api.closeOrdersAndPlan(depot, by), "Auto-plan ready")}>
+          <Button className="mt-4" icon={Wand2} busy={busy} onClick={() => run(() => api.closeOrdersAndPlan(depot), "Auto-plan ready")}>
             Close orders &amp; auto-plan
           </Button>
         </Empty>
@@ -67,9 +68,9 @@ export default function PlanPage() {
   }
   const { vehicles, evals, tripEval, scores, metrics } = derived;
 
-  const move = (orderId: string, target: MoveTarget, ok?: string) =>
+  const move = (orderId: string, target: MoveRequest, ok?: string) =>
     run(async () => {
-      const r = await api.moveOrder(depot, orderId, target, by);
+      const r = await api.moveOrder(depot, orderId, target);
       if (!r.ok) throw new Error(r.violations[0]?.message ?? "That move breaks a constraint.");
       if (r.warnings[0]) toast.error(r.warnings[0]);
       return r;
@@ -83,7 +84,9 @@ export default function PlanPage() {
     const over = e.over?.id as DropId | undefined;
     if (!over) return setHover(null);
     if (over === "defer") return setHover({ id: over, ok: true });
-    const r = moveOrder(plan, String(e.active.id), targetOf(over, by), ctx);
+    // Local preview of the drop; the server records who deferred it.
+    const t = targetOf(over);
+    const r = moveOrder(plan, String(e.active.id), "defer" in t ? { ...t, by } : t, ctx);
     setHover({ id: over, ok: r.ok, msg: r.ok ? r.warnings[0] : r.violations[0]?.message });
   };
   const onDragEnd = (e: DragEndEvent) => {
@@ -95,7 +98,7 @@ export default function PlanPage() {
     const inTrip = plan.trips.find((t) => t.orderIds.includes(id));
     if (over === `trip:${inTrip?.id}`) return;
     if (over === "defer" && plan.deferred.some((d) => d.orderId === id)) return;
-    void move(id, targetOf(over, by), over === "defer" ? `${id} deferred — reason recorded` : `${id} moved`);
+    void move(id, targetOf(over), over === "defer" ? `${id} deferred — reason recorded` : `${id} moved`);
   };
 
   const shown = vehicles.filter((v) => {
@@ -125,10 +128,10 @@ export default function PlanPage() {
         }
         actions={
           <>
-            <Button kind="secondary" icon={Wand2} busy={busy} onClick={() => run(() => api.replan(depot, by), "Auto-plan re-run")} disabled={plan.status === "published"} title={plan.status === "published" ? "Published plans are edited move by move" : undefined}>
+            <Button kind="secondary" icon={Wand2} busy={busy} onClick={() => run(() => api.replan(depot), "Auto-plan re-run")} disabled={plan.status === "published"} title={plan.status === "published" ? "Published plans are edited move by move" : undefined}>
               Re-run auto-plan
             </Button>
-            <Button icon={Upload} busy={busy} onClick={() => run(() => api.publishPlan(depot, by), "Plan published to loaders, drivers and stores")}>
+            <Button icon={Upload} busy={busy} onClick={() => run(() => api.publishPlan(depot), "Plan published to loaders, drivers and stores")}>
               {plan.status === "published" ? "Re-publish" : "Publish to loaders"}
             </Button>
           </>
@@ -173,7 +176,7 @@ export default function PlanPage() {
 
         <div className={cx(selected ? "fixed inset-y-0 right-0 z-30 w-[min(380px,100vw)] overflow-y-auto bg-canvas p-3 shadow-2xl 2xl:static 2xl:w-auto 2xl:overflow-visible 2xl:bg-transparent 2xl:p-0 2xl:shadow-none" : "hidden 2xl:block")}>
           {selected ? (
-            <Detail key={selected} orderId={selected} plan={plan} ctx={ctx} score={scores.get(selected)!} tripEval={tripEval} onClose={() => setSelected(null)} move={move} busy={busy} by={by} />
+            <Detail key={selected} orderId={selected} plan={plan} ctx={ctx} score={scores.get(selected)!} tripEval={tripEval} onClose={() => setSelected(null)} move={move} busy={busy} />
           ) : (
             <Card className="grid gap-2.5 p-5 text-sm leading-relaxed text-ink-2">
               <span className="flex size-10 items-center justify-center rounded-xl bg-primary-soft text-primary"><GripVertical className="size-5" /></span>
@@ -410,7 +413,7 @@ const REASONS: { code: DeferralCode; label: string }[] = [
   { code: "MANUAL", label: "Other (explain)" },
 ];
 
-function Detail({ orderId, plan, ctx, score, tripEval, onClose, move, busy, by }: { orderId: string; plan: Plan; ctx: EvalContext; score: Score; tripEval: Map<string, TripEval>; onClose: () => void; move: (id: string, t: MoveTarget, ok?: string) => Promise<unknown>; busy: boolean; by: string }) {
+function Detail({ orderId, plan, ctx, score, tripEval, onClose, move, busy }: { orderId: string; plan: Plan; ctx: EvalContext; score: Score; tripEval: Map<string, TripEval>; onClose: () => void; move: (id: string, t: MoveRequest, ok?: string) => Promise<unknown>; busy: boolean }) {
   const o = ctx.orders.get(orderId)!;
   const out = net.outlets.get(o.outletId)!;
   const deferral = plan.deferred.find((d) => d.orderId === orderId);
@@ -422,7 +425,7 @@ function Detail({ orderId, plan, ctx, score, tripEval, onClose, move, busy, by }
   const [note, setNote] = useState("");
 
   const options = (() => {
-    const res: { label: string; target: MoveTarget }[] = [];
+    const res: { label: string; target: MoveRequest }[] = [];
     for (const t of plan.trips) {
       if (t.id === trip?.id || t.brand !== o.brand || t.district !== out.district) continue;
       if (moveOrder(plan, orderId, { tripId: t.id }, ctx).ok) res.push({ label: `${t.vehicleId} · Trip ${t.tripNo}`, target: { tripId: t.id } });
@@ -437,7 +440,7 @@ function Detail({ orderId, plan, ctx, score, tripEval, onClose, move, busy, by }
 
   const applySuggestion = async () => {
     if (!suggestion) return;
-    if (suggestion.kind === "swap") await move(suggestion.removeOrderId!, { defer: true, code: "MANUAL", note: `Swapped out for ${orderId} (higher priority)`, by });
+    if (suggestion.kind === "swap") await move(suggestion.removeOrderId!, { defer: true, code: "MANUAL", note: `Swapped out for ${orderId} (higher priority)` });
     await move(orderId, suggestion.kind === "newTrip" ? { newTripOn: suggestion.vehicleId } : { tripId: suggestion.tripId }, `${orderId} served on ${suggestion.vehicleId}`);
   };
 
@@ -520,7 +523,7 @@ function Detail({ orderId, plan, ctx, score, tripEval, onClose, move, busy, by }
               {REASONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
             </select>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note for the store (optional)" className="rounded-lg border border-line-strong px-2 py-2 text-sm" />
-            <Button kind="secondary" busy={busy} onClick={() => move(orderId, { defer: true, code: reason, note: note || undefined, by }, `${orderId} deferred`)}>Defer order</Button>
+            <Button kind="secondary" busy={busy} onClick={() => move(orderId, { defer: true, code: reason, note: note || undefined }, `${orderId} deferred`)}>Defer order</Button>
           </div>
         )}
         <Link href={`/dispatcher/deferrals?outlet=${o.outletId}`} className="text-xs font-semibold text-primary">Outlet service history →</Link>

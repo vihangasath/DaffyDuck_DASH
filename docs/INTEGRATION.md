@@ -26,10 +26,15 @@ Each operation is `POST /api/ops/<name>` with a JSON body. It is validated, chec
 | `moveOrder` | dispatcher | `{ depot, orderId, target: { tripId } \| { newTripOn } \| { defer: true, code?, note? } }`. Refused moves return `ok: false` and `violations[]` |
 | `setVehicleStatus` | dispatcher | `{ vehicleId, status }` |
 | `setLoadLine` · `releaseTrip` | loader (own dock) | `{ tripId, key, loaded }` · `{ tripId }` |
-| `flagShortfall` | loader (own dock) | `{ tripId, orderId, skuId, loaded, kind, decision: "release" \| "hold", photo }` |
+| `flagShortfall` | loader (own dock) | `{ tripId, orderId, skuId, loaded, kind, decision: "release" \| "hold", photo, photoIds? }`. Photos are uploaded first (see below) |
 | `resolveShortfall` · `resolveException` | dispatcher | `{ id, resolution }` · `{ id }` |
-| `syncDriverEvents` | driver (own vehicle) | `{ vehicleId, events[] }`. **Idempotent** on each event's `id` → `{ accepted, duplicates, planVersion }` |
-| `ackNotice` · `confirmReceipt` | store (own branch) | `{ id, response }` · `{ orderId, lines, issues }` |
+| `syncDriverEvents` | driver (own vehicle) | `{ vehicleId, events[], position?, connectivity?, check? }`. **Idempotent** on each event's `id` → `{ accepted, duplicates, rejected, planVersion, missing? }`. A delivered event's `pod` carries `code` (or `noCode` with a reason) and `photoIds`; the server sets `codeOk` |
+| `checkCode` | driver (own run) | `{ orderId, code }` → `{ ok, attemptsLeft }`. Nothing is stored; 5 wrong codes per order in 30 min, then 429 |
+| `ackNotice` · `confirmReceipt` | store (own branch) | `{ id, response }` · `{ orderId, lines: [{ skuId, name, driverQty, receivedQty, damagedQty? }], issues, photoIds? }` |
+
+**Photos:** `PUT /api/photos/:id?kind=shortfall|pod|receipt&orderId=…` with the raw JPEG/PNG/WebP body (≤ 6 MB). The id is made on the phone, so a retried upload is idempotent. Loaders upload for their dock, drivers for stops on their run, stores at receipt. `GET /api/photos/:id` returns the image to anyone whose snapshot lists it in `db.photos`.
+
+**Live watch:** every 30 s the API projects each released run (`packages/core/src/live.ts`). A driver at a stop longer than its expected handling time + 10 min raises a `dwell` exception; a stop projected 5+ min past its window sends the store a `late` notice ("We're sorry, we'll be about N min late. Is that OK?"), again if it slips another 15 min. The store's answer reaches dispatch as a `late_reply` exception.
 
 **Live updates:** `GET /api/events?token=…` is a Server-Sent Events stream. It sends `change` with data `ops` (operational state changed) or `reference` (master data changed), and the apps refetch.
 
@@ -67,6 +72,7 @@ Used by the dispatch console's **Network records** screens in the operations app
 3. Releasing a trip records its vehicle-to-stop assignments. If dispatch removes a stop while the driver is offline, queued records from that released vehicle can still sync; the actual delivery or problem takes precedence over the earlier deferral in the store status. Unassigned stops are refused and kept on the phone under **Not accepted**; records for a trip that hasn't been released stay queued until it is.
 4. Facts from the field (arrived, delivered, POD, problem) keep their **device time**. The server records its own `syncedAt`. If the plan version changed while offline, the device diffs its cached run against the new one and shows removed and added stops.
 5. A heartbeat sync every 20 s gives the dispatcher "last seen". In known hill-country dead zones, alerts escalate only after the usual gap.
+6. POD photos wait in IndexedDB (`photos`) and upload before the events that list them. Each sync also carries the phone's latest location (when the driver shares it), its offline/online changes (`netlog`), and a check: the ids it marks as synced for the current plan. Ids the database lacks come back as `missing` and are queued again.
 
 ## Datathon hooks
 

@@ -19,7 +19,7 @@ function Shell({ s, children }: { s: Session; children: React.ReactNode }) {
   const { data: db } = useDb();
   const outletId = s.outletId!;
   const o = net.outlets.get(outletId)!;
-  const unread = db?.notices.filter((n) => n.outletId === outletId && n.kind === "deferral" && !n.acknowledged).length ?? 0;
+  const unread = db?.notices.filter((n) => n.outletId === outletId && (n.kind === "deferral" || n.kind === "late") && !n.acknowledged).length ?? 0;
   // Regional managers ("depot" scope) can look at any branch their depot serves that has orders today.
   const outlets =
     s.outletScope === "depot"

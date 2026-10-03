@@ -9,12 +9,10 @@ import { api } from "@/lib/api";
 import { DEMO_DATE, demoDay, net, outletName, seed } from "@waypoint/core/reference";
 import { fmtDate } from "@waypoint/core/domain/time";
 import { useAct, useDepotView } from "@/lib/hooks";
-import { useSession } from "@/lib/session";
 
 export default function Today() {
   const { depot } = useDepot();
   const view = useDepotView(depot);
-  const [session] = useSession();
   const { run, busy } = useAct();
   const router = useRouter();
   const [brand, setBrand] = useState<"All" | "Fresh" | "Style" | "Tech">("All");
@@ -49,7 +47,7 @@ export default function Today() {
   const list = orders.filter((o) => brand === "All" || o.brand === brand);
 
   const close = async () => {
-    const plan = await run(() => api.closeOrdersAndPlan(depot, session?.name ?? "Dispatcher"), "Orders closed. Auto-plan ready to review.");
+    const plan = await run(() => api.closeOrdersAndPlan(depot), "Orders closed. Auto-plan ready to review.");
     if (plan) router.push("/dispatcher/plan");
   };
 

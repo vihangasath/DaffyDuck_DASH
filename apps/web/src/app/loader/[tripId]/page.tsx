@@ -144,7 +144,7 @@ export default function LoadList() {
           </Link>
           <Button big className="px-3" icon={canRelease ? Unlock : Lock} disabled={!canRelease || !connected || queued > 0} busy={busy} onClick={() => run(async () => {
             if (!(await drain())) throw new Error("Some ticks haven’t reached the server yet. Try again when you have signal.");
-            return api.releaseTrip(tripId, session?.name ?? "Loader");
+            return api.releaseTrip(tripId);
           }, `${te.vehicle.id} released — driver notified`)}>
             {load.status === "released" ? "Released" : !canRelease ? `${open} line${open > 1 ? "s" : ""} left` : queued ? "Syncing…" : "Release"}
           </Button>

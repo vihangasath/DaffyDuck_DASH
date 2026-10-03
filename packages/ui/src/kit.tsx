@@ -256,18 +256,6 @@ export function Toggle({ checked, onChange, label, sub }: { checked: boolean; on
   );
 }
 
-export function Section({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
-  return (
-    <section className="grid gap-3">
-      <div className="flex items-center gap-2">
-        <h3 className="text-sm font-bold">{title}</h3>
-        {aside && <span className="ml-auto">{aside}</span>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 export function SaveBar({ onCancel, busy, label = "Save changes", disabled }: { onCancel: () => void; busy?: boolean; label?: string; disabled?: boolean }) {
   return (
     <>

@@ -1,47 +1,33 @@
 "use client";
-import { useRouter } from "next/navigation";
-import { LogOut, Phone, Truck, WifiOff } from "lucide-react";
+import { LocateFixed, Phone, Truck } from "lucide-react";
 import { useDriver } from "@/components/driver/driver-context";
-import { AppBar, Button, Card, cx } from "@/components/ui";
-import { DriverThemeToggle } from "@/components/driver/theme-toggle";
-import { ThemePicker } from "@/components/theme-controls";
-import { setSimulatedOffline, simulatedOffline } from "@/lib/api/network";
+import { AppBar, Card, cx } from "@/components/ui";
+import { ThemePicker, ThemeToggle } from "@/components/theme-controls";
+import { SignOutButton, SimulateOffline, SwitchRow } from "@/components/phone";
 import { depotName, net } from "@waypoint/core/reference";
-import { readSession, signOut } from "@/lib/session";
+import { readSession } from "@/lib/session";
+import { fmtClock } from "@waypoint/core/domain/time";
+import { CALL } from "@/lib/contacts";
 
 export default function More() {
   const d = useDriver();
-  const router = useRouter();
-  const sim = !d.online && simulatedOffline();
   const s = readSession();
   const v = net.vehicles.get(d.vehicleId);
   return (
     <>
-      <AppBar title="More" sub={s?.name} right={<DriverThemeToggle />} />
+      <AppBar title="More" sub={s?.name} right={<ThemeToggle app="driver" />} />
       <div className="grid gap-3 p-4">
         <ThemePicker app="driver" why="Dim the screen for dawn runs, night shifts and reduced cab glare." />
 
-        <a href="tel:+94112000001" className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 font-semibold shadow-card transition-colors hover:border-primary/40">
+        <a href={CALL.dispatch} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 font-semibold shadow-card transition-colors hover:border-primary/40">
           <span className="flex size-10 items-center justify-center rounded-xl bg-primary-soft text-primary"><Phone className="size-5" /></span> Call dispatch (Peliyagoda)
         </a>
 
-        <Card className="grid gap-3 p-4">
-          <div>
-            <h2 className="font-bold">Demo: simulate a dead zone</h2>
-            <p className="text-sm text-ink-2">Cuts this tab off from the server, like the Kadugannawa pass. Everything you record is kept on the phone and syncs when you switch it back.</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={sim}
-            onClick={() => setSimulatedOffline(!sim)}
-            className={cx("flex items-center justify-between rounded-xl border-2 p-3.5 text-left font-semibold transition-colors", sim ? "border-warning bg-warning-soft text-warning" : "border-line hover:border-line-strong")}
-          >
-            <span className="flex items-center gap-2"><WifiOff className="size-5" /> No signal</span>
-            <span className={cx("flex h-7 w-12 items-center rounded-full p-0.5 transition-colors", sim ? "bg-warning" : "bg-line-strong")}>
-              <span className={cx("size-6 rounded-full bg-white shadow-card transition-transform duration-200 ease-out", sim && "translate-x-5")} />
-            </span>
-          </button>
-        </Card>
+        <LocationCard />
+
+        <SimulateOffline title="Demo: simulate a dead zone">
+          Cuts this tab off from the server, like the Kadugannawa pass. Everything you record is kept on the phone and syncs when you switch it back.
+        </SimulateOffline>
 
         <Card className="flex items-center gap-3 p-4">
           <span className="flex size-10 items-center justify-center rounded-xl bg-navy text-mint"><Truck className="size-5" /></span>
@@ -54,18 +40,35 @@ export default function More() {
         </Card>
         <p className="px-1 text-xs text-ink-2">Dispatch assigns your vehicle. If it’s wrong, call them.</p>
 
-        <Button
-          big
-          kind="secondary"
-          icon={LogOut}
-          onClick={async () => {
-            await signOut();
-            router.replace("/");
-          }}
-        >
-          Sign out
-        </Button>
+        <SignOutButton />
       </div>
     </>
+  );
+}
+
+const STATUS: Record<string, string> = {
+  off: "Off. Dispatch can’t see where the vehicle is.",
+  idle: "Starts when you have a run for today.",
+  asking: "Waiting for the phone to allow location…",
+  on: "Sent to dispatch with every sync (every 20 s while you have signal).",
+  denied: "This phone blocked location for DASH. Allow it in the browser’s site settings, then switch it on again.",
+  unavailable: "The phone can’t get a location right now. It keeps trying.",
+};
+
+/** Share the phone's location with dispatch: whatever the phone can tell (GPS, Wi-Fi or cell towers). */
+function LocationCard() {
+  const { location: l } = useDriver();
+  return (
+    <Card className="grid gap-3 p-4">
+      <div>
+        <h2 className="font-bold">Share location with dispatch</h2>
+        <p className="text-sm text-ink-2">Uses this phone’s location while you have a run. How exact it is depends on the phone and where you are.</p>
+      </div>
+      <SwitchRow checked={l.sharing} onChange={l.setSharing} icon={LocateFixed}>Location sharing</SwitchRow>
+      <p className={cx("text-sm", l.status === "denied" ? "font-semibold text-danger" : "text-ink-2")}>
+        {STATUS[l.status]}
+        {l.status === "on" && l.fix && ` Last fix ${fmtClock(l.fix.at)}, accurate to about ${l.fix.accuracyM} m.`}
+      </p>
+    </Card>
   );
 }
