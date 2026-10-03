@@ -1,5 +1,5 @@
 // Server-Sent Events: every open app hears "ops" (operational state changed) or "reference"
-// (master data changed) and refetches. Replaces the in-browser BroadcastChannel of the mock.
+// (master data changed) and refetches.
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { requireAuth, type Env } from "../http.ts";

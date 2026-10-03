@@ -106,7 +106,7 @@ export default function SignIn() {
   }, []);
 
   return (
-    <main className="phone-dark-signin grid min-h-dvh bg-canvas text-ink transition-colors duration-200 lg:grid-cols-2">
+    <main className="phone-dark-signin max-lg:theme-dark grid min-h-dvh bg-canvas text-ink transition-colors duration-200 lg:grid-cols-2">
       <section className="on-ink relative hidden flex-col justify-center gap-10 overflow-hidden bg-navy p-12 text-white lg:flex xl:p-14">
         {/* A faint topographic wash so the navy field has depth without decoration competing with the loop. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_85%_0%,rgb(0_130_137/0.22),transparent_60%),radial-gradient(60%_50%_at_0%_100%,rgb(16_36_71/0.95),transparent_70%)]" />

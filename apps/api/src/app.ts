@@ -6,6 +6,7 @@ import { modelRoutes } from "./routes/models.ts";
 import { networkRoutes } from "./routes/network.ts";
 import { opsRoutes } from "./routes/ops.ts";
 import { peopleRoutes } from "./routes/people.ts";
+import { photoRoutes } from "./routes/photos.ts";
 import type { Service } from "./service.ts";
 
 export function createApp(svc: Service) {
@@ -21,6 +22,7 @@ export function createApp(svc: Service) {
   app.route("/api/ops", opsRoutes);
   app.route("/api/people", peopleRoutes);
   app.route("/api/network", networkRoutes);
+  app.route("/api/photos", photoRoutes);
   app.route("/api/events", eventRoutes);
   app.route("/api", modelRoutes);
   app.notFound((c) => c.json({ error: "Not found." }, 404));

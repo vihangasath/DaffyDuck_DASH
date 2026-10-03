@@ -1,16 +1,21 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { Camera, Check, CheckCircle2, Circle, Package, Plus, Snowflake, MapPinOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, CheckCircle2, Circle, KeyRound, Loader2, Package, Snowflake, WifiOff, XCircle } from "lucide-react";
 import { useDriver } from "@/components/driver/driver-context";
-import { DriverSync, OfflineBanner } from "@/components/driver/bits";
+import { DriverSync, NotInRun, OfflineBanner } from "@/components/driver/bits";
 import { SignaturePad } from "@/components/signature-pad";
-import { AppBar, Button, Card, Pill, Stepper, cx, Empty } from "@/components/ui";
+import { AppBar, Button, Card, Pill, Stepper, cx } from "@/components/ui";
 import { toast } from "@/components/toast";
 import { net, outletName } from "@waypoint/core/reference";
 import { linesFor } from "@waypoint/core/domain/catalog";
 import { newId } from "@/lib/offline/outbox";
 import { demoStamp } from "@waypoint/core/views";
+import { api } from "@/lib/api";
+import { OfflineError } from "@/lib/api/network";
+import { PhotoPicker, usePhotoDrafts } from "@/components/photo-picker";
+
+type CodeCheck = { state: "idle" | "checking" | "ok" | "bad" | "unchecked" | "locked"; left?: number; message?: string };
 
 export default function Pod() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -22,25 +27,51 @@ export default function Pod() {
   const [qty, setQty] = useState<Record<string, number>>(() =>
     Object.fromEntries((order ? linesFor(order) : []).map((l) => [l.skuId, Math.min(l.qty, d.loaded[`${order!.id}|${l.skuId}`] ?? l.qty)])),
   );
-  const [photos, setPhotos] = useState<string[]>([]);
-  // Camera photos are full-size blobs held in memory; release them when the driver leaves this screen.
-  const photoUrls = useRef<string[]>([]);
-  useEffect(() => {
-    const urls = photoUrls.current;
-    return () => urls.forEach((u) => URL.revokeObjectURL(u));
-  }, []);
+  // Photos stay in memory until the delivery is completed, then go to the phone's outbox with it.
+  const drafts = usePhotoDrafts();
+  const photos = drafts.photos;
   const [signed, setSigned] = useState(false);
   const [receiver, setReceiver] = useState("");
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState("");
+  const [check, setCheck] = useState<CodeCheck>({ state: "idle" });
+  const [noCode, setNoCode] = useState(false);
+  const [noCodeWhy, setNoCodeWhy] = useState("");
+
+  // With signal, check the code as soon as it is complete; without, the server checks it on sync.
+  useEffect(() => {
+    if (code.length !== 6 || noCode) return;
+    let live = true;
+    const t = setTimeout(async () => {
+      if (!d.online) return live && setCheck({ state: "unchecked" });
+      setCheck({ state: "checking" });
+      try {
+        const r = await api.checkCode(orderId, code);
+        if (live) setCheck(r.ok ? { state: "ok" } : { state: "bad", left: r.attemptsLeft });
+      } catch (e) {
+        if (!live) return;
+        if (e instanceof OfflineError) setCheck({ state: "unchecked" });
+        else setCheck({ state: "locked", message: e instanceof Error ? e.message : "Couldn’t check the code." });
+      }
+    }, 250);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [code, noCode, orderId, d.online]);
+
   if (!trip || !order) return <NotInRun />;
   const stop = trip.stops.find((s) => s.orderId === orderId)!;
   const o = net.outlets.get(order.outletId)!;
   const lines = linesFor(order);
-  const ready = signed && receiver.trim().length > 1;
+  const codeReady = noCode ? noCodeWhy.trim().length >= 3 : code.length === 6 && (check.state === "ok" || check.state === "unchecked");
+  const ready = signed && receiver.trim().length > 1 && codeReady;
 
   const complete = async () => {
     setBusy(true);
     const service = net.serviceMin(orderId, order.brand, o.dockType);
+    const photoIds: string[] = [];
+    for (const p of photos) photoIds.push(await d.addPhoto(orderId, p.blob));
     await d.record({
       id: newId(),
       vehicleId: d.vehicleId,
@@ -48,7 +79,11 @@ export default function Pod() {
       orderId,
       at: demoStamp(stop.arrive, orderId, service),
       recordedAt: new Date().toISOString(),
-      pod: { receivedBy: receiver.trim(), signed, photos: photos.length, lines: lines.map((l) => ({ skuId: l.skuId, name: l.name, planned: l.qty, delivered: qty[l.skuId] ?? l.qty })) },
+      pod: {
+        receivedBy: receiver.trim(), signed, photos: photoIds.length, ...(photoIds.length ? { photoIds } : {}),
+        lines: lines.map((l) => ({ skuId: l.skuId, name: l.name, planned: l.qty, delivered: qty[l.skuId] ?? l.qty })),
+        ...(noCode ? { noCode: noCodeWhy.trim() } : { code }),
+      },
     });
     toast.success(d.online ? "Delivery recorded" : "Saved on this phone — will sync automatically");
     router.push("/driver");
@@ -79,31 +114,52 @@ export default function Pod() {
         </Card>
 
         <Card className="grid gap-3 p-4">
-          <h2 className="font-bold">Photos &amp; signature</h2>
-          <div className="flex flex-wrap gap-2">
-            {photos.map((src) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={src} src={src} alt="Delivery photo" className="h-16 w-20 rounded-lg object-cover" />
-            ))}
-            <label className="flex h-16 w-20 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-dashed border-line-strong text-primary transition-colors hover:border-primary hover:bg-primary-soft">
-              {photos.length ? <Plus className="size-5" /> : <Camera className="size-5" />}
-              <span className="text-[10px] font-semibold">Add photo</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="sr-only"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  const url = URL.createObjectURL(f);
-                  photoUrls.current.push(url);
-                  setPhotos((p) => [...p, url]);
-                  e.target.value = "";
-                }}
-              />
-            </label>
+          <div>
+            <h2 className="flex items-center gap-2 font-bold"><KeyRound className="size-[18px] text-primary" /> Delivery code</h2>
+            <p className="text-sm text-ink-2">Ask the person receiving for the 6-digit code in their DASH Stores app. It shows the goods reached the right store.</p>
           </div>
+          {!noCode ? (
+            <>
+              <input
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                  setCheck({ state: "idle" });
+                }}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                aria-label="Delivery code"
+                placeholder="••••••"
+                disabled={check.state === "locked"}
+                className={cx(
+                  "w-full rounded-xl border-2 bg-surface px-3 py-3 text-center font-mono text-[28px] font-bold tracking-[0.5em] text-ink shadow-card placeholder:text-line-strong focus:outline-none focus:ring-4 disabled:bg-subtle",
+                  check.state === "ok" ? "border-success focus:ring-success/15" : check.state === "bad" ? "border-danger focus:ring-danger/15" : "border-line-strong focus:border-primary focus:ring-primary/15",
+                )}
+              />
+              <p role="status" className={cx("flex min-h-5 items-center gap-1.5 text-sm font-semibold", check.state === "ok" ? "text-success" : check.state === "bad" || check.state === "locked" ? "text-danger" : "text-ink-2")}>
+                {check.state === "checking" && <><Loader2 className="size-4 animate-spin" /> Checking…</>}
+                {check.state === "ok" && <><CheckCircle2 className="size-4" /> Code matches</>}
+                {check.state === "bad" && <><XCircle className="size-4" /> That code doesn’t match{check.left != null ? ` · ${check.left} tr${check.left === 1 ? "y" : "ies"} left` : ""}</>}
+                {check.state === "unchecked" && <><WifiOff className="size-4" /> No signal: the code is checked when this syncs</>}
+                {check.state === "locked" && <><XCircle className="size-4" /> {check.message}</>}
+              </p>
+            </>
+          ) : (
+            <label className="grid gap-1.5 text-sm font-semibold text-ink-2">
+              Why is there no code?
+              <input value={noCodeWhy} onChange={(e) => setNoCodeWhy(e.target.value)} placeholder="e.g. Manager’s phone is off" className="rounded-xl border border-line-strong bg-surface px-3 py-3 text-base font-normal text-ink shadow-card focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15" />
+              <span className="text-xs font-normal text-muted">Dispatch is told and checks with the store.</span>
+            </label>
+          )}
+          <button type="button" onClick={() => setNoCode((v) => !v)} className="w-fit text-sm font-semibold text-primary">
+            {noCode ? "Enter the code instead" : "Receiver has no code"}
+          </button>
+        </Card>
+
+        <Card className="grid gap-3 p-4">
+          <h2 className="font-bold">Photos &amp; signature</h2>
+          <PhotoPicker drafts={drafts} size="sm" inputLabel="Add delivery photo" alt="Delivery photo" />
+          {photos.length > 0 && <p className="text-xs text-ink-2">Saved on this phone with the delivery; uploads to dispatch when there’s signal.</p>}
           <SignaturePad onChange={setSigned} />
           <label className="grid gap-1.5 text-sm font-semibold text-ink-2">
             Received by
@@ -119,7 +175,7 @@ export default function Pod() {
         </Button>
         {!ready && (
           <p className="flex justify-center gap-4 text-xs font-semibold">
-            {([["Signature", signed], ["Receiver’s name", receiver.trim().length > 1]] as const).map(([label, ok]) => (
+            {([["Code", codeReady], ["Signature", signed], ["Receiver’s name", receiver.trim().length > 1]] as const).map(([label, ok]) => (
               <span key={label} className={cx("flex items-center gap-1", ok ? "text-success" : "text-muted")}>
                 {ok ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />} {label}
               </span>
@@ -127,17 +183,6 @@ export default function Pod() {
           </p>
         )}
       </div>
-    </>
-  );
-}
-
-function NotInRun() {
-  return (
-    <>
-      <AppBar title="Stop not in your run" back="/driver" />
-      <Empty icon={MapPinOff} title="This stop isn’t on your run">
-        Dispatch may have moved it to another vehicle. Your current stops are on the Run tab.
-      </Empty>
     </>
   );
 }

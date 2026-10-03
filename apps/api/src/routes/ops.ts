@@ -3,7 +3,7 @@
 import { Hono } from "hono";
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
-import type { DriverEvent, Snapshot } from "@waypoint/core/contract";
+import type { DriverEvent, Snapshot, SyncExtras } from "@waypoint/core/contract";
 import { ops, visibleTo, type Actor } from "@waypoint/core/ops";
 import { outletName } from "@waypoint/core/reference";
 import * as t from "../db/schema.ts";
@@ -18,11 +18,17 @@ const Id = z.string().min(1).max(80);
 const DeferralCode = z.enum(["REEFER_CAPACITY", "VAN_CAPACITY", "FRESH_WINDOW", "DAY_BUDGET", "MALL_WINDOW", "FUEL_QUOTA", "CAPACITY", "OVERSIZE", "NO_VEHICLE", "MANUAL"]);
 const Hhmm = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
 const PodLine = z.object({ skuId: Id, name: z.string().max(120), planned: z.number().int().min(0), delivered: z.number().int().min(0) });
+const Code = z.string().regex(/^\d{6}$/, "a delivery code is 6 digits");
+const PhotoIds = z.array(Id).max(10);
+const Iso = z.string().max(40).refine((v) => Number.isFinite(Date.parse(v)), "use an ISO time");
 const Event = z.discriminatedUnion("kind", [
   z.object({ id: Id, vehicleId: Id, kind: z.literal("arrived"), orderId: Id, at: Hhmm, recordedAt: z.string() }),
   z.object({
     id: Id, vehicleId: Id, kind: z.literal("delivered"), orderId: Id, at: Hhmm, recordedAt: z.string(),
-    pod: z.object({ receivedBy: z.string().trim().min(2).max(80), signed: z.boolean(), photos: z.number().int().min(0).max(20), lines: z.array(PodLine).max(50), note: z.string().max(500).optional() }),
+    pod: z.object({
+      receivedBy: z.string().trim().min(2).max(80), signed: z.boolean(), photos: z.number().int().min(0).max(20), photoIds: PhotoIds.optional(), lines: z.array(PodLine).max(50), note: z.string().max(500).optional(),
+      code: Code.optional(), noCode: z.string().trim().max(200).optional(),
+    }),
   }),
   z.object({
     id: Id, vehicleId: Id, kind: z.literal("problem"), orderId: Id, at: Hhmm, recordedAt: z.string(),
@@ -64,7 +70,7 @@ const OPS = {
         z.object({ defer: z.literal(true), code: DeferralCode.optional(), note: z.string().max(300).optional() }),
       ]),
     }),
-    run: (d, a, x) => ops.moveOrder(d, a, x.depot, x.orderId, "defer" in x.target ? { ...x.target, by: a.name } : x.target),
+    run: (d, a, x) => ops.moveOrder(d, a, x.depot, x.orderId, x.target),
     audit: (x, r) => ({
       entity: "order", entityId: x.orderId,
       summary: r.ok
@@ -88,7 +94,7 @@ const OPS = {
     audit: (x) => ({ entity: "load", entityId: x.tripId, summary: `Loaded ${x.loaded} × ${x.key.split("|")[1]} (${x.key.split("|")[0]})` }),
   }),
   flagShortfall: op({
-    args: z.object({ tripId: Id, orderId: Id, skuId: Id, loaded: z.number().int().min(0), kind: z.enum(["missing", "damaged", "wrong_item"]), decision: z.enum(["release", "hold"]), photo: z.boolean() }),
+    args: z.object({ tripId: Id, orderId: Id, skuId: Id, loaded: z.number().int().min(0), kind: z.enum(["missing", "damaged", "wrong_item"]), decision: z.enum(["release", "hold"]), photo: z.boolean(), photoIds: PhotoIds.optional() }),
     run: (d, a, x) => ops.flagShortfall(d, a, x),
     audit: (_x, r) => ({ entity: "shortfall", entityId: r.id, summary: `Flagged ${r.kind.replace("_", " ")} ${r.name}: ${r.loaded} of ${r.planned} on ${r.vehicleId} (${r.decision === "hold" ? "vehicle held" : "released"})` }),
   }),
@@ -103,8 +109,14 @@ const OPS = {
     audit: (x) => ({ entity: "shortfall", entityId: x.id, summary: `Resolved a shortfall: ${x.resolution === "repick" ? "re-pick" : x.resolution === "tomorrow" ? "balance tomorrow" : "release with shortfall"}` }),
   }),
   syncDriverEvents: op({
-    args: z.object({ vehicleId: Id, events: z.array(Event).max(500) }),
-    run: (d, a, x) => ops.syncDriverEvents(d, a, x.vehicleId, x.events as DriverEvent[]),
+    args: z.object({
+      vehicleId: Id,
+      events: z.array(Event).max(500),
+      position: z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180), accuracyM: z.number().min(0).max(100_000), at: Iso }).optional(),
+      connectivity: z.array(z.object({ id: Id, state: z.enum(["offline", "online"]), at: Iso })).max(200).optional(),
+      check: z.object({ syncedIds: z.array(Id).max(1000), queued: z.number().int().min(0), rejected: z.number().int().min(0), oldestQueuedAt: Iso.optional(), photosQueued: z.number().int().min(0).optional() }).optional(),
+    }),
+    run: (d, a, x) => ops.syncDriverEvents(d, a, x.vehicleId, x.events as DriverEvent[], { position: x.position, connectivity: x.connectivity, check: x.check } as SyncExtras),
     audit: (x, r) => ({ entity: "vehicle", entityId: x.vehicleId, summary: r.accepted.length ? `Synced ${r.accepted.length} driver record${r.accepted.length > 1 ? "s" : ""} from ${x.vehicleId}` : `Heartbeat from ${x.vehicleId}` }),
   }),
   ackNotice: op({
@@ -115,8 +127,9 @@ const OPS = {
   confirmReceipt: op({
     args: z.object({
       orderId: Id,
-      lines: z.array(z.object({ skuId: Id, name: z.string().max(120), driverQty: z.number().int().min(0), receivedQty: z.number().int().min(0) })).max(50),
+      lines: z.array(z.object({ skuId: Id, name: z.string().max(120), driverQty: z.number().int().min(0), receivedQty: z.number().int().min(0), damagedQty: z.number().int().min(0).optional() })).max(50),
       issues: z.array(z.object({ type: z.string().min(1).max(60), note: z.string().max(500).optional() })).max(20),
+      photoIds: PhotoIds.optional(),
     }),
     run: (d, a, x) => ops.confirmReceipt(d, a, x),
     audit: (x) => ({ entity: "order", entityId: x.orderId, summary: `Confirmed receipt of ${x.orderId}${x.issues.length ? ` with ${x.issues.length} issue${x.issues.length > 1 ? "s" : ""}` : ""}` }),
@@ -130,9 +143,25 @@ const OPS = {
 
 const PLAN_OPS = new Set<string>(["closeOrdersAndPlan", "replan", "moveOrder", "publishPlan"]);
 
+// Wrong delivery codes per order: a few tries, then the driver records the stop without a code.
+const CODE_TRIES = 5;
+const CODE_WINDOW_MS = 30 * 60_000;
+const codeMisses = new Map<string, number[]>();
+
 export const opsRoutes = new Hono<Env>()
   .use(requireAuth("dispatcher", "loader", "driver", "store"))
   .get("/snapshot", (c) => c.json({ db: visibleTo(c.var.svc.ops, actorOf(c.var.auth.user)), reference: reference() } satisfies Snapshot))
+  .post("/checkCode", async (c) => {
+    const x = await body(c, z.object({ orderId: Id, code: Code }));
+    const now = Date.now();
+    const misses = (codeMisses.get(x.orderId) ?? []).filter((t) => now - t < CODE_WINDOW_MS);
+    if (misses.length >= CODE_TRIES)
+      return c.json({ error: "Too many wrong codes for this stop. Record it without a code and call dispatch." }, 429);
+    const ok = ops.checkCode(c.var.svc.ops, actorOf(c.var.auth.user), x.orderId, x.code);
+    if (!ok) misses.push(now);
+    codeMisses.set(x.orderId, misses);
+    return c.json({ ok, attemptsLeft: CODE_TRIES - misses.length });
+  })
   .post("/:name", async (c) => {
     const name = c.req.param("name") as keyof typeof OPS;
     const def = OPS[name] as OpDef<z.ZodType, unknown> | undefined;

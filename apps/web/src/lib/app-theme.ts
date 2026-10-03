@@ -23,7 +23,7 @@ function stored(app: ThemeApp): ThemeMode {
 
 const systemDark = () => typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-export function setAppTheme(app: ThemeApp, mode: ThemeMode) {
+function setAppTheme(app: ThemeApp, mode: ThemeMode) {
   try {
     localStorage.setItem(key(app), mode);
   } catch {}

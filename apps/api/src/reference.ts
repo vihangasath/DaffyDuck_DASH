@@ -8,7 +8,7 @@ import type { Db } from "./db/client.ts";
 import { applyPredictions } from "./models.ts";
 import * as t from "./db/schema.ts";
 
-export async function loadReference(db: Db): Promise<Reference> {
+async function loadReference(db: Db): Promise<Reference> {
   const [depots, outlets, vehicles, products, travel, allowance, calendar, roads, history, weekly, meta] = await Promise.all([
     db.select().from(t.depots).orderBy(asc(t.depots.id)),
     db.select().from(t.outlets).orderBy(asc(t.outlets.id)),

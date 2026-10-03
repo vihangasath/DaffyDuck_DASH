@@ -17,5 +17,8 @@ export const parseWindow = (w: string): [number, number] => {
   return [toMin(a), toMin(b)];
 };
 
+/** Wall-clock time of an ISO timestamp, "06:42" (the viewer's time zone). */
+export const fmtClock = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
 export const fmtDate = (iso: string, opts: Intl.DateTimeFormatOptions = { weekday: "short", day: "2-digit", month: "short", year: "numeric" }) =>
   new Date(iso + "T00:00:00").toLocaleDateString("en-GB", opts);

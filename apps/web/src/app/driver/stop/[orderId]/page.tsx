@@ -1,16 +1,17 @@
 "use client";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, ClipboardCheck, Info, MapPin, Navigation, Package, Phone, Snowflake, Truck, User, MapPinOff } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Info, MapPin, Navigation, Package, Phone, Snowflake, Truck, User } from "lucide-react";
 import { useDriver } from "@/components/driver/driver-context";
-import { DriverSync, OfflineBanner } from "@/components/driver/bits";
-import { AppBar, Button, Card, Kv, Pill, btnClass, cx, Empty } from "@/components/ui";
+import { DriverSync, NotInRun, OfflineBanner } from "@/components/driver/bits";
+import { AppBar, Button, Card, Kv, Pill, btnClass, cx } from "@/components/ui";
 import { toast } from "@/components/toast";
 import { net, outletName } from "@waypoint/core/reference";
 import { linesFor } from "@waypoint/core/domain/catalog";
 import { fmtMin } from "@waypoint/core/domain/time";
 import { newId } from "@/lib/offline/outbox";
 import { demoStamp, mapsUrl } from "@waypoint/core/views";
+import { CALL } from "@/lib/contacts";
 
 const ACCESS: Record<string, string> = {
   rear_dock: "Rear loading dock — reverse in; ring the receiving bell.",
@@ -60,7 +61,7 @@ export default function StopDetail() {
           <a href={mapsUrl(o.id)} target="_blank" rel="noreferrer" className={cx(btnClass("secondary"), "min-h-12 rounded-xl text-base")}>
             <Navigation className="size-5" /> Navigate
           </a>
-          <a href="tel:+94112000000" className={cx(btnClass("secondary"), "min-h-12 rounded-xl text-base")}>
+          <a href={CALL.store} className={cx(btnClass("secondary"), "min-h-12 rounded-xl text-base")}>
             <Phone className="size-5" /> Call store
           </a>
         </div>
@@ -94,16 +95,5 @@ function Row({ icon: Icon, children }: { icon: typeof Truck; children: React.Rea
       <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-subtle text-ink-2"><Icon className="size-4" /></span>
       <span>{children}</span>
     </p>
-  );
-}
-
-function NotInRun() {
-  return (
-    <>
-      <AppBar title="Stop not in your run" back="/driver" />
-      <Empty icon={MapPinOff} title="This stop isn’t on your run">
-        Dispatch may have moved it to another vehicle. Your current stops are on the Run tab.
-      </Empty>
-    </>
   );
 }

@@ -7,7 +7,7 @@ import { LoaderSync } from "@/components/loader/bits";
 import { ThemeToggle } from "@/components/theme-controls";
 import { useLoader } from "@/components/loader/loader-context";
 import { useSession } from "@/lib/session";
-import { fmtMin } from "@waypoint/core/domain/time";
+import { fmtMin, fmtClock } from "@waypoint/core/domain/time";
 import { dockTrips, LOAD_LABEL } from "@waypoint/core/loading";
 import { outletName } from "@waypoint/core/reference";
 
@@ -65,7 +65,7 @@ export default function DockQueue() {
 
       {fromCache && savedAt && (
         <p className="bg-warning-soft px-4 py-2 text-[13px] font-semibold text-warning">
-          No connection · showing the dock as of {new Date(savedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}. Ticks are kept on this phone.
+          No connection · showing the dock as of {fmtClock(savedAt)}. Ticks are kept on this phone.
         </p>
       )}
 

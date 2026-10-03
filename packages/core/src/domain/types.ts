@@ -86,6 +86,11 @@ export interface Order {
   forDate?: string;
   createdAt?: string;
   createdBy?: string;
+  /**
+   * 6-digit delivery code. The store manager gives it to the driver at the stop to prove the goods
+   * reached the right person. Only dispatchers and the ordering store can read it.
+   */
+  confirmCode?: string;
   /** Stored order lines. Seeded orders only carry totals, so their lines are derived once and stored. */
   lines?: OrderLine[];
 }

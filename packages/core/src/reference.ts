@@ -46,10 +46,6 @@ export function hydrate(ref: Reference) {
 }
 
 export const outletName = (id: string) => names.get(id) ?? id;
-export const outletLabel = (id: string) => {
-  const o = net.outlets.get(id);
-  return o ? `${o.brand} · ${outletName(id)}` : id;
-};
 export const depotName = (id: string) => depots.find((d) => d.id === id)?.name ?? id;
 
 export function contextFor(orders: Order[], fleet: Record<string, string>): EvalContext {

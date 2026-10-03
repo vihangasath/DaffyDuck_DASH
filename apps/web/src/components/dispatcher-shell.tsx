@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Activity, BarChart3, Building2, CalendarDays, History, LayoutGrid, LogOut, Package, RotateCcw, Route, Store, Truck, Warehouse } from "lucide-react";
+import { Activity, BarChart3, Building2, CalendarDays, History, LayoutGrid, LogOut, Package, PackageCheck, RotateCcw, Route, Store, Truck, Warehouse } from "lucide-react";
 import type { Depot } from "@waypoint/core/domain/types";
 import { DEMO_DATE } from "@waypoint/core/reference";
 import { fmtDate } from "@waypoint/core/domain/time";
@@ -24,6 +24,7 @@ const NAV = [
       { href: "/dispatcher", label: "Today", icon: LayoutGrid },
       { href: "/dispatcher/plan", label: "Plan & allocate", icon: Route },
       { href: "/dispatcher/live", label: "Live tracking", icon: Activity },
+      { href: "/dispatcher/deliveries", label: "Deliveries", icon: PackageCheck },
       { href: "/dispatcher/deferrals", label: "Deferrals", icon: History },
       { href: "/dispatcher/capacity", label: "Capacity outlook", icon: BarChart3 },
       { href: "/dispatcher/fleet", label: "Fleet & fuel", icon: Truck },

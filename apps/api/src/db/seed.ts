@@ -23,7 +23,7 @@ const FIRST = ["Chaminda", "Nuwan", "Saman", "Pradeep", "Dinesh", "Lasantha", "A
 const LAST = ["Perera", "Fernando", "Bandara", "Jayasuriya", "Rathnayake", "Gunawardena", "Herath", "Dissanayake", "Senanayake", "Kumara", "Ekanayake", "Weerasinghe", "Karunaratne", "Amarasinghe", "Liyanage", "Samarakoon"];
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
-export interface DemoAccount {
+interface DemoAccount {
   username: string;
   password: string;
   name: string;
@@ -35,7 +35,7 @@ export interface DemoAccount {
 }
 
 /** Listed in the README. Change these passwords in Waypoint People before any real use. */
-export const DEMO_ACCOUNTS: DemoAccount[] = [
+const DEMO_ACCOUNTS: DemoAccount[] = [
   { username: "admin", password: "waypoint", name: "Anjali Wickramasinghe", role: "admin", depotId: "Peliyagoda" },
   { username: "dispatcher", password: "waypoint", name: "Nimali Perera", role: "dispatcher", depotId: "Peliyagoda" },
   { username: "loader", password: "waypoint", name: "Kasun Jayasinghe", role: "loader", depotId: "Peliyagoda" },

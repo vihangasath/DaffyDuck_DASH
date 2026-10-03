@@ -4,7 +4,7 @@ import { devices } from "@playwright/test";
 export const WEB = process.env.WEB_URL ?? "http://localhost:3000";
 export const ADMIN = process.env.ADMIN_URL ?? "http://localhost:3001";
 export const API = process.env.API_URL ?? "http://localhost:4000";
-export const PASSWORD = process.env.DEMO_PASSWORD ?? "waypoint";
+const PASSWORD = process.env.DEMO_PASSWORD ?? "waypoint";
 
 /** Signs in through the API (no browser), for setup and for reading state the screens don't print. */
 export async function apiLogin(username: string, app: "web" | "admin" = "web"): Promise<string> {
@@ -22,6 +22,29 @@ export async function apiGet<T>(token: string, path: string): Promise<T> {
   const res = await fetch(`${API}/api${path}`, { headers: { authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
   return (await res.json()) as T;
+}
+
+/** Runs one operation through the API as `username` (setup steps a spec isn't about). */
+export async function apiOp<T = unknown>(username: string, name: string, args: unknown): Promise<T> {
+  const res = await fetch(`${API}/api/ops/${name}`, { method: "POST", headers: { authorization: `Bearer ${await apiLogin(username)}`, "content-type": "application/json" }, body: JSON.stringify(args) });
+  if (!res.ok) throw new Error(`${name}: ${res.status} ${await res.text()}`);
+  return (await res.json()) as T;
+}
+
+/** A fresh demo day with the Peliyagoda plan published to loaders, drivers and stores. */
+export async function publishedDay() {
+  await resetDemoDay();
+  await apiOp("dispatcher", "closeOrdersAndPlan", { depot: "Peliyagoda" });
+  await apiOp("dispatcher", "publishPlan", { depot: "Peliyagoda" });
+}
+
+/** The loader loads every line of a vehicle's trips and releases them from the dock. */
+export async function releaseVehicle(vehicleId: string) {
+  const s = await apiGet<{ db: { plans: Record<string, { trips: { id: string; vehicleId: string }[] } | null>; loads: Record<string, { lines: Record<string, { planned: number }> }> } }>(await apiLogin("dispatcher"), "/ops/snapshot");
+  for (const t of s.db.plans.Peliyagoda?.trips.filter((x) => x.vehicleId === vehicleId) ?? []) {
+    for (const [key, line] of Object.entries(s.db.loads[t.id].lines)) await apiOp("loader", "setLoadLine", { tripId: t.id, key, loaded: line.planned });
+    await apiOp("loader", "releaseTrip", { tripId: t.id });
+  }
 }
 
 /** Network records → Demo day → Reset: back to the start of the demo day. */
@@ -64,10 +87,36 @@ export async function signIn(page: Page, username: string, landing: RegExp, base
   await expect(page).toHaveURL(landing, { timeout: 60_000 });
 }
 
+/** The store's 6-digit delivery code for an order (only dispatchers and the store can read it). */
+async function codeOf(orderId: string): Promise<string> {
+  const s = await apiGet<{ db: { orders: { id: string; confirmCode?: string }[] } }>(await apiLogin("dispatcher"), "/ops/snapshot");
+  const code = s.db.orders.find((o) => o.id === orderId)?.confirmCode;
+  if (!code) throw new Error(`No delivery code for ${orderId}`);
+  return code;
+}
+
+/** Types the store's delivery code on the POD screen and waits for the phone's verdict (checked now, or on sync offline). */
+export async function enterCode(page: Page, orderId: string) {
+  await page.getByLabel("Delivery code").fill(await codeOf(orderId));
+  await expect(page.getByText(/Code matches|the code is checked when this syncs/)).toBeVisible({ timeout: 30_000 });
+}
+
+/** Area managers pick a branch from the header once the day's orders have loaded; single-branch accounts have no picker. */
+export async function chooseOutlet(page: Page, outletId: string) {
+  const picker = page.getByRole("combobox", { name: "Outlet" });
+  try {
+    await picker.waitFor({ timeout: 15_000 });
+  } catch {
+    return;
+  }
+  await picker.selectOption(outletId);
+}
+
 /** Draws a signature stroke on the POD canvas. */
 export async function sign(page: Page) {
   const pad = page.locator("canvas").first();
-  await pad.scrollIntoViewIfNeeded();
+  // Centre it: at the bottom of a long screen the phone's fixed tab bar would cover it.
+  await pad.evaluate((el) => el.scrollIntoView({ block: "center" }));
   const box = (await pad.boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.6);
   await page.mouse.down();
@@ -81,7 +130,7 @@ export async function sign(page: Page) {
  */
 export async function warmUp() {
   const routes = [
-    "/", "/store", "/store/order", "/store/receipt/x", "/dispatcher", "/dispatcher/plan", "/dispatcher/live",
+    "/", "/store", "/store/order", "/store/receipt/x", "/dispatcher", "/dispatcher/plan", "/dispatcher/live", "/dispatcher/deliveries",
     "/loader", "/loader/x", "/loader/x/flag", "/loader/flags", "/loader/more",
     "/driver", "/driver/more", "/driver/outbox", "/driver/stop/x", "/driver/stop/x/pod",
   ];

@@ -4,7 +4,7 @@ export type LatLng = [lat: number, lng: number];
 
 // The shared datasets carry no outlet coordinates. Outlets are named after a real neighbourhood
 // in their district (see names.ts), so the map places each pin at that neighbourhood's approximate
-// centre. The backend will replace this with Outlet.lat / Outlet.lng (docs/INTEGRATION.md).
+// centre. The database seeds Outlet.lat / Outlet.lng from this, and stored coordinates always win.
 const PLACES: Record<string, LatLng> = {
   // Colombo
   Kollupitiya: [6.9147, 79.8497], Bambalapitiya: [6.8918, 79.856], Wellawatte: [6.8747, 79.8605], Dehiwala: [6.8511, 79.8659],

@@ -6,10 +6,12 @@
 //                  driver events (idempotent sync log), deferral log and the audit log
 // Timestamps are stored as ISO strings in `timestamptz` columns (mode "string").
 import { sql } from "drizzle-orm";
-import { bigserial, boolean, doublePrecision, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { bigserial, boolean, customType, doublePrecision, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 const ts = (name?: string) => (name ? timestamp(name, { withTimezone: true, mode: "string" }) : timestamp({ withTimezone: true, mode: "string" }));
 const created = () => ts().notNull().defaultNow();
+/** Raw bytes (photos). PGlite hands back a Uint8Array, node-postgres a Buffer. */
+const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({ dataType: () => "bytea" });
 
 export const roleEnum = pgEnum("role", ["admin", "dispatcher", "loader", "driver", "store"]);
 export const vehicleStatusEnum = pgEnum("vehicle_status", ["available", "in_workshop"]);
@@ -260,6 +262,7 @@ export const orders = pgTable(
     forDate: text(), // YYYY-MM-DD, or "next-run" after the cutoff
     createdAt: ts(),
     createdBy: text(),
+    confirmCode: text(), // 6-digit delivery code the store gives the driver
   },
   (t) => [index().on(t.outletId), index().on(t.depotId, t.forDate)],
 );
@@ -395,6 +398,7 @@ export const shortfalls = pgTable("shortfalls", {
   kind: text().notNull(),
   decision: text().notNull(),
   photo: boolean().notNull(),
+  photoIds: jsonb(),
   by: text().notNull(),
   at: ts().notNull(),
   resolution: text(),
@@ -442,6 +446,7 @@ export const receipts = pgTable("receipts", {
   by: text().notNull(),
   lines: jsonb().notNull(),
   issues: jsonb().notNull(),
+  photoIds: jsonb(),
 });
 
 export const notices = pgTable(
@@ -458,6 +463,7 @@ export const notices = pgTable(
     body: text().notNull(),
     at: ts().notNull(),
     acknowledged: text(),
+    lateMin: integer(),
   },
   (t) => [index().on(t.outletId)],
 );
@@ -483,7 +489,46 @@ export const driverSync = pgTable("driver_sync", {
     .references(() => vehicles.id),
   lastSyncAt: ts().notNull(),
   lastPlanVersion: integer().notNull(),
+  position: jsonb(), // latest phone location fix
+  trail: jsonb(), // recent fixes, oldest first
+  syncCheck: jsonb(), // what the phone holds vs what reached the database
 });
+
+/** Each time a driver phone went offline or came back online (device time), uploaded on its next sync. */
+export const driverConnectivity = pgTable(
+  "driver_connectivity",
+  {
+    id: text().primaryKey(),
+    seq: bigserial({ mode: "number" }).notNull(),
+    vehicleId: text()
+      .notNull()
+      .references(() => vehicles.id),
+    state: text().notNull(), // offline | online
+    at: ts().notNull(),
+    receivedAt: ts().notNull(),
+  },
+  (t) => [index().on(t.vehicleId)],
+);
+
+/** Photos from the dock (shortfalls), the stop (proof of delivery) and the store (receipt). */
+export const photos = pgTable(
+  "photos",
+  {
+    id: text().primaryKey(), // made on the phone, so a retried upload is idempotent
+    kind: text().notNull(), // shortfall | pod | receipt
+    orderId: text()
+      .notNull()
+      .references(() => orders.id),
+    vehicleId: text(),
+    contentType: text().notNull(),
+    bytes: integer().notNull(),
+    data: bytea().notNull(),
+    by: text().notNull(),
+    userId: text(),
+    at: ts().notNull(),
+  },
+  (t) => [index().on(t.orderId)],
+);
 
 export const deferralLog = pgTable(
   "deferral_log",
@@ -524,4 +569,4 @@ export const auditLog = pgTable(
   (t) => [index().on(t.at), index().on(t.entity, t.entityId)],
 );
 
-export const tableOrderForReset = sql`TRUNCATE ops_days, plans, trips, trip_stops, plan_deferrals, loads, load_lines, shortfalls, stop_records, driver_events, receipts, notices, exceptions, driver_sync, deferral_log, order_lines, orders RESTART IDENTITY CASCADE`;
+export const tableOrderForReset = sql`TRUNCATE photos, driver_connectivity, ops_days, plans, trips, trip_stops, plan_deferrals, loads, load_lines, shortfalls, stop_records, driver_events, receipts, notices, exceptions, driver_sync, deferral_log, order_lines, orders RESTART IDENTITY CASCADE`;

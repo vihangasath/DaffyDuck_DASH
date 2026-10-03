@@ -62,14 +62,14 @@ export function Stamp({ status, className }: { status: StaffRow["status"]; class
   return <span className={cx("stamp text-[11px]", status === "left" ? "text-stamp-left" : "text-stamp-leave", className)}>{status === "left" ? "Left" : "On leave"}</span>;
 }
 
-export const JOB_COLOR: Record<JobRole, string> = {
+const JOB_COLOR: Record<JobRole, string> = {
   driver: "bg-job-driver",
   loader: "bg-job-loader",
   dispatcher: "bg-job-dispatcher",
   store_manager: "bg-job-store",
   hr_officer: "bg-job-hr",
 };
-export const JOB_TEXT: Record<JobRole, string> = {
+const JOB_TEXT: Record<JobRole, string> = {
   driver: "text-job-driver",
   loader: "text-job-loader",
   dispatcher: "text-job-dispatcher",
@@ -356,7 +356,8 @@ export function Rocker({ checked, onChange, on, off, label, disabled }: { checke
 
 // ── Helpers ────────────────────────────────────────────────────────────────────────────────────
 
-export const matches = (q: string, ...fields: (string | null | undefined)[]) => !q || fields.some((f) => f?.toLowerCase().includes(q.toLowerCase()));
+// Search and "x min ago" are the same as in the logistics app.
+export { fmtWhen, matches } from "@waypoint/ui/kit";
 
 /** "20 Oct 2026" from YYYY-MM-DD. */
 export const fmtDay = (d: string | null | undefined) =>
@@ -368,14 +369,5 @@ export const daysUntil = (d: string, from = todayIso()) => Math.round((Date.pars
 /** "in 12 days", "today", "3 days overdue". */
 export const dueIn = (days: number) => (days < 0 ? `${-days} day${days === -1 ? "" : "s"} overdue` : days === 0 ? "today" : `in ${days} day${days === 1 ? "" : "s"}`);
 
-export const fmtWhen = (iso: string | null | undefined) => {
-  if (!iso) return "Never";
-  const d = new Date(iso);
-  const mins = Math.round((Date.now() - d.getTime()) / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins} min ago`;
-  if (mins < 24 * 60) return `${Math.round(mins / 60)} h ago`;
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
-};
 
 export const depotLabel = (d: string) => (d === "Kandy" ? "Kandy hub" : "Peliyagoda DC");

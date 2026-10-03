@@ -3,13 +3,16 @@
 // Authorisation lives here too, next to the rule it protects: the caller's role and scope come from
 // the session, never from the request body.
 import { CATALOG, deriveLines } from "./domain/catalog";
-import type { Depot, Order, Plan, Role, Temp, VehicleStatus } from "./domain/types";
+import type { Depot, Order, Plan, Role, VehicleStatus } from "./domain/types";
 import type { SeedData } from "./domain/network";
 import { autoPlan, moveOrder as plannerMove, validatePlan, type MoveTarget } from "./planner/allocate";
 import { consequence } from "./planner/priority";
 import type { Violation } from "./planner/evaluate";
 import { contextFor, DEMO_DATE, festivalRamp, net, outletName, seed } from "./reference";
-import type { Db, DispatchException, DriverEvent, LoadCheck, Notice, Receipt, Shortfall, SyncResult } from "./contract";
+import { fmtMin } from "./domain/time";
+import { LATE_NOTICE_MIN, LATE_RENOTICE_MIN, DWELL_BUFFER_MIN, liveRun, overstaying } from "./live";
+import { vehicleTrips } from "./views";
+import type { Db, DispatchException, DriverEvent, LoadCheck, MoveRequest, Notice, PhotoKind, PhotoMeta, PlaceOrderInput, Position, Receipt, Shortfall, ShortfallInput, SyncExtras, SyncResult } from "./contract";
 
 export interface Actor {
   userId: string;
@@ -32,6 +35,10 @@ export class OpError extends Error {
 }
 
 const uid = () => crypto.randomUUID();
+/** A fresh 6-digit delivery code (leading zeros kept). */
+export const newCode = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
+/** Most recent positions kept per vehicle for the dispatcher's map. */
+const TRAIL_MAX = 60;
 const NOT_RELEASED = "Trip has not been released by the loader.";
 const nowIso = () => new Date().toISOString();
 
@@ -56,7 +63,7 @@ function must<T>(v: T | undefined | null, what: string): T {
 export function initialDb(data: Pick<SeedData, "orders" | "fleetStatus" | "deferralLog"> = seed): Db {
   return {
     schema: 3,
-    orders: data.orders.map((o) => ({ ...o, forDate: DEMO_DATE, createdBy: "Store (seeded)", lines: deriveLines(o) })),
+    orders: data.orders.map((o) => ({ ...o, forDate: DEMO_DATE, createdBy: "Store (seeded)", lines: deriveLines(o), confirmCode: newCode() })),
     day: { Peliyagoda: { ordersClosed: false }, Kandy: { ordersClosed: false } },
     plans: { Peliyagoda: null, Kandy: null },
     fleetStatus: Object.fromEntries(data.fleetStatus.map((f) => [f.vehicleId, f.status])),
@@ -68,6 +75,8 @@ export function initialDb(data: Pick<SeedData, "orders" | "fleetStatus" | "defer
     exceptions: [],
     driverSync: {},
     processedEventIds: [],
+    photos: {},
+    connectivity: [],
     deferralLog: data.deferralLog.map((d, i) => ({
       id: `H-${String(i).padStart(4, "0")}`,
       orderId: d.orderId, date: d.date, outletId: d.outletId, brand: d.brand, temp: d.temp, volumeM3: d.volumeM3,
@@ -92,6 +101,27 @@ function planOf(db: Db, depot: Depot): Plan {
 function loadOf(db: Db, tripId: string): LoadCheck {
   return must(db.loads[tripId], "Load list");
 }
+
+/** The vehicle a driver's record for this order belongs to: its trip in the published plan, or the stop it already reached. */
+function onRun(db: Db, vehicleId: string, orderId: string) {
+  const plan = db.plans[depotOfVehicle(vehicleId)];
+  const trip = plan?.status === "published" ? plan.trips.find((t) => t.vehicleId === vehicleId && t.orderIds.includes(orderId)) : undefined;
+  return { trip, assigned: !!trip || db.stops[orderId]?.vehicleId === vehicleId };
+}
+
+/** Photos referenced by a record must already be on the server, of the right kind and for the same order. */
+function needPhotos(db: Db, ids: string[] | undefined, kind: PhotoKind, orderId: string) {
+  for (const id of ids ?? []) {
+    const p = db.photos[id];
+    if (!p || p.kind !== kind || p.orderId !== orderId) throw new OpError(400, "A photo is missing or belongs to another record. Take it again.");
+  }
+}
+
+const NOTE_LIMIT = 60;
+const clip = (s: string) => (s.length > NOTE_LIMIT ? s.slice(0, NOTE_LIMIT - 1) + "…" : s);
+
+/** "2 × Milk, 1 × Yoghurt" */
+const listOf = (xs: { name: string; n: number }[]) => xs.map((x) => `${x.n} × ${x.name}`).join(", ");
 
 /** Remember who received each stop when a vehicle leaves, even if dispatch later changes the plan offline. */
 function markReleasedStops(db: Db, tripId: string, vehicleId: string) {
@@ -124,15 +154,9 @@ function syncLoads(db: Db, plan: Plan, live = false) {
   }
 }
 
-export interface PlaceOrderArgs {
-  outletId: string;
-  temp: Temp;
-  lines: { skuId: string; qty: number }[];
-}
-
 /** Every operation the web app can ask for. Arguments arrive from JSON; the API validates their shape first. */
 export const ops = {
-  placeOrder(db: Db, a: Actor, input: PlaceOrderArgs): Order {
+  placeOrder(db: Db, a: Actor, input: PlaceOrderInput): Order {
     need(a, "store");
     needOutlet(a, input.outletId);
     const outlet = must(net.outlets.get(input.outletId), "Outlet");
@@ -167,6 +191,7 @@ export const ops = {
       createdAt: nowIso(),
       createdBy: a.name,
       lines: validSkus.map((x) => ({ skuId: x.s.id, name: x.s.name, unit: x.s.unit, qty: x.l.qty })),
+      confirmCode: newCode(),
     };
     db.orders.push(order);
     notice(db, {
@@ -199,8 +224,10 @@ export const ops = {
     return plan;
   },
 
-  moveOrder(db: Db, a: Actor, depot: Depot, orderId: string, target: MoveTarget): { ok: boolean; violations: Violation[]; warnings: string[] } {
+  moveOrder(db: Db, a: Actor, depot: Depot, orderId: string, request: MoveRequest): { ok: boolean; violations: Violation[]; warnings: string[] } {
     need(a, "dispatcher");
+    // The deferral is decided by the signed-in dispatcher.
+    const target: MoveTarget = "defer" in request ? { ...request, by: a.name } : request;
     const plan = planOf(db, depot);
     const order = must(db.orders.find((o) => o.id === orderId), "Order");
     if (order.depot !== depot || order.forDate !== DEMO_DATE ||
@@ -213,7 +240,7 @@ export const ops = {
       throw new OpError(409, "That order is already on a vehicle that left the depot.");
     if ("newTripOn" in target && !net.vehicles.has(target.newTripOn))
       throw new OpError(404, "Target vehicle not found.");
-    if ("defer" in target) target = { ...target, by: a.name };
+
     if ("tripId" in target && db.loads[target.tripId]?.status === "released") {
       const t = must(plan.trips.find((x) => x.id === target.tripId), "Trip");
       return { ok: false, violations: [{ code: "UNAVAILABLE", message: `${t.vehicleId} trip ${t.tripNo} has already left the depot — choose a trip that is still loading.` }], warnings: [] };
@@ -276,7 +303,7 @@ export const ops = {
     if (l.status === "not_started") l.status = "loading";
   },
 
-  flagShortfall(db: Db, a: Actor, input: Pick<Shortfall, "tripId" | "orderId" | "skuId" | "loaded" | "kind" | "decision" | "photo">): Shortfall {
+  flagShortfall(db: Db, a: Actor, input: ShortfallInput): Shortfall {
     need(a, "loader");
     const l = loadOf(db, input.tripId);
     const depot = depotOfVehicle(l.vehicleId);
@@ -289,10 +316,13 @@ export const ops = {
     const order = must(db.orders.find((o) => o.id === input.orderId), "Order");
     const item = order.lines?.find((x) => x.skuId === input.skuId);
     const loaded = Math.max(0, Math.min(Math.round(input.loaded), line.planned));
+    const photoIds = input.photoIds?.length ? [...new Set(input.photoIds)] : undefined;
+    needPhotos(db, photoIds, "shortfall", input.orderId);
     const s: Shortfall = {
-      ...input, loaded, id: uid(), at: nowIso(), by: a.name, vehicleId: l.vehicleId, outletId: order.outletId,
+      ...input, photoIds, photo: input.photo || !!photoIds, loaded, id: uid(), at: nowIso(), by: a.name, vehicleId: l.vehicleId, outletId: order.outletId,
       name: item?.name ?? input.skuId, planned: line.planned,
     };
+    if (!photoIds) delete s.photoIds;
     db.shortfalls.unshift(s);
     line.loaded = loaded;
     const ref = { tripId: s.tripId, vehicleId: s.vehicleId, orderId: s.orderId, shortfallId: s.id };
@@ -300,12 +330,12 @@ export const ops = {
       l.status = "held";
       exception(db, {
         depot, kind: "shortfall", severity: "danger", title: `${s.vehicleId} held · shortfall`,
-        body: `${s.name}: ${s.loaded} of ${s.planned} loaded for ${outletName(s.outletId)} (${s.kind.replace("_", " ")}). Loader is waiting for your decision.`, ref,
+        body: `${s.name}: ${s.loaded} of ${s.planned} loaded for ${outletName(s.outletId)} (${s.kind.replace("_", " ")}).${photoIds ? ` ${photoIds.length} photo${photoIds.length > 1 ? "s" : ""} from the dock.` : ""} Loader is waiting for your decision.`, ref,
       });
     } else {
       exception(db, {
         depot, kind: "shortfall", severity: "warning", title: `${s.vehicleId} · released with shortfall`,
-        body: `${s.name}: ${s.loaded} of ${s.planned} for ${outletName(s.outletId)}. Store informed; balance goes on the next run.`, ref,
+        body: `${s.name}: ${s.loaded} of ${s.planned} for ${outletName(s.outletId)} (${s.kind.replace("_", " ")}).${photoIds ? ` ${photoIds.length} photo${photoIds.length > 1 ? "s" : ""} from the dock.` : ""} Store informed; balance goes on the next run.`, ref,
       });
       notice(db, { outletId: s.outletId, orderId: s.orderId, kind: "shortfall", title: "Part of your order is short", body: `${s.loaded} of ${s.planned} × ${s.name} are on the truck. The balance will come on the next run.` });
     }
@@ -355,7 +385,7 @@ export const ops = {
     });
   },
 
-  syncDriverEvents(db: Db, a: Actor, vehicleId: string, events: DriverEvent[]): SyncResult {
+  syncDriverEvents(db: Db, a: Actor, vehicleId: string, events: DriverEvent[], extras: SyncExtras = {}): SyncResult {
     need(a, "driver");
     if (a.vehicleId !== vehicleId) throw new OpError(403, `Your account is assigned to ${a.vehicleId ?? "no vehicle"}, not ${vehicleId}.`);
     const accepted: string[] = [];
@@ -374,11 +404,10 @@ export const ops = {
         rejected.push({ id: e.id, reason: "Order no longer exists." });
         continue;
       }
-      const trip = plan?.status === "published" ? plan.trips.find((t) => t.vehicleId === vehicleId && t.orderIds.includes(e.orderId)) : undefined;
       const existing = db.stops[e.orderId];
       // A previously synced arrival proves that an offline completion belonged to this driver,
       // even if dispatch removed the stop while the phone was out of coverage.
-      const assigned = !!trip || existing?.vehicleId === vehicleId;
+      const { trip, assigned } = onRun(db, vehicleId, e.orderId);
       const reason =
         e.vehicleId !== vehicleId ? "Event vehicle differs from the signed-in driver's vehicle."
         : !assigned ? "Stop is not assigned to this driver's run."
@@ -405,10 +434,23 @@ export const ops = {
       if (e.kind === "arrived") rec.arrivedAt = e.at;
       if (e.kind === "delivered") {
         rec.deliveredAt = e.at;
-        rec.pod = e.pod;
+        // The phone can't know the code offline: the server decides whether it matched.
+        const code = e.pod.code?.trim();
+        const codeOk = !!code && !!o.confirmCode && code === o.confirmCode;
+        const photoIds = e.pod.photoIds?.length ? [...new Set(e.pod.photoIds)] : undefined;
+        rec.pod = { ...e.pod, code: code || undefined, photoIds, photos: Math.max(e.pod.photos, photoIds?.length ?? 0), codeOk };
+        if (!rec.pod.code) delete rec.pod.code;
+        if (!rec.pod.photoIds) delete rec.pod.photoIds;
         const short = e.pod.lines.filter((l) => l.delivered < l.planned);
-        notice(db, { outletId: o.outletId, orderId: o.id, kind: "delivered", title: `Delivered at ${e.at}`, body: `Signed by ${e.pod.receivedBy}. ${short.length ? `Driver recorded ${short.map((l) => `${l.planned - l.delivered} × ${l.name} short`).join(", ")}.` : "All items recorded as delivered."} Please confirm receipt.` });
+        notice(db, { outletId: o.outletId, orderId: o.id, kind: "delivered", title: `Delivered at ${e.at}`, body: `Signed by ${e.pod.receivedBy}${codeOk ? " with your delivery code" : ""}. ${short.length ? `Driver recorded ${short.map((l) => `${l.planned - l.delivered} × ${l.name} short`).join(", ")}.` : "All items recorded as delivered."} Please confirm receipt.` });
         if (short.length) exception(db, { depot, kind: "delivered_with_issue", severity: "info", title: `${outletName(o.outletId)} · delivered with shortage`, body: short.map((l) => `${l.name}: ${l.delivered}/${l.planned}`).join(" · "), ref: { orderId: o.id, vehicleId } });
+        if (!codeOk)
+          exception(db, {
+            depot, kind: "pod_code", severity: "warning",
+            title: `${outletName(o.outletId)} · ${code ? "delivery code didn’t match" : "delivered without a code"}`,
+            body: code ? `Driver entered ${code}; the store’s code is ${o.confirmCode ?? "not set"}. Signed by ${e.pod.receivedBy} at ${e.at}. Check with the store that the goods reached them.` : `Reason given: ${clip(e.pod.noCode?.trim() || "none")}. Signed by ${e.pod.receivedBy} at ${e.at}. Check with the store.`,
+            ref: { orderId: o.id, vehicleId },
+          });
       }
       if (e.kind === "problem") {
         rec.problem = e.problem;
@@ -418,19 +460,101 @@ export const ops = {
       rec.recordedAt = e.recordedAt;
       rec.syncedAt = nowIso();
       db.stops[e.orderId] = rec;
+      // The vehicle has left the stop: a dwell alert for it has answered itself.
+      if (e.kind !== "arrived")
+        db.exceptions.forEach((x) => {
+          if (x.kind === "dwell" && x.ref.orderId === e.orderId) x.resolved = true;
+        });
       db.processedEventIds.push(e.id);
       seen.add(e.id);
       accepted.push(e.id);
     }
-    db.driverSync[vehicleId] = { lastSyncAt: nowIso(), lastPlanVersion: plan?.version ?? 0 };
-    return { accepted, duplicates, rejected, planVersion: plan?.version ?? 0 };
+    const prev = db.driverSync[vehicleId];
+    const state: Db["driverSync"][string] = { ...prev, lastSyncAt: nowIso(), lastPlanVersion: plan?.version ?? 0 };
+    if (extras.position) {
+      const p = extras.position;
+      state.position = p;
+      // A short trail: a new point once the vehicle has moved ~25 m or a minute has passed.
+      const trail = [...(prev?.trail ?? [])];
+      const last = trail[trail.length - 1];
+      if (!last || metres(last, p) > 25 || Date.parse(p.at) - Date.parse(last.at) > 60_000) trail.push(p);
+      state.trail = trail.slice(-TRAIL_MAX);
+    }
+    const known = new Set(db.connectivity.map((c) => c.id));
+    const received = nowIso();
+    const fresh = (extras.connectivity ?? []).filter((c) => !known.has(c.id)).sort((x, y) => x.at.localeCompare(y.at));
+    for (const c of fresh) db.connectivity.unshift({ ...c, vehicleId, receivedAt: received });
+    let missing: string[] | undefined;
+    if (extras.check) {
+      missing = extras.check.syncedIds.filter((id) => !seen.has(id));
+      // What is left on the phone once this request lands: the batch was queued, the server just took some.
+      const settled = accepted.length + duplicates.length + rejected.filter((r) => !r.retry).length;
+      const phoneQueued = Math.max(0, extras.check.queued - settled);
+      state.check = {
+        at: received, phoneSynced: extras.check.syncedIds.length + settled, phoneQueued, phoneRejected: extras.check.rejected,
+        missing, photosQueued: extras.check.photosQueued ?? 0,
+        ...(phoneQueued && extras.check.oldestQueuedAt ? { oldestQueuedAt: extras.check.oldestQueuedAt } : {}),
+      };
+    }
+    db.driverSync[vehicleId] = state;
+    return { accepted, duplicates, rejected, planVersion: plan?.version ?? 0, ...(missing?.length ? { missing } : {}) };
+  },
+
+  /** A driver checking a delivery code at the stop. True when it matches; nothing is stored. */
+  checkCode(db: Db, a: Actor, orderId: string, code: string): boolean {
+    need(a, "driver");
+    const o = must(db.orders.find((x) => x.id === orderId), "Order");
+    if (!a.vehicleId || !onRun(db, a.vehicleId, orderId).assigned) throw new OpError(403, "This stop isn’t on your run.");
+    return !!o.confirmCode && code.trim() === o.confirmCode;
+  },
+
+  /** Records an uploaded photo (the API stores the bytes in the same transaction). Idempotent on the id. */
+  addPhoto(db: Db, a: Actor, p: Omit<PhotoMeta, "by" | "at" | "vehicleId">): PhotoMeta {
+    const existing = db.photos[p.id];
+    if (existing) return existing;
+    const o = must(db.orders.find((x) => x.id === p.orderId), "Order");
+    let vehicleId: string | undefined;
+    if (p.kind === "pod") {
+      need(a, "driver");
+      if (!a.vehicleId || !onRun(db, a.vehicleId, o.id).assigned) throw new OpError(403, "This stop isn’t on your run.");
+      vehicleId = a.vehicleId;
+    } else if (p.kind === "shortfall") {
+      need(a, "loader");
+      const trip = db.plans[o.depot]?.trips.find((t) => t.orderIds.includes(o.id));
+      if (!trip) throw new OpError(409, "This order isn’t on a trip.");
+      needDepot(a, o.depot);
+      vehicleId = trip.vehicleId;
+    } else {
+      need(a, "store");
+      needOutlet(a, o.outletId);
+      if (!db.stops[o.id]?.pod) throw new OpError(409, "There is no proof of delivery for this order yet.");
+      vehicleId = db.stops[o.id].vehicleId;
+    }
+    const meta: PhotoMeta = { ...p, by: a.name, at: nowIso(), ...(vehicleId ? { vehicleId } : {}) };
+    db.photos[p.id] = meta;
+    return meta;
   },
 
   ackNotice(db: Db, a: Actor, id: string, response: "ok" | "reduce") {
     need(a, "store");
     const n = must(db.notices.find((x) => x.id === id), "Notice");
     needOutlet(a, n.outletId);
+    const first = !n.acknowledged;
     n.acknowledged = response;
+    if (n.kind === "late" && first) {
+      const o = n.orderId ? db.orders.find((x) => x.id === n.orderId) : undefined;
+      const vehicleId = (n.orderId && db.plans[o?.depot ?? a.depot]?.trips.find((t) => t.orderIds.includes(n.orderId!))?.vehicleId) || undefined;
+      exception(db, {
+        depot: o?.depot ?? net.outlets.get(n.outletId)?.depot ?? a.depot,
+        kind: "late_reply",
+        severity: response === "ok" ? "info" : "warning",
+        title: `${outletName(n.outletId)} · ${response === "ok" ? "accepted the delay" : "asked to reduce the order"}`,
+        body: response === "ok"
+          ? `Told about ${n.lateMin ?? "?"} min late; ${a.name} said that’s OK.`
+          : `Told about ${n.lateMin ?? "?"} min late; ${a.name} would rather take a reduced order. Call the store to agree what to leave off.`,
+        ref: { orderId: n.orderId, vehicleId },
+      });
+    }
   },
 
   confirmReceipt(db: Db, a: Actor, r: Omit<Receipt, "confirmedAt" | "by">) {
@@ -444,12 +568,31 @@ export const ops = {
     if (r.lines.length !== driverLines.size || new Set(r.lines.map((l) => l.skuId)).size !== r.lines.length ||
       r.lines.some((l) => {
         const driver = driverLines.get(l.skuId);
-        return !driver || l.name !== driver.name || l.driverQty !== driver.delivered || l.receivedQty > driver.planned;
+        return !driver || l.name !== driver.name || l.driverQty !== driver.delivered || l.receivedQty > driver.planned || (l.damagedQty ?? 0) > l.receivedQty;
       }))
       throw new OpError(400, "Receipt quantities must match the driver's proof of delivery.");
-    db.receipts[r.orderId] = { ...r, by: a.name, confirmedAt: nowIso() };
-    if (r.issues.length)
-      exception(db, { depot: o.depot, kind: "receipt_issue", severity: "warning", title: `${outletName(o.outletId)} · receipt issue`, body: r.issues.map((i) => i.type + (i.note ? ` (${i.note})` : "")).join(" · "), ref: { orderId: o.id } });
+    const photoIds = r.photoIds?.length ? [...new Set(r.photoIds)] : undefined;
+    needPhotos(db, photoIds, "receipt", o.id);
+    const lines = r.lines.map((l) => (l.damagedQty ? l : { skuId: l.skuId, name: l.name, driverQty: l.driverQty, receivedQty: l.receivedQty }));
+    db.receipts[r.orderId] = { orderId: r.orderId, lines, issues: r.issues, ...(photoIds ? { photoIds } : {}), by: a.name, confirmedAt: nowIso() };
+    // What dispatch needs at a glance: what is missing, what is damaged, what else, and the evidence.
+    const missing = lines.filter((l) => l.receivedQty < l.driverQty).map((l) => ({ name: l.name, n: l.driverQty - l.receivedQty }));
+    const damaged = lines.filter((l) => l.damagedQty).map((l) => ({ name: l.name, n: l.damagedQty! }));
+    const other = r.issues.filter((i) => !(missing.length && i.type === "Count differs from driver"));
+    if (missing.length || damaged.length || other.length) {
+      const evidence = [pod.photoIds?.length ? `${pod.photoIds.length} driver photo${pod.photoIds.length > 1 ? "s" : ""}` : "", photoIds ? `${photoIds.length} store photo${photoIds.length > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ");
+      exception(db, {
+        depot: o.depot, kind: "receipt_issue", severity: missing.length || damaged.length ? "warning" : "info",
+        title: `${outletName(o.outletId)} · receipt: ${[missing.length && "missing", damaged.length && "damaged", other.length && !missing.length && !damaged.length && "issue"].filter(Boolean).join(" & ")}`,
+        body: [
+          missing.length ? `Missing: ${listOf(missing)}` : "",
+          damaged.length ? `Damaged: ${listOf(damaged)}` : "",
+          ...other.filter((i) => i.type !== "Count differs from driver").map((i) => i.type + (i.note ? ` (${i.note})` : "")),
+          evidence,
+        ].filter(Boolean).join(" · "),
+        ref: { orderId: o.id, vehicleId: db.stops[o.id]?.vehicleId },
+      });
+    }
   },
 
   resolveException(db: Db, a: Actor, id: string) {
@@ -458,7 +601,55 @@ export const ops = {
   },
 };
 
-export type OpName = keyof typeof ops;
+/** Straight-line metres between two fixes (equirectangular; plenty for a trail filter). */
+function metres(a: Pick<Position, "lat" | "lng">, b: Pick<Position, "lat" | "lng">) {
+  const k = Math.PI / 180;
+  const x = (b.lng - a.lng) * k * Math.cos(((a.lat + b.lat) / 2) * k);
+  const y = (b.lat - a.lat) * k;
+  return Math.hypot(x, y) * 6_371_000;
+}
+
+/**
+ * The live watch the API runs every half minute (no user involved): raises a dwell alert when a driver
+ * has been at a stop well past its expected handling time, and tells a store when its stop is projected
+ * to miss its window. Returns what it did; nothing changes when there is nothing to say.
+ */
+export function monitor(db: Db, nowMs: number): { dwell: string[]; late: string[] } {
+  const dwell: string[] = [];
+  const late: string[] = [];
+  for (const depot of ["Peliyagoda", "Kandy"] as Depot[]) {
+    const plan = db.plans[depot];
+    if (plan?.status !== "published") continue;
+    for (const vid of [...new Set(plan.trips.map((t) => t.vehicleId))]) {
+      const run = liveRun(vid, vehicleTrips(db, vid), db, nowMs);
+      for (const s of run.trips.flatMap((t) => t.stops)) {
+        if (overstaying(s) && !db.exceptions.some((x) => x.kind === "dwell" && x.ref.orderId === s.orderId && !x.resolved)) {
+          const mins = Math.round(s.dwellMin!);
+          exception(db, {
+            depot, kind: "dwell", severity: "warning",
+            title: `${vid} · ${mins} min at ${outletName(s.outletId)}`,
+            body: `Expected about ${Math.round(s.serviceMin)} min to unload, plus a ${DWELL_BUFFER_MIN} min buffer. Arrived ${fmtMin(s.arrive)}. Later stops on this run are pushed back while it stays.`,
+            ref: { orderId: s.orderId, vehicleId: vid, tripId: s.tripId },
+          });
+          dwell.push(s.orderId);
+        }
+        if (s.state !== "ahead" || s.lateMin < LATE_NOTICE_MIN) continue;
+        const o = db.orders.find((x) => x.id === s.orderId);
+        if (!o || db.plans[depot]!.deferred.some((d) => d.orderId === s.orderId)) continue;
+        const last = db.notices.find((n) => n.kind === "late" && n.orderId === s.orderId);
+        if (last && s.lateMin < (last.lateMin ?? 0) + LATE_RENOTICE_MIN) continue;
+        const n = Math.ceil(s.lateMin / 5) * 5;
+        notice(db, {
+          outletId: o.outletId, orderId: o.id, kind: "late", lateMin: n,
+          title: last ? `Update: about ${n} min late` : `Running about ${n} min late`,
+          body: `We’re sorry, we’ll be about ${n} min late. Is that OK? New arrival around ${fmtMin(s.arrive)}; your window closes ${fmtMin(s.close)}.`,
+        });
+        late.push(s.orderId);
+      }
+    }
+  }
+  return { dwell, late };
+}
 
 const pick = <T>(rec: Record<string, T>, keep: (key: string, v: T) => boolean) =>
   Object.fromEntries(Object.entries(rec).filter(([k, v]) => keep(k, v)));
@@ -470,17 +661,25 @@ const pick = <T>(rec: Record<string, T>, keep: (key: string, v: T) => boolean) =
  */
 export function visibleTo(db: Db, a: Actor): Db {
   if (a.role === "dispatcher") return db;
-  const none = { shortfalls: [], stops: {}, receipts: {}, notices: [], exceptions: [], driverSync: {}, processedEventIds: [], deferralLog: [] };
+  const none = { shortfalls: [], stops: {}, receipts: {}, notices: [], exceptions: [], driverSync: {}, processedEventIds: [], deferralLog: [], photos: {}, connectivity: [] };
+  // The delivery code proves the goods reached the store: only the store that ordered may read it.
+  const noCode = (o: Order): Order => {
+    if (o.confirmCode === undefined) return o;
+    const { confirmCode: _, ...rest } = o;
+    return rest;
+  };
+  const photosWhere = (keep: (p: PhotoMeta) => boolean) => pick(db.photos, (_, p) => keep(p));
   const depotOnly = (depot: Depot) => ({ ...db.plans, Peliyagoda: null, Kandy: null, [depot]: db.plans[depot] }) as Db["plans"];
 
   if (a.role === "loader") {
     const vehicles = (vid: string) => depotOfVehicle(vid) === a.depot;
     return {
       ...db, ...none,
-      orders: db.orders.filter((o) => o.depot === a.depot),
+      orders: db.orders.filter((o) => o.depot === a.depot).map(noCode),
       plans: depotOnly(a.depot),
       loads: pick(db.loads, (_, l) => vehicles(l.vehicleId)),
       shortfalls: db.shortfalls.filter((s) => vehicles(s.vehicleId)),
+      photos: photosWhere((p) => p.kind === "shortfall" && !!p.vehicleId && vehicles(p.vehicleId)),
     };
   }
 
@@ -493,12 +692,14 @@ export function visibleTo(db: Db, a: Actor): Db {
     const ids = new Set([...trips.flatMap((t) => t.orderIds), ...Object.keys(stops)]);
     return {
       ...db, ...none,
-      orders: db.orders.filter((o) => ids.has(o.id)),
+      orders: db.orders.filter((o) => ids.has(o.id)).map(noCode),
       plans: { ...depotOnly(depot), [depot]: plan && { ...plan, trips, deferred: [] } },
       loads: pick(db.loads, (_, l) => l.vehicleId === vid),
-      stops,
+      // The phone checks its own records, not the server's verdict on the code.
+      stops: Object.fromEntries(Object.entries(stops).map(([k, s]) => [k, s.pod ? { ...s, pod: { ...s.pod, codeOk: undefined } } : s])),
       shortfalls: db.shortfalls.filter((s) => s.vehicleId === vid),
       driverSync: pick(db.driverSync, (k) => k === vid),
+      photos: photosWhere((p) => p.vehicleId === vid && p.kind !== "receipt"),
     };
   }
 
@@ -513,22 +714,31 @@ export function visibleTo(db: Db, a: Actor): Db {
   };
   const own = new Set(db.orders.filter((o) => mine(o.outletId)).map((o) => o.id));
   const plans = Object.fromEntries(Object.entries(db.plans).map(([d, p]) => [d, p && { ...p, deferred: p.deferred.filter((x) => own.has(x.orderId)) }])) as Db["plans"];
-  const tripsWithMine = Object.values(db.plans).flatMap((p) => p?.trips ?? []).filter((t) => t.orderIds.some((id) => own.has(id)));
+  // Every trip of a vehicle that carries one of my orders: the arrival countdown depends on the stops
+  // before mine, including an earlier trip that has to come back first.
+  const allTrips = Object.values(db.plans).flatMap((p) => p?.trips ?? []);
+  const myVehicles = new Set(allTrips.filter((t) => t.orderIds.some((id) => own.has(id))).map((t) => t.vehicleId));
+  const tripsWithMine = allTrips.filter((t) => myVehicles.has(t.vehicleId));
   const onMyTrips = new Set(tripsWithMine.flatMap((t) => t.orderIds));
   return {
     ...db, ...none,
     orders: db.orders
       .filter((o) => own.has(o.id) || onMyTrips.has(o.id))
-      .map((o) => (own.has(o.id) ? o : { ...o, lines: undefined, createdBy: "", source: "" })),
+      .map((o) => (own.has(o.id) ? o : { ...noCode(o), lines: undefined, createdBy: "", source: "" })),
     plans,
     loads: Object.fromEntries(tripsWithMine.flatMap((t) => {
       const l = db.loads[t.id];
       return l ? [[t.id, { ...l, lines: pick(l.lines, (k) => own.has(k.split("|")[0])) }]] : [];
     })),
-    stops: pick(db.stops, (id) => own.has(id)),
+    // Other stores' stops on the same vehicle: only when the truck got there and left, nothing they signed.
+    stops: Object.fromEntries(Object.entries(db.stops).flatMap(([id, s]) =>
+      own.has(id) ? [[id, s]]
+      : onMyTrips.has(id) ? [[id, { orderId: id, vehicleId: s.vehicleId, arrivedAt: s.arrivedAt, deliveredAt: s.deliveredAt, problem: s.problem && { reason: "Not delivered" }, recordedAt: s.recordedAt, syncedAt: s.syncedAt }]]
+      : [])),
     receipts: pick(db.receipts, (id) => own.has(id)),
     notices: db.notices.filter((n) => mine(n.outletId)),
     shortfalls: db.shortfalls.filter((s) => own.has(s.orderId)),
     deferralLog: db.deferralLog.filter((d) => mine(d.outletId)),
+    photos: photosWhere((p) => own.has(p.orderId) && p.kind !== "shortfall"),
   };
 }

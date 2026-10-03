@@ -3,7 +3,7 @@
 // with an audit entry. Business rules (packages/core/src/ops.ts) never touch SQL.
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
-import type { Db as OpsDb, DispatchException, LoadCheck, Notice, Receipt, Shortfall, StopRecord } from "@waypoint/core/contract";
+import type { ConnectivityEvent, Db as OpsDb, DispatchException, DriverSyncState, LoadCheck, Notice, PhotoMeta, Receipt, Shortfall, StopRecord } from "@waypoint/core/contract";
 import type { Depot, Order, Plan } from "@waypoint/core/domain/types";
 import type { Tx } from "./db/client.ts";
 import * as t from "./db/schema.ts";
@@ -20,6 +20,8 @@ interface Projection {
   updateOnly?: boolean;
   /** Rows are immutable once written (idempotency log). */
   insertOnly?: boolean;
+  /** Written outside the diff (photo bytes go in with their upload); only read back here. */
+  readOnly?: boolean;
 }
 
 const nn = <T,>(v: T | undefined): T | null => (v === undefined ? null : v);
@@ -40,7 +42,7 @@ const PROJECTIONS: Projection[] = [
       d.orders.map((o) => ({
         id: o.id, outletId: o.outletId, depotId: o.depot, brand: o.brand, temp: o.temp, units: o.units, weightKg: o.weightKg,
         volumeM3: o.volumeM3, deferredYesterday: o.deferredYesterday, daysSinceLastServed: o.daysSinceLastServed, source: o.source,
-        forDate: nn(o.forDate), createdAt: nn(o.createdAt), createdBy: nn(o.createdBy),
+        forDate: nn(o.forDate), createdAt: nn(o.createdAt), createdBy: nn(o.createdBy), confirmCode: nn(o.confirmCode),
       })),
   },
   {
@@ -94,7 +96,7 @@ const PROJECTIONS: Projection[] = [
     rows: (d) =>
       d.shortfalls.map((s) => ({
         id: s.id, tripId: s.tripId, vehicleId: s.vehicleId, orderId: s.orderId, outletId: s.outletId, skuId: s.skuId, name: s.name, planned: s.planned,
-        loaded: s.loaded, kind: s.kind, decision: s.decision, photo: s.photo, by: s.by, at: s.at, resolution: nn(s.resolution), resolvedBy: nn(s.resolvedBy),
+        loaded: s.loaded, kind: s.kind, decision: s.decision, photo: s.photo, photoIds: nn(s.photoIds), by: s.by, at: s.at, resolution: nn(s.resolution), resolvedBy: nn(s.resolvedBy),
       })),
   },
   {
@@ -109,13 +111,13 @@ const PROJECTIONS: Projection[] = [
   {
     table: t.receipts,
     keys: ["orderId"],
-    rows: (d) => Object.values(d.receipts).map((r) => ({ orderId: r.orderId, confirmedAt: r.confirmedAt, by: r.by, lines: r.lines, issues: r.issues })),
+    rows: (d) => Object.values(d.receipts).map((r) => ({ orderId: r.orderId, confirmedAt: r.confirmedAt, by: r.by, lines: r.lines, issues: r.issues, photoIds: nn(r.photoIds) })),
   },
   {
     table: t.notices,
     keys: ["id"],
     newestFirst: true,
-    rows: (d) => d.notices.map((n) => ({ id: n.id, outletId: n.outletId, orderId: nn(n.orderId), kind: n.kind, title: n.title, body: n.body, at: n.at, acknowledged: nn(n.acknowledged) })),
+    rows: (d) => d.notices.map((n) => ({ id: n.id, outletId: n.outletId, orderId: nn(n.orderId), kind: n.kind, title: n.title, body: n.body, at: n.at, acknowledged: nn(n.acknowledged), lateMin: nn(n.lateMin) })),
   },
   {
     table: t.exceptions,
@@ -126,8 +128,17 @@ const PROJECTIONS: Projection[] = [
   {
     table: t.driverSync,
     keys: ["vehicleId"],
-    rows: (d) => Object.entries(d.driverSync).map(([vehicleId, s]) => ({ vehicleId, lastSyncAt: s.lastSyncAt, lastPlanVersion: s.lastPlanVersion })),
+    rows: (d) =>
+      Object.entries(d.driverSync).map(([vehicleId, s]) => ({ vehicleId, lastSyncAt: s.lastSyncAt, lastPlanVersion: s.lastPlanVersion, position: nn(s.position), trail: nn(s.trail), syncCheck: nn(s.check) })),
   },
+  {
+    table: t.driverConnectivity,
+    keys: ["id"],
+    newestFirst: true,
+    insertOnly: true,
+    rows: (d) => d.connectivity.map((c) => ({ id: c.id, vehicleId: c.vehicleId, state: c.state, at: c.at, receivedAt: c.receivedAt })),
+  },
+  { table: t.photos, keys: ["id"], readOnly: true, rows: (d) => Object.keys(d.photos).map((id) => ({ id })) },
   {
     table: t.deferralLog,
     keys: ["id"],
@@ -166,7 +177,7 @@ export async function persist(tx: Tx, prev: OpsDb, next: OpsDb): Promise<number>
   });
   let changed = 0;
   for (const { p, a, b } of [...plan].reverse()) {
-    if (p.updateOnly || p.insertOnly) continue;
+    if (p.updateOnly || p.insertOnly || p.readOnly) continue;
     for (const [k, r] of a) {
       if (b.has(k)) continue;
       await tx.delete(p.table).where(where(p, r));
@@ -174,6 +185,7 @@ export async function persist(tx: Tx, prev: OpsDb, next: OpsDb): Promise<number>
     }
   }
   for (const { p, a, b } of plan) {
+    if (p.readOnly) continue;
     const inserts: Row[] = [];
     for (const [k, r] of b) {
       const old = a.get(k);
@@ -205,7 +217,7 @@ const u = <T,>(v: T | null): T | undefined => (v === null ? undefined : v);
 
 /** Reads the whole operational state from the database. */
 export async function loadOps(db: Tx): Promise<OpsDb> {
-  const [vehicles, orders, lines, days, plans, trips, stops, deferrals, loads, loadLines, shortfalls, stopRecords, events, receipts, notices, exceptions, sync, log] = await Promise.all([
+  const [vehicles, orders, lines, days, plans, trips, stops, deferrals, loads, loadLines, shortfalls, stopRecords, events, receipts, notices, exceptions, sync, log, photoRows, links] = await Promise.all([
     db.select({ id: t.vehicles.id, status: t.vehicles.status }).from(t.vehicles),
     db.select().from(t.orders).orderBy(asc(t.orders.createdAt), asc(t.orders.id)),
     db.select().from(t.orderLines).orderBy(asc(t.orderLines.orderId), asc(t.orderLines.position)),
@@ -224,6 +236,10 @@ export async function loadOps(db: Tx): Promise<OpsDb> {
     db.select().from(t.exceptions).orderBy(desc(t.exceptions.seq)),
     db.select().from(t.driverSync),
     db.select().from(t.deferralLog).orderBy(desc(t.deferralLog.seq)),
+    db
+      .select({ id: t.photos.id, kind: t.photos.kind, orderId: t.photos.orderId, vehicleId: t.photos.vehicleId, contentType: t.photos.contentType, bytes: t.photos.bytes, by: t.photos.by, at: t.photos.at })
+      .from(t.photos),
+    db.select().from(t.driverConnectivity).orderBy(desc(t.driverConnectivity.seq)),
   ]);
 
   const linesBy = new Map<string, Order["lines"]>();
@@ -251,6 +267,7 @@ export async function loadOps(db: Tx): Promise<OpsDb> {
     orders: ordered.map((o) => ({
       id: o.id, outletId: o.outletId, depot: o.depotId as Depot, brand: o.brand as Order["brand"], temp: o.temp as Order["temp"], units: o.units, weightKg: o.weightKg, volumeM3: o.volumeM3,
       deferredYesterday: o.deferredYesterday, daysSinceLastServed: o.daysSinceLastServed, source: o.source, forDate: u(o.forDate), createdAt: iso(o.createdAt), createdBy: u(o.createdBy), lines: linesBy.get(o.id),
+      confirmCode: u(o.confirmCode),
     })),
     day: Object.fromEntries(DEPOTS.map((k) => {
       const d = days.find((x) => x.depotId === k);
@@ -264,24 +281,31 @@ export async function loadOps(db: Tx): Promise<OpsDb> {
     }])),
     shortfalls: shortfalls.map((s): Shortfall => ({
       id: s.id, tripId: s.tripId, vehicleId: s.vehicleId, orderId: s.orderId, outletId: s.outletId, skuId: s.skuId, name: s.name, planned: s.planned, loaded: s.loaded,
-      kind: s.kind as Shortfall["kind"], decision: s.decision as Shortfall["decision"], photo: s.photo, by: s.by, at: iso(s.at)!, resolution: u(s.resolution) as Shortfall["resolution"], resolvedBy: u(s.resolvedBy),
+      kind: s.kind as Shortfall["kind"], decision: s.decision as Shortfall["decision"], photo: s.photo, photoIds: u(s.photoIds) as string[] | undefined, by: s.by, at: iso(s.at)!, resolution: u(s.resolution) as Shortfall["resolution"], resolvedBy: u(s.resolvedBy),
     })),
     stops: Object.fromEntries(stopRecords.map((s) => [s.orderId, {
       orderId: s.orderId, vehicleId: s.vehicleId, arrivedAt: u(s.arrivedAt), deliveredAt: u(s.deliveredAt), pod: u(s.pod) as StopRecord["pod"], problem: u(s.problem) as StopRecord["problem"],
       recordedAt: iso(s.recordedAt)!, syncedAt: iso(s.syncedAt)!,
     }])),
-    receipts: Object.fromEntries(receipts.map((r) => [r.orderId, { orderId: r.orderId, confirmedAt: iso(r.confirmedAt)!, by: r.by, lines: r.lines as Receipt["lines"], issues: r.issues as Receipt["issues"] }])),
-    notices: notices.map((n): Notice => ({ id: n.id, outletId: n.outletId, orderId: u(n.orderId), kind: n.kind as Notice["kind"], title: n.title, body: n.body, at: iso(n.at)!, acknowledged: u(n.acknowledged) as Notice["acknowledged"] })),
+    receipts: Object.fromEntries(receipts.map((r) => [r.orderId, { orderId: r.orderId, confirmedAt: iso(r.confirmedAt)!, by: r.by, lines: r.lines as Receipt["lines"], issues: r.issues as Receipt["issues"], photoIds: u(r.photoIds) as string[] | undefined }])),
+    notices: notices.map((n): Notice => ({ id: n.id, outletId: n.outletId, orderId: u(n.orderId), kind: n.kind as Notice["kind"], title: n.title, body: n.body, at: iso(n.at)!, acknowledged: u(n.acknowledged) as Notice["acknowledged"], lateMin: u(n.lateMin) })),
     exceptions: exceptions.map((e): DispatchException => ({
       id: e.id, depot: e.depotId as Depot, kind: e.kind as DispatchException["kind"], severity: e.severity as DispatchException["severity"], title: e.title, body: e.body, at: iso(e.at)!,
       ref: e.ref as DispatchException["ref"], resolved: e.resolved || undefined,
     })),
-    driverSync: Object.fromEntries(sync.map((s) => [s.vehicleId, { lastSyncAt: iso(s.lastSyncAt)!, lastPlanVersion: s.lastPlanVersion }])),
+    driverSync: Object.fromEntries(sync.map((s): [string, DriverSyncState] => [s.vehicleId, {
+      lastSyncAt: iso(s.lastSyncAt)!, lastPlanVersion: s.lastPlanVersion,
+      position: u(s.position) as DriverSyncState["position"], trail: u(s.trail) as DriverSyncState["trail"], check: u(s.syncCheck) as DriverSyncState["check"],
+    }])),
     processedEventIds: events.map((e) => e.id),
     deferralLog: log.map((x) => ({
       id: x.id, orderId: x.orderId, date: x.date, outletId: x.outletId, brand: x.brand, temp: x.temp, volumeM3: x.volumeM3, code: x.code as OpsDb["deferralLog"][number]["code"],
       reason: x.reason, decidedBy: x.decidedBy, storeNotified: x.storeNotified,
     })),
+    photos: Object.fromEntries(photoRows.map((p): [string, PhotoMeta] => [p.id, {
+      id: p.id, kind: p.kind as PhotoMeta["kind"], orderId: p.orderId, vehicleId: u(p.vehicleId), contentType: p.contentType, bytes: p.bytes, by: p.by, at: iso(p.at)!,
+    }])),
+    connectivity: links.map((c): ConnectivityEvent => ({ id: c.id, vehicleId: c.vehicleId, state: c.state as ConnectivityEvent["state"], at: iso(c.at)!, receivedAt: iso(c.receivedAt)! })),
   };
 }
 
@@ -289,6 +313,6 @@ export async function loadOps(db: Tx): Promise<OpsDb> {
 export function emptyOps(fleetStatus: OpsDb["fleetStatus"]): OpsDb {
   return {
     schema: 3, orders: [], day: { Peliyagoda: { ordersClosed: false }, Kandy: { ordersClosed: false } }, plans: { Peliyagoda: null, Kandy: null },
-    fleetStatus, loads: {}, shortfalls: [], stops: {}, receipts: {}, notices: [], exceptions: [], driverSync: {}, processedEventIds: [], deferralLog: [],
+    fleetStatus, loads: {}, shortfalls: [], stops: {}, receipts: {}, notices: [], exceptions: [], driverSync: {}, processedEventIds: [], deferralLog: [], photos: {}, connectivity: [],
   };
 }

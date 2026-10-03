@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/components/toast";
 import { readToken, writeSession } from "./session";
 
-export class RecordsError extends Error {}
+class RecordsError extends Error {}
 
 export async function records<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const token = readToken();
