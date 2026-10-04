@@ -92,6 +92,14 @@ npm install && npm run dev
 - **Embedded database:** the API runs an embedded Postgres (PGlite) stored in `./.data/pglite`. `npm run db:reset` deletes it, so the next start builds a fresh database.
 - **Postgres server:** set `DATABASE_URL` to use one instead.
 
+### On Render
+
+[`render.yaml`](render.yaml) is a Render Blueprint: in the Render dashboard choose **New → Blueprint** and pick this repository. It creates Postgres 17, the API and both apps from `main`, built in Render's cloud.
+
+- **Seed:** the build has no `data/`, so it boots on the synthetic fixture.
+- **Free plan:** services sleep after about 15 minutes idle; the first request after that takes about a minute.
+- **URLs:** the apps reach the API at `https://daffyduck-dash-api.onrender.com`, fixed at build time. If Render assigns different URLs, correct `API_URL` on `daffyduck-dash` and `daffyduck-people` and `ADMIN_URL` on `daffyduck-dash-api`, then redeploy them.
+
 ### Configuration
 
 Every setting has a default, so none is required. Docker reads them from `.env` (copy [`.env.example`](.env.example)); `npm run dev` reads them from the shell.
