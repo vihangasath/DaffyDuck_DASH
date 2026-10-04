@@ -12,7 +12,7 @@ Tech-Triathlon 2026 · Hackathon submission. **DASH** connects **ordering → pl
 | | |
 |---|---|
 | **Deployed system** | Operations app: https://daffyduck-dash.onrender.com · Waypoint People (HR): https://daffyduck-people.onrender.com (synthetic seed, Render free plan: the first visit after 15 idle minutes takes about a minute) |
-| **Demo video** | [https://youtu.be/NtV_pmNhU5s](https://youtu.be/NtV_pmNhU5s): all four roles through one delivery day, about 7 minutes |
+| **Demo video** | [https://youtu.be/NtV_pmNhU5s](https://youtu.be/NtV_pmNhU5s): all four roles through one delivery day (5:45, unlisted) |
 | **Repository** | [github.com/vihangasath/DaffyDuck_DASH](https://github.com/vihangasath/DaffyDuck_DASH) |
 | **Run it yourself** | `docker compose up --build` starts the complete stack (Postgres, API with migrations and seed data, both apps). No configuration needed. See [Run it](#run-it) |
 | **Walkthrough** | [Judge walkthrough](#judge-walkthrough): numbered, all four roles, from planning to receipt (about 10 minutes) |
@@ -368,3 +368,4 @@ render.yaml       Render Blueprint for the deployed system
 - Demo video: [https://youtu.be/NtV_pmNhU5s](https://youtu.be/NtV_pmNhU5s), and its timed narration: [`docs/DEMO-VIDEO-SCRIPT.md`](docs/DEMO-VIDEO-SCRIPT.md)
 - Plan and screen map: [`docs/PLAN.md`](docs/PLAN.md)
 - What was built, day by day: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
+- Submission links and seeded account credentials in one place: [`docs/SUBMISSION.md`](docs/SUBMISSION.md)
