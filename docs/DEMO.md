@@ -2,7 +2,7 @@
 
 The cross-role loop is DASH's main differentiator, so we show it before judges go looking: **the dispatcher publishes a plan, the loader flags a shortfall, the driver completes a stop, and the dispatcher re-plans while the driver is offline.** Each change shows up live in the other tabs.
 
-`e2e/walkthrough.spec.ts` runs this story end to end. If `npm run e2e` passes, the clicks below work on the seed you're using.
+The recorded demo video is at https://youtu.be/NtV_pmNhU5s. `e2e/walkthrough.spec.ts` runs this story end to end. If `npm run e2e` passes, the clicks below work on the seed you're using.
 
 ## Before you go on (5 min)
 
