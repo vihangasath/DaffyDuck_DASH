@@ -113,6 +113,7 @@ Every setting has a default, so none is required. Docker reads them from `.env` 
 | `PGLITE_DIR` | `./.data/pglite` | Where embedded Postgres keeps its files in development |
 | `ADMIN_URL` | `http://localhost:3001` | Where the operations app sends HR accounts that sign in there |
 | `API_URL` | `http://api:4000` | Build-time target of the web and admin `/api` proxy (Docker build argument) |
+| `SERVICE` | `admin` | Which Dockerfile stage to build (`api`, `web` or `admin`) on hosts with no build-target setting, such as Render. `docker compose` picks the stage itself |
 | `MODEL_URL` | unset → baselines | The Datathon model service, e.g. `http://models:8000` in Docker |
 | `MODEL_TIMEOUT_MS` · `MODEL_NAME` | `5000` · `datathon` | How long the API waits for the model service · the model name shown on screen |
 
@@ -352,8 +353,10 @@ packages/ui/      Shared design system: tokens (theme.css) and UI kit
 e2e/              Playwright end-to-end tests (walkthrough, slow network, loader offline, field proof)
 scripts/          Seed generation and the fresh-clone check
 design/           Scripts that built the Designathon Figma file, and the Figma sync captures
-docs/             Architecture and data model, AI disclosure, integration contract, demo script, plan, changelog
+docs/             Architecture and data model, AI disclosure, integration contract, demo script and video narration, plan, changelog
 data/             Shared competition datasets (local only, never committed)
+Dockerfile        One image recipe for the API and both apps · docker-compose.yml runs the whole stack
+render.yaml       Render Blueprint for the deployed system
 ```
 
 ## More documentation
@@ -362,5 +365,6 @@ data/             Shared competition datasets (local only, never committed)
 - AI tool disclosure: [`docs/AI-DISCLOSURE.md`](docs/AI-DISCLOSURE.md)
 - API endpoints, sync rules and Datathon hooks: [`docs/INTEGRATION.md`](docs/INTEGRATION.md)
 - Demo script (the cross-role story for the video): [`docs/DEMO.md`](docs/DEMO.md)
+- Demo video narration, timed: [`docs/DEMO-VIDEO-SCRIPT.md`](docs/DEMO-VIDEO-SCRIPT.md)
 - Plan and screen map: [`docs/PLAN.md`](docs/PLAN.md)
 - What was built, day by day: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)

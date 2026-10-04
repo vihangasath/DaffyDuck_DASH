@@ -1,6 +1,6 @@
 # Waypoint Delivery Planning: Frontend Plan
 
-> **Update (26 Sep 2026):** this is the original frontend-only plan, kept for the record. The API, the Postgres database and the admin console are now built. See [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`INTEGRATION.md`](INTEGRATION.md).
+> **Update (26 Sep 2026):** this is the original frontend-only plan, kept for the record. The API, the Postgres database and the admin console (now Waypoint People, the HR panel) are built, and the system is deployed on Render (4 Oct). See [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`INTEGRATION.md`](INTEGRATION.md).
 
 > Scope right now: **frontend only** (Next.js). The backend API, database and Datathon models are **documented as integration points, not built**.
 > Deadlines (Asia/Colombo): Designathon **Tue 29 Sep 23:59** · Hackathon **Sun 4 Oct 23:59** · Datathon **Fri 9 Oct 23:59**.

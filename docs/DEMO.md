@@ -6,7 +6,7 @@ The cross-role loop is DASH's main differentiator, so we show it before judges g
 
 ## Before you go on (5 min)
 
-1. Run the stack the judges will see (`docker compose up --build` with the shared CSVs in `data/`), or `npm run dev`.
+1. Run the stack the judges will see (`docker compose up --build` with the shared CSVs in `data/`), or `npm run dev`. The deployed system (https://daffyduck-dash.onrender.com) runs the synthetic seed, so figures marked *(shared dataset)* won't match there; open it a minute early, since free services sleep when idle.
 2. `npm run e2e`. It resets the demo day before it runs, so it is also the rehearsal.
 3. **Reset again by hand:** dispatcher → **Network records → Demo day → Reset the demo day**. The e2e run leaves the day half-done.
 4. Open four windows side by side, each signed in (password `waypoint`):
