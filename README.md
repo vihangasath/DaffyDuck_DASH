@@ -11,7 +11,7 @@ Tech-Triathlon 2026 · Hackathon submission. **DASH** connects **ordering → pl
 
 | | |
 |---|---|
-| **Deployed system** | Operations app: _(link to be added)_ · Waypoint People (HR): _(link to be added)_ |
+| **Deployed system** | Operations app: https://daffyduck-dash.onrender.com · Waypoint People (HR): https://daffyduck-people.onrender.com (synthetic seed, Render free plan: the first visit after 15 idle minutes takes about a minute) |
 | **Demo video** | _(link to be added)_ |
 | **Repository** | [github.com/vihangasath/DaffyDuck_DASH](https://github.com/vihangasath/DaffyDuck_DASH) |
 | **Run it yourself** | `docker compose up --build` starts the complete stack (Postgres, API with migrations and seed data, both apps). No configuration needed. See [Run it](#run-it) |
