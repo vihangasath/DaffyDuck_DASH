@@ -26,7 +26,9 @@ RUN node scripts/ensure-seed.mjs
 FROM source AS api
 ENV NODE_ENV=production PORT=4000
 EXPOSE 4000
-CMD ["npm", "run", "start", "-w", "@waypoint/api"]
+# Node itself, not npm, so `docker compose stop` reaches the API's SIGTERM handler (a clean exit 0
+# rather than npm's "Lifecycle script failed ... code 143").
+CMD ["node", "--import", "tsx", "apps/api/src/index.ts"]
 
 # ── Operations web app ──
 FROM source AS web-build

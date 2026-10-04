@@ -103,17 +103,21 @@ export function DriverProvider({ vehicleId, children }: { vehicleId: string; chi
 
   // Connectivity log: a row each time the app loses or regains the server (no signal, or a dead request).
   const linkKey = `waypoint-link-${vehicleId}`;
+  const linkState = useRef<string | null>(null);
   const link = useCallback(
     async (state: NetRow["state"]) => {
-      let last: string | null = null;
+      let last: string | null = linkState.current;
       try {
-        last = localStorage.getItem(linkKey);
-        if (last === state) return;
+        last ??= localStorage.getItem(linkKey);
+      } catch {}
+      if (last === state) return;
+      linkState.current = state;
+      // The very first reading is a starting point, not a change.
+      if (!(last === null && state === "online")) await driverDb().netlog.put({ id: newId(), vehicleId, state, at: new Date().toISOString(), sent: 0 });
+      // Stored only once the row is saved: a page closed mid-write logs the change again on the next load.
+      try {
         localStorage.setItem(linkKey, state);
       } catch {}
-      // The very first reading is a starting point, not a change.
-      if (last === null && state === "online") return;
-      await driverDb().netlog.put({ id: newId(), vehicleId, state, at: new Date().toISOString(), sent: 0 });
     },
     [linkKey, vehicleId],
   );
