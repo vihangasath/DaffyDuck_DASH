@@ -121,10 +121,12 @@ Every setting has a default, so none is required. Docker reads them from `.env` 
 
 | Command | What it checks |
 |---|---|
-| `npm test` | **Planner tests:** every Task 2B feasibility rule on the active seed, refused manual moves, fairness, and that model predictions move ETAs and late risk but never the brief's trip budgets.<br>**Live-projection tests:** countdowns, a long stop pushing later stops back, re-anchoring on a delivery.<br>**API tests over HTTP:** logins and role checks, what each role may read, store managers confined to their own branch, the whole walkthrough, idempotent driver sync, delivery codes, photo upload and access, dwell alerts and late notices, location, connectivity log and sync check, itemised receipts, the audit trail, state that survives a restart, and the model-service contract. |
+| `npm test` | **Domain tests:** clock times and delivery windows, day counts, map positions for branches, the demo clock.<br>**Planner tests:** every Task 2B feasibility rule on the active seed, refused manual moves, fairness, and that model predictions move ETAs and late risk but never the brief's trip budgets.<br>**Live-projection tests:** countdowns, a long stop pushing later stops back, re-anchoring on a delivery.<br>**API tests over HTTP:** logins and role checks, what each role may read, store managers confined to their own branch, the whole walkthrough, idempotent driver sync, delivery codes, photo upload and access, dwell alerts and late notices, location, connectivity log and sync check, itemised receipts, the audit trail, state that survives a restart, and the model-service contract. |
 | `npm run typecheck` · `npm run lint` | All workspaces |
 | `npm run e2e` | **Playwright, against a running stack:** the judge walkthrough in four tabs; the driver app on a throttled, a stalled and a cut-off connection; the loader app with no Wi-Fi; and the field proof end to end (photos, delivery codes, location, dwell alert, late notice, connectivity log, itemised receipt).<br>Resets the demo day first. `PW_CHANNEL=chrome` uses your installed Chrome. |
 | `npm run check:fresh` | What a judge does: clones the committed code (no `data/`), runs `docker compose up --build` on spare ports (3100/3101/4100), runs the e2e suite against it and tears it down. `DIRTY=1` includes uncommitted changes |
+
+**CI:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the typecheck, lint and tests, then `npm run check:fresh` (Docker Compose plus the end-to-end suite), on every push and pull request.
 
 All of these pass on a fresh clone. The presenter's script for the demo is [`docs/DEMO.md`](docs/DEMO.md).
 

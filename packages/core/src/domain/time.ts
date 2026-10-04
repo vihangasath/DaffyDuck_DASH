@@ -17,6 +17,9 @@ export const parseWindow = (w: string): [number, number] => {
   return [toMin(a), toMin(b)];
 };
 
+/** Whole days from one ISO date to another ("2026-10-04" → "2026-10-20" is 16; negative when `to` is earlier). */
+export const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
+
 /** Wall-clock time of an ISO timestamp, "06:42" (the viewer's time zone). */
 export const fmtClock = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 

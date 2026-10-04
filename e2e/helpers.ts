@@ -102,7 +102,7 @@ export async function enterCode(page: Page, orderId: string) {
 }
 
 /** A branch's own store manager: the named demo `store` account manages OUT007, the others are `store-out012` and so on. */
-export const storeUser = (outletId: string) => (outletId === "OUT007" ? "store" : `store-${outletId.toLowerCase()}`);
+const storeUser = (outletId: string) => (outletId === "OUT007" ? "store" : `store-${outletId.toLowerCase()}`);
 
 /** The store app in a fresh tab, signed in as that branch's manager. */
 export async function storeTab(browser: Browser, outletId: string) {

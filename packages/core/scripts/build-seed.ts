@@ -12,6 +12,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { daysBetween } from "../src/domain/time.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DATA = join(here, "../../../data");
@@ -121,8 +122,6 @@ for (const r of train) {
   const prev = lastServed.get(r.outlet_id);
   if (!prev || r.dispatch_date > prev) lastServed.set(r.outlet_id, r.dispatch_date);
 }
-const daysBetween = (a: string, b: string) =>
-  Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
 
 const deferralLog = train
   .filter((r) => r.dispatch_status !== "attempted" && operatingDays.includes(r.order_date))

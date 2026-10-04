@@ -10,7 +10,7 @@ import { setSimulatedOffline, simulatedOffline } from "@/lib/api/network";
 import { useOnline } from "@/lib/hooks";
 import { signOut } from "@/lib/session";
 
-export interface Tab {
+interface Tab {
   href: string;
   label: string;
   icon: LucideIcon;

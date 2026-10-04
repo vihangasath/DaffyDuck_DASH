@@ -7,6 +7,7 @@ import { and, count, desc, eq, ilike, lt, ne, or, sql, type SQL } from "drizzle-
 import { z } from "zod";
 import { APP_ROLE, JOB_LABEL, type JobRole, type PeopleActivity, type PeopleLookups, type PeopleOverview, type StaffRow } from "@waypoint/core/people";
 import type { Depot } from "@waypoint/core/domain/types";
+import { daysBetween } from "@waypoint/core/domain/time";
 import { OpError } from "@waypoint/core/ops";
 import { depotName, outletName } from "@waypoint/core/reference";
 import * as t from "../db/schema.ts";
@@ -84,8 +85,6 @@ async function loadStaff(db: Env["Variables"]["svc"]["db"]): Promise<StaffRow[]>
     };
   });
 }
-
-const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86400_000);
 
 function activityRow(a: typeof t.auditLog.$inferSelect): PeopleActivity {
   return { id: a.id, at: iso(a.at)!, actor: a.actor, role: a.role, action: a.action, entity: a.entity, entityId: a.entityId, summary: a.summary };

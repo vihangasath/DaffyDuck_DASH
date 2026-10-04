@@ -68,7 +68,7 @@ function jitter(id: string, [lat, lng]: LatLng): LatLng {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const angle = ((h % 360) * Math.PI) / 180;
-  const r = 0.0015 + ((h >> 9) % 45) / 10000;
+  const r = 0.0015 + ((h >>> 9) % 45) / 10000;
   return [lat + r * Math.sin(angle), lng + r * Math.cos(angle)];
 }
 
