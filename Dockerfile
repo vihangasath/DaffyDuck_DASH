@@ -1,5 +1,8 @@
 # One image recipe for the three services. Build context: the repository root.
 #   docker compose up --build        (see docker-compose.yml)
+# Hosts with no build-target setting (Render, see render.yaml) pick the stage with SERVICE=api|web|admin.
+ARG SERVICE=admin
+
 FROM node:24-alpine AS deps
 WORKDIR /repo
 COPY package.json package-lock.json ./
@@ -55,3 +58,6 @@ COPY --from=admin-build /repo/apps/admin/.next/static ./apps/admin/.next/static
 COPY --from=admin-build /repo/apps/admin/public ./apps/admin/public
 EXPOSE 3001
 CMD ["node", "apps/admin/server.js"]
+
+# ── The stage named by SERVICE (docker compose names its target directly) ──
+FROM ${SERVICE}
