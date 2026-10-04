@@ -1,6 +1,6 @@
 # DASH demo video: narration script (≈ 7:05)
 
-Built on the click path in [`DEMO.md`](DEMO.md). Speech is written at a calm ~150 words per minute. Lines in *italics* are on-screen actions, not spoken.
+The recorded video: https://youtu.be/NtV_pmNhU5s. Built on the click path in [`DEMO.md`](DEMO.md). Speech is written at a calm ~150 words per minute. Lines in *italics* are on-screen actions, not spoken.
 Figures marked (shared dataset) only hold on the judged seed; record on that seed, or drop the numbers.
 
 ## Before you hit record

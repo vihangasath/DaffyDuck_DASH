@@ -12,7 +12,7 @@ Tech-Triathlon 2026 · Hackathon submission. **DASH** connects **ordering → pl
 | | |
 |---|---|
 | **Deployed system** | Operations app: https://daffyduck-dash.onrender.com · Waypoint People (HR): https://daffyduck-people.onrender.com (synthetic seed, Render free plan: the first visit after 15 idle minutes takes about a minute) |
-| **Demo video** | _(link to be added)_ |
+| **Demo video** | [https://youtu.be/NtV_pmNhU5s](https://youtu.be/NtV_pmNhU5s): all four roles through one delivery day, about 7 minutes |
 | **Repository** | [github.com/vihangasath/DaffyDuck_DASH](https://github.com/vihangasath/DaffyDuck_DASH) |
 | **Run it yourself** | `docker compose up --build` starts the complete stack (Postgres, API with migrations and seed data, both apps). No configuration needed. See [Run it](#run-it) |
 | **Walkthrough** | [Judge walkthrough](#judge-walkthrough): numbered, all four roles, from planning to receipt (about 10 minutes) |
@@ -293,7 +293,7 @@ The component diagram, the full ER diagram (data model) and the who-can-read-wha
 | **Fidelity to the Day 5 design** (10%) | The same screens, flows and degradation scenarios as the Designathon file (scripts in `design/figma-build/`), with every significant change listed in [Departures](#departures-from-the-designathon-design). |
 | **Engineering quality and architecture** (25%) | [Architecture](#architecture), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), a typed monorepo with shared rules, migrations, role-scoped reads, an audit log, idempotent sync, and unit, API and end-to-end tests that pass on a fresh clone in Docker. |
 | **Creativity** (5%) | The store's delivery code, the live watch with late-delivery notices the store can answer, the "arriving in X min" countdown, photos as evidence end to end, phone-location tracking, the connectivity log with its sync check, the loader's last-stop-first checklist, driver dark mode, and Waypoint People for HR. |
-| **Demo video** (10%) | _(link to be added)_ |
+| **Demo video** (10%) | [https://youtu.be/NtV_pmNhU5s](https://youtu.be/NtV_pmNhU5s), narrated from [`docs/DEMO-VIDEO-SCRIPT.md`](docs/DEMO-VIDEO-SCRIPT.md) |
 
 ## Departures from the Designathon design
 
@@ -365,6 +365,6 @@ render.yaml       Render Blueprint for the deployed system
 - AI tool disclosure: [`docs/AI-DISCLOSURE.md`](docs/AI-DISCLOSURE.md)
 - API endpoints, sync rules and Datathon hooks: [`docs/INTEGRATION.md`](docs/INTEGRATION.md)
 - Demo script (the cross-role story for the video): [`docs/DEMO.md`](docs/DEMO.md)
-- Demo video narration, timed: [`docs/DEMO-VIDEO-SCRIPT.md`](docs/DEMO-VIDEO-SCRIPT.md)
+- Demo video: [https://youtu.be/NtV_pmNhU5s](https://youtu.be/NtV_pmNhU5s), and its timed narration: [`docs/DEMO-VIDEO-SCRIPT.md`](docs/DEMO-VIDEO-SCRIPT.md)
 - Plan and screen map: [`docs/PLAN.md`](docs/PLAN.md)
 - What was built, day by day: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
