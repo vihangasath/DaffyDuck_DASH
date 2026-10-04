@@ -11,7 +11,7 @@ flowchart LR
   ADM -- "/api/* (proxied)" --> API
   WEB <--> DEX
   API["apps/api (Hono)\nauth · roles · business rules · audit · live events\nphotos · live watch every 30 s"] --> CORE["packages/core\nplanner · ops rules · contract"]
-  API --> DB[("Postgres\nembedded PGlite in dev,\nPostgres 17 in Docker")]
+  API --> DB[("Postgres\nembedded PGlite in dev,\nPostgres 17 in Docker and on Render")]
   WEB -. drag-over checks .-> CORE
   API -. "MODEL_URL (optional)" .-> MOD["apps/models (Python)\nDatathon Task 1 + 2A models"]
 ```
@@ -27,6 +27,7 @@ flowchart LR
 - **Datathon models are optional.** The API asks the model service (`apps/models`) for Task 1 and Task 2A predictions at start-up and after every plan change, and serves them with the reference data. `@waypoint/core` uses them for handling times, ETAs and late risk, and Capacity outlook uses them for forecast weeks. With no service, or no model file for a task, that task stays on its baseline. See [`INTEGRATION.md → Datathon hooks`](INTEGRATION.md#datathon-hooks).
 - **Offline driver app.** Actions go to the IndexedDB outbox first. Sync is idempotent on the device's event UUID (`driver_events` table), and the cached run lets the app open with no signal. Delivery photos wait on the phone and upload before the records that list them. Each sync also carries the phone's location, its offline/online changes and a check that every record it holds reached the database; anything missing is sent again.
 - **Live watch.** Every 30 seconds the API projects each released run from the latest driver record (`packages/core/src/live.ts`). It raises a dwell alert when a driver stays at a stop past its expected handling time plus 10 minutes, and tells a store when its stop is projected 5+ minutes past the window. The same projection gives the store its "arriving in X min" countdown.
+- **Deployment.** `docker compose up --build` runs the stack anywhere. The deployed system is a Render Blueprint ([`render.yaml`](../render.yaml)): Postgres 17 and three web services built from the same Dockerfile, each picking its stage with `SERVICE`. On Render's free plan services can't receive private-network traffic, so the two apps proxy `/api/*` to the API's public HTTPS URL, set at build time.
 - **Proof of delivery.** Each order has a 6-digit delivery code that only the ordering store and dispatch can read; the server checks the code the driver entered when the record syncs. Photos (dock, doorstep, receipt) are stored in the database and served only to roles allowed to see that order.
 
 ## Data model
