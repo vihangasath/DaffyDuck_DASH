@@ -1,14 +1,14 @@
 # Render Blueprint: Dashboard → New → Blueprint → this repository. Deploys from main.
-#   dash-db       Postgres 17
-#   dash-api      Waypoint API: migrations + first-run seed (the synthetic fixture: data/ is not in the repo)
-#   dash-web      DASH operations app
-#   dash-people   Waypoint People (HR)
+#   daffyduck-dash-db    Postgres 17
+#   daffyduck-dash-api   Waypoint API: migrations + first-run seed (the synthetic fixture: data/ is not in the repo)
+#   daffyduck-dash       DASH operations app
+#   daffyduck-people     Waypoint People (HR)
 # Render has no build-target setting, so SERVICE picks the Dockerfile stage (Render passes env vars as build args).
 # Free web services can't receive private-network traffic, so the apps reach the API by its public URL.
 # API_URL is fixed at build time: if Render gives a service a different .onrender.com URL (name taken),
 # correct API_URL / ADMIN_URL in the dashboard and redeploy that service.
 databases:
-  - name: dash-db
+  - name: daffyduck-dash-db
     plan: free
     region: singapore
     postgresMajorVersion: "17"
@@ -16,7 +16,7 @@ databases:
     user: waypoint
 
 services:
-  - name: dash-api
+  - name: daffyduck-dash-api
     type: web
     runtime: docker
     plan: free
@@ -31,13 +31,13 @@ services:
       - key: PORT
         value: "4000"
       - key: DATABASE_URL
-        fromDatabase: { name: dash-db, property: connectionString }
+        fromDatabase: { name: daffyduck-dash-db, property: connectionString }
       - key: ADMIN_URL
-        value: https://dash-people.onrender.com
+        value: https://daffyduck-people.onrender.com
       - key: SESSION_HOURS
         value: "12"
 
-  - name: dash-web
+  - name: daffyduck-dash
     type: web
     runtime: docker
     plan: free
@@ -52,9 +52,9 @@ services:
       - key: PORT
         value: "3000"
       - key: API_URL
-        value: https://dash-api.onrender.com
+        value: https://daffyduck-dash-api.onrender.com
 
-  - name: dash-people
+  - name: daffyduck-people
     type: web
     runtime: docker
     plan: free
@@ -69,4 +69,4 @@ services:
       - key: PORT
         value: "3001"
       - key: API_URL
-        value: https://dash-api.onrender.com
+        value: https://daffyduck-dash-api.onrender.com

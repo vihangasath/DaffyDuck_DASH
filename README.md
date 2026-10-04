@@ -98,7 +98,7 @@ npm install && npm run dev
 
 - **Seed:** the build has no `data/`, so it boots on the synthetic fixture.
 - **Free plan:** services sleep after about 15 minutes idle; the first request after that takes about a minute.
-- **URLs:** the apps reach the API at `https://dash-api.onrender.com`, fixed at build time. If Render assigns different URLs, correct `API_URL` on `dash-web` and `dash-people` and `ADMIN_URL` on `dash-api`, then redeploy them.
+- **URLs:** the apps reach the API at `https://daffyduck-dash-api.onrender.com`, fixed at build time. If Render assigns different URLs, correct `API_URL` on `daffyduck-dash` and `daffyduck-people` and `ADMIN_URL` on `daffyduck-dash-api`, then redeploy them.
 
 ### Configuration
 
