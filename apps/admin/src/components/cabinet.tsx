@@ -1,10 +1,12 @@
 "use client";
 // Waypoint People's building blocks, in the filing-cabinet world: buttons, rubber stamps, job signal tabs,
 // index cards, form fields, divider tabs and the ledger table. Every screen is assembled from these.
-import { forwardRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, Loader2, Search, X, type LucideIcon } from "lucide-react";
 import { JOB_LABEL, type JobRole, type StaffRow } from "@waypoint/core/people";
+import { daysBetween } from "@waypoint/core/domain/time";
 import { cx } from "@waypoint/ui/ui";
+import { useSortedRows, type Column, type SortState } from "@waypoint/ui/kit";
 
 // ── Brand ──────────────────────────────────────────────────────────────────────────────────────
 
@@ -219,14 +221,7 @@ export function Dividers<T extends string>({ value, onChange, options, label, cl
 
 // ── Ledger table ───────────────────────────────────────────────────────────────────────────────
 
-export interface Column<T> {
-  key: string;
-  header: string;
-  cell: (row: T) => ReactNode;
-  sort?: (row: T) => string | number;
-  className?: string;
-  align?: "right";
-}
+export type { Column } from "@waypoint/ui/kit";
 
 export function Ledger<T>({ rows, columns, rowKey, onRowClick, empty, initialSort, minWidth = 760, dim, label }: {
   rows: T[];
@@ -234,19 +229,12 @@ export function Ledger<T>({ rows, columns, rowKey, onRowClick, empty, initialSor
   rowKey: (r: T) => string;
   onRowClick?: (r: T) => void;
   empty: { icon: LucideIcon; title: string; body?: ReactNode };
-  initialSort?: { key: string; dir: 1 | -1 };
+  initialSort?: SortState;
   minWidth?: number;
   dim?: (r: T) => boolean;
   label: string;
 }) {
-  const [sort, setSort] = useState(initialSort ?? null);
-  const col = sort && columns.find((c) => c.key === sort.key);
-  const sorted = col?.sort
-    ? [...rows].sort((a, b) => {
-        const x = col.sort!(a), y = col.sort!(b);
-        return (x < y ? -1 : x > y ? 1 : 0) * sort!.dir;
-      })
-    : rows;
+  const { sorted, sort, toggle, ariaSort } = useSortedRows(rows, columns, initialSort);
   return (
     <Sheet className="overflow-hidden">
       <div className="overflow-x-auto">
@@ -254,9 +242,9 @@ export function Ledger<T>({ rows, columns, rowKey, onRowClick, empty, initialSor
           <thead className="bg-well text-left text-ink-2">
             <tr>
               {columns.map((c) => (
-                <th key={c.key} scope="col" aria-sort={sort?.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined} className={cx("caps px-3 py-2.5 text-[11px] first:pl-4 last:pr-4", c.align === "right" && "text-right", c.className)}>
+                <th key={c.key} scope="col" aria-sort={ariaSort(c.key)} className={cx("caps px-3 py-2.5 text-[11px] first:pl-4 last:pr-4", c.align === "right" && "text-right", c.className)}>
                   {c.sort ? (
-                    <button type="button" className={cx("inline-flex items-center gap-1 uppercase hover:text-ink", sort?.key === c.key && "text-ink")} onClick={() => setSort((s) => (s?.key === c.key ? { key: c.key, dir: s.dir === 1 ? -1 : 1 } : { key: c.key, dir: 1 }))}>
+                    <button type="button" className={cx("inline-flex items-center gap-1 uppercase hover:text-ink", sort?.key === c.key && "text-ink")} onClick={() => toggle(c.key)}>
                       {c.header}
                       {sort?.key === c.key && (sort.dir === 1 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
                     </button>
@@ -364,7 +352,7 @@ export const fmtDay = (d: string | null | undefined) =>
   d ? new Date(`${d}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 export const todayIso = () => new Date().toISOString().slice(0, 10);
-export const daysUntil = (d: string, from = todayIso()) => Math.round((Date.parse(d) - Date.parse(from)) / 86400_000);
+export const daysUntil = (d: string, from = todayIso()) => daysBetween(from, d);
 
 /** "in 12 days", "today", "3 days overdue". */
 export const dueIn = (days: number) => (days < 0 ? `${-days} day${days === -1 ? "" : "s"} overdue` : days === 0 ? "today" : `in ${days} day${days === 1 ? "" : "s"}`);

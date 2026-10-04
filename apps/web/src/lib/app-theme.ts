@@ -5,7 +5,7 @@ import { useEffect, useSyncExternalStore } from "react";
 // a driver who prefers light in the cab doesn't change the dock phone. The dark tokens live in globals.css.
 
 export type ThemeApp = "driver" | "loader";
-export type ThemeMode = "dark" | "light" | "system";
+type ThemeMode = "dark" | "light" | "system";
 
 /** The driver starts dark (cab glare at dawn); the loader follows the phone, since docks are brightly lit. */
 const DEFAULT: Record<ThemeApp, ThemeMode> = { driver: "dark", loader: "system" };

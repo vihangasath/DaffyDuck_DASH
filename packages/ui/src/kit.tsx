@@ -18,6 +18,27 @@ export interface Column<T> {
   align?: "right";
 }
 
+export interface SortState {
+  key: string;
+  dir: 1 | -1;
+}
+
+/** Rows in the order of the sorted column. Clicking a header sorts by it, and clicking it again reverses. */
+export function useSortedRows<T>(rows: T[], columns: Column<T>[], initialSort?: SortState) {
+  const [sort, setSort] = useState<SortState | null>(initialSort ?? null);
+  const col = sort && columns.find((c) => c.key === sort.key);
+  const sorted = col?.sort
+    ? [...rows].sort((a, b) => {
+        const x = col.sort!(a), y = col.sort!(b);
+        return (x < y ? -1 : x > y ? 1 : 0) * sort!.dir;
+      })
+    : rows;
+  const toggle = (key: string) => setSort((s) => (s?.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: 1 }));
+  /** The header's aria-sort value, so screen readers announce the order. */
+  const ariaSort = (key: string) => (sort?.key === key ? (sort.dir === 1 ? "ascending" : "descending") : undefined);
+  return { sorted, sort, toggle, ariaSort };
+}
+
 export function DataTable<T>({
   rows, columns, rowKey, onRowClick, empty, loading, error, initialSort, minWidth = 760, dim,
 }: {
@@ -28,21 +49,14 @@ export function DataTable<T>({
   empty: { icon: LucideIcon; title: string; body?: ReactNode };
   loading?: boolean;
   error?: string | null;
-  initialSort?: { key: string; dir: 1 | -1 };
+  initialSort?: SortState;
   minWidth?: number;
   /** Rows shown quieter (inactive, retired…). */
   dim?: (r: T) => boolean;
 }) {
-  const [sort, setSort] = useState(initialSort ?? null);
+  const { sorted, sort, toggle, ariaSort } = useSortedRows(rows ?? [], columns, initialSort);
   if (error) return <Card className="p-6 text-sm text-danger">{error}</Card>;
   if (loading || !rows) return <Spinner />;
-  const col = sort && columns.find((c) => c.key === sort.key);
-  const sorted = col?.sort
-    ? [...rows].sort((a, b) => {
-        const x = col.sort!(a), y = col.sort!(b);
-        return (x < y ? -1 : x > y ? 1 : 0) * sort!.dir;
-      })
-    : rows;
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
@@ -50,11 +64,12 @@ export function DataTable<T>({
           <thead className="bg-subtle text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
             <tr>
               {columns.map((c) => (
-                <th key={c.key} scope="col" className={cx("px-3 py-2.5 first:pl-4 last:pr-4", c.align === "right" && "text-right", c.className)}>
+                <th key={c.key} scope="col" aria-sort={ariaSort(c.key)} className={cx("px-3 py-2.5 first:pl-4 last:pr-4", c.align === "right" && "text-right", c.className)}>
                   {c.sort ? (
                     <button
+                      type="button"
                       className={cx("inline-flex items-center gap-1 uppercase tracking-wide hover:text-ink", sort?.key === c.key && "text-ink")}
-                      onClick={() => setSort((s) => (s?.key === c.key ? { key: c.key, dir: s.dir === 1 ? -1 : 1 } : { key: c.key, dir: 1 }))}
+                      onClick={() => toggle(c.key)}
                     >
                       {c.header}
                       {sort?.key === c.key && (sort.dir === 1 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}

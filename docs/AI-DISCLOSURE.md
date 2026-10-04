@@ -36,7 +36,7 @@ The product ideas, the scope and every significant design decision came from the
 
 ## How outputs were checked
 
-- The planner is covered by automated tests that re-check every Task 2B feasibility rule on the active seed (the shared peak day in the judged build, or the independent synthetic day in a public clone), plus the live projection used for ETAs and late risk (`npm test`: 22 core tests).
+- The planner is covered by automated tests that re-check every Task 2B feasibility rule on the active seed (the shared peak day in the judged build, or the independent synthetic day in a public clone), plus the live projection used for ETAs and late risk (`npm test`: 31 core tests, including clock, date and map-position helpers).
 - The API is covered by 31 tests that run the walkthrough over HTTP against a real (in-memory) Postgres: role checks, idempotent driver sync, the delivery code and photo rules, the audit trail, and state that reloads identically from the tables.
 - `npm run typecheck` and `npm run lint` pass for every workspace. On 4 Oct `npm test`, typecheck and lint all passed, and the deployed services answered their health checks through both apps.
 - The Playwright suite (`npm run e2e`) drives the README's judge walkthrough in four browser tabs, then the field-proof flow and the driver and loader apps on slow, stalled and offline connections. `npm run check:fresh` runs `docker compose up` on a clean clone and the same suite against it.

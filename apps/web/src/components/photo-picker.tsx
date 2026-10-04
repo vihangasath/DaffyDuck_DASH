@@ -6,7 +6,7 @@ import { Camera, Loader2, Plus, X } from "lucide-react";
 import { cx } from "@/components/ui";
 import { shrinkPhoto } from "@/lib/photos";
 
-export interface PhotoDraft {
+interface PhotoDraft {
   url: string;
   blob: Blob;
 }

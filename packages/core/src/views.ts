@@ -3,6 +3,7 @@
 import type { Db } from "./contract";
 import { contextFor, net, outletName, seed } from "./reference";
 import type { Depot, Order, Plan } from "./domain/types";
+import { fmtMin } from "./domain/time";
 import { evaluateVehicle, type TripEval } from "./planner/evaluate";
 
 export type OrderStatus =
@@ -68,8 +69,7 @@ export function orderState(db: Db, orderId: string): OrderState {
 /** Deterministic "demo clock": events are stamped near the planned time so the story stays coherent. */
 export function demoStamp(plannedMin: number, orderId: string, extra = 0): string {
   const jitter = [...orderId].reduce((s, c) => s + c.charCodeAt(0), 0) % 7;
-  const m = Math.round(plannedMin + jitter + extra);
-  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return fmtMin(plannedMin + jitter + extra);
 }
 
 export const mapsUrl = (outletId: string) => {
