@@ -31,6 +31,16 @@ Tech-Triathlon 2026 · Hackathon submission. **DASH** connects **ordering → pl
 
 Every branch's manager, a Kandy loader and a Kandy driver also have logins; see [Accounts](#accounts).
 
+> [!NOTE]
+> **Render Free Plan Spin-Down & Sign-in Notice:**
+> The deployed web apps and backend API run on Render's free tier, which spins down services after 15 minutes of inactivity. When visiting the site after an idle period, the backend API can take **50–90 seconds** to wake up.
+>
+> If you submit credentials while the backend API container is still waking up, the proxy request will time out and display **"Sign-in failed. Please try again."**. If you see this, wait 30–60 seconds for the backend service to finish booting and click sign-in again.
+>
+> Also remember that access is role-separated:
+> - **Waypoint People (HR)**: `admin` only (operational logins are rejected here).
+> - **DASH Operations**: `dispatcher`, `loader`, `driver`, `store` (`admin` is directed to Waypoint People).
+
 ## Contents
 
 - [What it does](#what-it-does)
@@ -97,8 +107,8 @@ npm install && npm run dev
 [`render.yaml`](render.yaml) is a Render Blueprint: in the Render dashboard choose **New → Blueprint** and pick this repository. It creates Postgres 17, the API and both apps from `main`, built in Render's cloud.
 
 - **Seed:** the build has no `data/`, so it boots on the synthetic fixture.
-- **Free plan:** services sleep after about 15 minutes idle; the first request after that takes about a minute.
-- **URLs:** the apps reach the API at `https://daffyduck-dash-api.onrender.com`, fixed at build time. If Render assigns different URLs, correct `API_URL` on `daffyduck-dash` and `daffyduck-people` and `ADMIN_URL` on `daffyduck-dash-api`, then redeploy them.
+- **Free plan & cold starts:** services sleep after about 15 minutes idle. The frontend apps can wake up before the separate backend API has finished booting. If you attempt to log in during this wake-up window, the request proxy will time out with *"Sign-in failed. Please try again."*. Allow about 50–90 seconds for the API container to finish spinning up and retry.
+- **URLs:** the apps reach the API at `https://daffyduck-dash-api.onrender.com`, fixed at build time. If Render assigns different URLs (e.g. if names are already claimed on a new personal deployment), correct `API_URL` on `daffyduck-dash` and `daffyduck-people` and `ADMIN_URL` on `daffyduck-dash-api` in the dashboard, then redeploy them with a cleared build cache.
 
 ### Configuration
 

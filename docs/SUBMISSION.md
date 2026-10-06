@@ -9,7 +9,7 @@ Everything the Hackathon submission form asks for (Challenge Booklet, Hackathon 
 | Deployed system (Waypoint People, the HR panel) | https://daffyduck-people.onrender.com |
 | Demo video (unlisted, 5:45) | https://youtu.be/NtV_pmNhU5s |
 
-The deployed system runs on Render's free plan: the first visit after about 15 idle minutes takes up to a minute while it wakes. It is seeded with the public synthetic demo day; see the README's "Datasets and confidentiality".
+The deployed system runs on Render's free plan: the first visit after about 15 idle minutes takes up to a minute while it wakes. If sign-in returns "Sign-in failed. Please try again.", the backend API is still waking up from sleep—wait ~30–60 seconds and submit again. It is seeded with the public synthetic demo day; see the README's "Datasets and confidentiality".
 
 ## Seeded accounts
 
