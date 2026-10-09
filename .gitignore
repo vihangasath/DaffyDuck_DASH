@@ -29,3 +29,6 @@ __pycache__/
 # Playwright output
 e2e/.report/
 e2e/.results/
+
+# Python virtual environment for the Datathon model service
+.venv/

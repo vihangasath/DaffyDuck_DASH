@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "dev": "npm run seed:ensure && concurrently -k -n api,web,admin -c blue,green,magenta \"npm run dev -w @waypoint/api\" \"npm run dev -w @waypoint/web\" \"npm run dev -w @waypoint/admin\"",
+    "models": "python3.13 apps/models/server.py || python3 apps/models/server.py",
+    "dev:all": "npm run seed:ensure && MODEL_URL=http://localhost:8000 concurrently -k -n models,api,web,admin -c yellow,blue,green,magenta \"npm run models\" \"npm run dev -w @waypoint/api\" \"npm run dev -w @waypoint/web\" \"npm run dev -w @waypoint/admin\"",
     "build": "npm run seed:ensure && npm run build -w @waypoint/web && npm run build -w @waypoint/admin",
     "test": "npm run seed:ensure && npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
