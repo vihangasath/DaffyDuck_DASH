@@ -70,8 +70,8 @@ export default function Receipt() {
                 </Pill>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 text-sm">
-                <span className="flex items-center gap-2 text-ink-2">Arrived <Stepper value={r} max={l.planned} onChange={(v) => setRecv((s) => ({ ...s, [l.skuId]: v }))} /></span>
-                <span className="flex items-center gap-2 text-ink-2">Damaged <Stepper value={dmg} max={r} tone={dmg ? "warning" : undefined} onChange={(v) => setDamaged((s) => ({ ...s, [l.skuId]: v }))} /></span>
+                <span className="flex items-center gap-2 text-ink-2">Arrived <Stepper value={r} max={l.planned} disabled={!!done} onChange={(v) => setRecv((s) => ({ ...s, [l.skuId]: v }))} /></span>
+                <span className="flex items-center gap-2 text-ink-2">Damaged <Stepper value={dmg} max={r} tone={dmg ? "warning" : undefined} disabled={!!done} onChange={(v) => setDamaged((s) => ({ ...s, [l.skuId]: v }))} /></span>
               </div>
             </div>
           );

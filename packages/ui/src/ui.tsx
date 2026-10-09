@@ -4,7 +4,7 @@ import clsx, { type ClassValue } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 import Link from "next/link";
 import { ArrowLeft, Check, CloudOff, Loader2, RefreshCw, type LucideIcon } from "lucide-react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 // Later classes win (e.g. <Card className="bg-navy">), including our custom colour tokens.
 const twMerge = extendTailwindMerge({
@@ -209,19 +209,162 @@ export function Kv({ k, v, big }: { k: string; v: ReactNode; big?: boolean }) {
   );
 }
 
-export function Stepper({ value, max, onChange, tone, big }: { value: number; max?: number; onChange: (v: number) => void; tone?: "warning"; big?: boolean }) {
+export function Stepper({
+  value,
+  max,
+  onChange,
+  tone,
+  big,
+  disabled,
+}: {
+  value: number;
+  max?: number;
+  onChange: (v: number) => void;
+  tone?: "warning";
+  big?: boolean;
+  disabled?: boolean;
+}) {
+  const [text, setText] = useState<string>(() => String(value));
+  const isFocusedRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      setText(String(value));
+    }
+  }, [value]);
+
+  const clamp = (v: number) => Math.max(0, max != null ? Math.min(max, v) : v);
+
+  const commit = (num: number) => {
+    if (disabled) return;
+    const clamped = clamp(num);
+    setText(String(clamped));
+    onChange(clamped);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    const raw = e.target.value.replace(/\D/g, "");
+    setText(raw);
+    if (raw === "") {
+      onChange(0);
+      return;
+    }
+    const parsed = parseInt(raw, 10);
+    if (!Number.isNaN(parsed)) {
+      const clamped = clamp(parsed);
+      if (max != null && parsed > max) {
+        setText(String(clamped));
+      }
+      onChange(clamped);
+    }
+  };
+
+  const handleBlur = () => {
+    isFocusedRef.current = false;
+    if (disabled) return;
+    if (text === "") {
+      commit(0);
+    } else {
+      const parsed = parseInt(text, 10);
+      commit(Number.isNaN(parsed) ? 0 : parsed);
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    isFocusedRef.current = true;
+    e.target.select();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) return;
+    if (e.key === "Enter") {
+      inputRef.current?.blur();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      commit(value + 1);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      commit(value - 1);
+    }
+  };
+
   const s = big ? "size-12 text-xl" : "size-9 text-lg";
-  const btn = cx(s, "flex items-center justify-center rounded-[9px] font-semibold text-primary transition-colors hover:bg-primary-soft active:bg-primary/15 disabled:text-ink-2 disabled:opacity-30 disabled:hover:bg-transparent");
+  const btn = cx(
+    s,
+    "flex items-center justify-center rounded-[9px] font-semibold text-primary transition-colors hover:bg-primary-soft active:bg-primary/15 disabled:text-ink-2 disabled:opacity-30 disabled:hover:bg-transparent select-none shrink-0"
+  );
+
   return (
-    <div className={cx("inline-flex items-center rounded-[10px] border bg-surface p-px", tone === "warning" ? "border-warning bg-warning-soft/40" : value > 0 ? "border-primary/50" : "border-line-strong")}>
-      <button aria-label="Decrease" className={btn} disabled={value <= 0} onClick={() => onChange(value - 1)}>
+    <div
+      className={cx(
+        "inline-flex items-center rounded-[10px] border bg-surface p-px",
+        disabled && "opacity-60",
+        tone === "warning"
+          ? "border-warning bg-warning-soft/40"
+          : value > 0
+          ? "border-primary/50"
+          : "border-line-strong"
+      )}
+    >
+      <button
+        type="button"
+        aria-label="Decrease"
+        className={btn}
+        disabled={disabled || value <= 0}
+        onClick={() => commit(value - 1)}
+      >
         −
       </button>
-      <span className={cx("min-w-12 text-center font-bold tabular-nums", big ? "text-base" : "text-sm", value === 0 && "text-muted")}>
-        {value}
-        {max != null && <span className="font-medium text-muted">/{max}</span>}
-      </span>
-      <button aria-label="Increase" className={btn} disabled={max != null && value >= max} onClick={() => onChange(value + 1)}>
+
+      <div
+        className={cx(
+          "flex items-center justify-center px-1 tabular-nums",
+          big ? "min-w-14" : "min-w-11"
+        )}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          aria-label="Quantity"
+          disabled={disabled}
+          value={text}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className={cx(
+            "bg-transparent text-center font-bold outline-none disabled:cursor-not-allowed",
+            max != null
+              ? big ? "w-10 text-base" : "w-8 text-sm"
+              : big ? "w-12 text-base" : "w-9 text-sm",
+            value === 0 && text === "0" && "text-muted"
+          )}
+        />
+        {max != null && (
+          <span
+            className={cx(
+              "select-none font-medium text-muted pointer-events-none",
+              big ? "text-sm" : "text-xs"
+            )}
+            aria-hidden
+          >
+            /{max}
+          </span>
+        )}
+      </div>
+
+      <button
+        type="button"
+        aria-label="Increase"
+        className={btn}
+        disabled={disabled || (max != null && value >= max)}
+        onClick={() => commit(value + 1)}
+      >
         +
       </button>
     </div>

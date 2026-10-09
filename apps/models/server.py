@@ -3,6 +3,7 @@
   GET  /health           which models are loaded
   POST /predict/task1    {"rows": [...]} → {"model", "predictions": [{delivery_id, pred_service_min, pred_late_prob}]}
   POST /forecast/task2a  {"rows": [...]} → {"model", "predictions": [{row_id, pred_total_volume_m3, pred_chilled_volume_m3}]}
+  POST /allocate/task2b  {"rows": [...]} → {"model", "predictions": [{order_ref, decision, vehicle_id, trip_id}]}
 
 A task whose files aren't in artifacts/ yet answers 503, and the API keeps its baseline for it.
 Loaders are retried on each request until they succeed, so adding a file needs no restart.
@@ -18,8 +19,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import predict
 
 _loaded: dict[str, object] = {}
-LOADERS = {"task1": predict.load_task1, "task2a": predict.load_task2a}
-ROUTES = {"/predict/task1": "task1", "/forecast/task2a": "task2a"}
+LOADERS = {"task1": predict.load_task1, "task2a": predict.load_task2a, "task2b": predict.load_task2b}
+ROUTES = {"/predict/task1": "task1", "/forecast/task2a": "task2a", "/allocate/task2b": "task2b"}
 
 
 def model(task: str):
