@@ -9,6 +9,7 @@ import { dirname, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const target = resolve(root, "packages/core/src/seed.json");
+const shared = resolve(root, "data/General Data/outlets.csv");
 if (existsSync(target)) {
   console.log("Using the locally supplied private competition seed.");
   process.exit(0);
