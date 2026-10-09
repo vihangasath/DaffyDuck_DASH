@@ -9,7 +9,10 @@ next-env.d.ts
 
 # Competition datasets: competition terms forbid redistributing them or their derivatives.
 # Keep them local (see README → Datasets). Decide with the team before committing seed.json.
+/data
 /data/
+Datathon_Task2A/
+rootcode-datathon/
 packages/core/src/seed.json
 # Trained Datathon models are derivatives too (apps/models/artifacts/README.md).
 apps/models/artifacts/*

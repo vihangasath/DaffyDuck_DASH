@@ -124,7 +124,7 @@ export default function LoadList() {
                         {l.name}
                         <span className="block text-xs text-muted">{l.unit}{sf ? ` · short ${sf.planned - sf.loaded}, flagged` : ""}</span>
                       </span>
-                      <Stepper value={line.loaded} max={line.planned} tone={sf ? "warning" : undefined} onChange={(v) => !locked && void tick(tripId, key, v)} />
+                      <Stepper value={line.loaded} max={line.planned} tone={sf ? "warning" : undefined} disabled={locked} onChange={(v) => !locked && void tick(tripId, key, v)} />
                     </li>
                   );
                 })}

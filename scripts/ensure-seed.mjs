@@ -9,14 +9,17 @@ import { dirname, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const target = resolve(root, "packages/core/src/seed.json");
-const shared = resolve(root, "data/General Data/outlets.csv");
-if (existsSync(shared)) {
-  execFileSync(process.execPath, [resolve(root, "packages/core/scripts/build-seed.ts")], { cwd: root, stdio: "inherit" });
-  process.exit(0);
-}
 if (existsSync(target)) {
   console.log("Using the locally supplied private competition seed.");
   process.exit(0);
+}
+if (existsSync(shared)) {
+  try {
+    execFileSync(process.execPath, [resolve(root, "packages/core/scripts/build-seed.ts")], { cwd: root, stdio: "inherit" });
+    process.exit(0);
+  } catch (err) {
+    console.warn("Could not rebuild seed from shared data; using existing seed or fixture.");
+  }
 }
 
 const demoDate = "2025-12-18";
