@@ -16,6 +16,7 @@ Tech-Triathlon 2026 · Hackathon submission. **DASH** connects **ordering → pl
 | **Repository** | [github.com/vihangasath/DaffyDuck_DASH](https://github.com/vihangasath/DaffyDuck_DASH) |
 | **Run it yourself** | `docker compose up --build` starts the complete stack (Postgres, API with migrations and seed data, both apps). No configuration needed. See [Run it](#run-it) |
 | **Walkthrough** | [Judge walkthrough](#judge-walkthrough): numbered, all four roles, from planning to receipt (about 10 minutes) |
+| **Datathon models** | Judged separately; the Hackathon build does not depend on them. They run as an optional service, started with `npm run dev:all`: see [Datathon models](#datathon-models-optional). The deployed Render site has no model service and shows the built-in baselines |
 | **Architecture and data model** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): component diagram, ER diagram and who can read what |
 | **AI tool disclosure** | [`docs/AI-DISCLOSURE.md`](docs/AI-DISCLOSURE.md) |
 
@@ -89,7 +90,7 @@ This starts the whole stack, with nothing to configure:
 
 - **First start:** the API applies the migrations and seeds the database (master data, the demo day, staff and accounts).
 - **Later starts:** an existing database is upgraded in place, with migrations run and any new demo logins added, and the day is not reset.
-- **Model service:** the optional Datathon `models` service only starts with `--profile models`; see [Datathon models](#datathon-models-optional).
+- **Model service:** the optional Datathon `models` service only starts with `--profile models`, and needs the model files in `apps/models/artifacts/`; see [Datathon models](#datathon-models-optional).
 - **Font timeout:** the web build downloads its font from Google Fonts. On a slow connection that can time out; run the command again.
 
 ### Locally (Node ≥ 22.18, nothing else to install)
@@ -328,24 +329,37 @@ The component diagram, the full ER diagram (data model) and the who-can-read-wha
 
 ## Datathon models (optional)
 
-The Datathon models plug in through a separate Python service, `apps/models`. Until they are added, the app uses transparent baselines:
+The Datathon is judged separately from the Hackathon, so the app works without it. The trained models run in a separate Python service, `apps/models`, which the API calls when `MODEL_URL` is set. Without it, the app uses transparent baselines:
 - handling time: the service allowance;
 - late risk: ETA vs window close;
 - forecast: a 6-week mean with festival uplift.
 
-To connect them:
+| Model | What it drives | Where you see it |
+|---|---|---|
+| Task 1 service-time regressor | Handling time at each stop, which moves every ETA | Planner, loader, driver and store screens |
+| Task 1 late-risk classifier | Probability a stop arrives after its window closes | Late-risk badges on dispatcher **Live tracking** |
+| Task 2A forecaster | Total and chilled m³ per depot, brand and week | Dispatcher **Capacity outlook** (a "Forecast: Datathon 2A model" pill replaces "Forecast: baseline") |
 
-1. Put the trained files in `apps/models/artifacts/` (`task1_service.joblib`, `task1_late.joblib`, `task2a_forecast.joblib`). Fill in the feature functions in `apps/models/predict.py`, unless the saved models are full scikit-learn Pipelines.
-2. Start the service:
-   - Docker: `MODEL_URL=http://models:8000 docker compose --profile models up --build`
-   - Locally: `python3 apps/models/server.py`, with `MODEL_URL=http://localhost:8000` for the API.
-3. Check **GET /api/models**, or the source tag on Live tracking and Capacity outlook. Each task switches from `baseline` to `model` independently.
+The service also serves the Task 2B peak-day allocation file at `/allocate/task2b`. The API does not call it: the planner applies the same rules itself.
+
+**The model files are not in this repository.** They are derived from the competition datasets, so `apps/models/artifacts/*` is git-ignored (see [Datasets and confidentiality](#datasets-and-confidentiality)). Put them in `apps/models/artifacts/`; the file names and what each is used for are in [`apps/models/artifacts/README.md`](apps/models/artifacts/README.md). Each task switches from baseline to model as soon as its files are there, with no restart.
+
+To run with the models:
+
+1. Install the Python dependencies (Python 3.12 or later): `pip install -r apps/models/requirements.txt`. The joblib files load most reliably on the library versions they were trained with.
+2. Start everything:
+   - `npm run dev:all` starts the model service, the API and both apps, with `MODEL_URL` already set.
+   - Docker: `MODEL_URL=http://models:8000 docker compose --profile models up --build`.
+   - Or start the service alone with `npm run models` and give the API `MODEL_URL=http://localhost:8000`.
+3. Check that they loaded: `GET http://localhost:8000/health` lists the loaded tasks. **GET /api/models** (dispatcher sign-in), or the source tag on Live tracking and Capacity outlook, shows `model` or `baseline` for each task.
+
+**The deployed Render site shows baselines.** It has no model service and no model files, so Capacity outlook there reads "Forecast: baseline". To see the models working, run the stack locally as above.
 
 Where each prediction is used, and the request format, are in [`docs/INTEGRATION.md → Datathon hooks`](docs/INTEGRATION.md#datathon-hooks).
 
 ## Datasets and confidentiality
 
-The competition terms forbid publishing the datasets or their derivatives. `data/`, the generated `packages/core/src/seed.json` and the local database in `.data/` are therefore **git-ignored**.
+The competition terms forbid publishing the datasets or their derivatives. `data/`, the generated `packages/core/src/seed.json`, the local database in `.data/` and the trained model files in `apps/models/artifacts/` are therefore **git-ignored**.
 
 A public fresh clone boots with an independently generated synthetic fixture instead. It follows the booklet's published network counts and reproduces the peak-day shape (refrigerated capacity binds), so `npm test`, `npm run dev`, `docker compose up` and the judge walkthrough all work without the private data.
 
@@ -359,7 +373,7 @@ apps/api/         Waypoint API (Hono + Drizzle): database, migrations, auth, bus
   drizzle/          SQL migrations, applied on start-up
 apps/web/         DASH operations app (Next.js 16): dispatcher console, loader and driver phone apps (installable, offline-first, dark mode), store screens
 apps/admin/       Waypoint People, the HR panel (Next.js 16)
-apps/models/      Optional Datathon model service (Python). Model files go in artifacts/
+apps/models/      Optional Datathon model service (Python): server.py and predict.py. Model files go in artifacts/ (git-ignored)
 packages/core/    Shared by the API and the apps: domain model, planner, business rules, live projection, API contract (with tests)
 packages/ui/      Shared design system: tokens (theme.css) and UI kit
 e2e/              Playwright end-to-end tests (walkthrough, slow network, loader offline, field proof)

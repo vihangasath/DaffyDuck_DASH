@@ -503,7 +503,24 @@ def load_task2a():
         cal = artifact.get("calendar")
 
         def predict_task2a(rows: list[dict]) -> list[dict]:
+            if not rows:
+                return []
             df = pd.DataFrame(rows)
+            if "iso_year" not in df.columns or "iso_week" not in df.columns:
+                if "row_id" in df.columns:
+                    parts = df["row_id"].astype(str).str.split("|", expand=True)
+                    if parts.shape[1] >= 3:
+                        if "depot" not in df.columns:
+                            df["depot"] = parts[0]
+                        if "brand" not in df.columns:
+                            df["brand"] = parts[1]
+                        yw = parts[2].str.split("-W", expand=True)
+                        if yw.shape[1] >= 2:
+                            df["iso_year"] = pd.to_numeric(yw[0], errors="coerce")
+                            df["iso_week"] = pd.to_numeric(yw[1], errors="coerce")
+            if "iso_year" not in df.columns or "iso_week" not in df.columns:
+                return []
+
             m = df.merge(cal[["iso_year", "iso_week"]].reset_index(), on=["iso_year", "iso_week"], how="left")
             df["_cal_idx"] = m["index"]
 
@@ -537,6 +554,8 @@ def load_task2a():
         return predict_task2a
 
     def predict_generic(rows: list[dict]) -> list[dict]:
+        if not rows:
+            return []
         df = pd.DataFrame(rows)
         out = artifact.predict(task2a_features(df))
         return [
